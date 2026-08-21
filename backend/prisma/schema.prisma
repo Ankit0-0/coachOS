@@ -1,0 +1,39 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  COACH
+  CLIENT
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role
+  createdAt DateTime @default(now())
+
+  // plans this user created (if coach)
+  plansCreated  Plan[] @relation("CoachPlans")
+  // plans assigned to this user (if client)
+  plansReceived Plan[] @relation("ClientPlans")
+}
+
+model Plan {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  createdAt DateTime @default(now())
+
+  coach     User   @relation("CoachPlans", fields: [coachId], references: [id])
+  coachId   String
+
+  client    User   @relation("ClientPlans", fields: [clientId], references: [id])
+  clientId  String
+}
