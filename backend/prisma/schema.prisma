@@ -12,12 +12,14 @@ enum Role {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
+  id        String    @id @default(cuid())
+  email     String    @unique
+  password  String?
   name      String
   role      Role
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
+
+  accounts Account[]
 
   // plans this user created (if coach)
   plansCreated  Plan[] @relation("CoachPlans")
@@ -36,4 +38,16 @@ model Plan {
 
   client    User   @relation("ClientPlans", fields: [clientId], references: [id])
   clientId  String
+}
+
+model Account {
+  id                String   @id @default(cuid())
+  provider          String
+  providerAccountId String
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt         DateTime @default(now())
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
 }
