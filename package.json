@@ -1,0 +1,15 @@
+{
+  "name": "coachos",
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev",
+    "dev:client": "turbo dev --filter=clients",
+    "dev:coach": "turbo dev --filter=coaches",
+    "dev:backend": "turbo dev --filter=backend",
+    "build": "turbo build",
+    "lint": "turbo lint"
+  },
+  "devDependencies": {
+    "turbo": "^2.10.10"
+  }
+}
