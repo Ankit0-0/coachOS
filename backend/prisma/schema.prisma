@@ -11,33 +11,33 @@ enum Role {
   CLIENT
 }
 
+enum PlanType {
+  DIET
+  WORKOUT
+}
+
+enum AssignmentStatus {
+  ACTIVE
+  COMPLETED
+  PAUSED
+}
+
 model User {
-  id        String    @id @default(cuid())
-  email     String    @unique
+  id        String   @id @default(cuid())
+  email     String   @unique
   password  String?
   name      String
   role      Role
-  createdAt DateTime  @default(now())
+  createdAt DateTime @default(now())
 
   accounts Account[]
 
-  // plans this user created (if coach)
-  plansCreated  Plan[] @relation("CoachPlans")
-  // plans assigned to this user (if client)
-  plansReceived Plan[] @relation("ClientPlans")
-}
+  plansCreated        Plan[]           @relation("PlanCreator")
+  assignmentsGiven    PlanAssignment[] @relation("AssignedByCoach")
+  assignmentsReceived PlanAssignment[] @relation("AssignedToClient")
 
-model Plan {
-  id        String   @id @default(cuid())
-  title     String
-  content   String
-  createdAt DateTime @default(now())
-
-  coach     User   @relation("CoachPlans", fields: [coachId], references: [id])
-  coachId   String
-
-  client    User   @relation("ClientPlans", fields: [clientId], references: [id])
-  clientId  String
+  coachProfile  CoachProfile?
+  clientProfile ClientProfile?
 }
 
 model Account {
@@ -50,4 +50,64 @@ model Account {
 
   @@unique([provider, providerAccountId])
   @@index([userId])
+}
+
+model Plan {
+  id          String   @id @default(cuid())
+  type        PlanType
+  title       String
+  description String?
+  content     Json
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdById String?
+  createdBy   User?    @relation("PlanCreator", fields: [createdById], references: [id])
+
+  assignments PlanAssignment[]
+
+  @@index([createdById])
+  @@index([type])
+}
+
+model PlanAssignment {
+  id     String @id @default(cuid())
+  planId String
+  plan   Plan   @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  coachId String
+  coach   User   @relation("AssignedByCoach", fields: [coachId], references: [id])
+
+  clientId String
+  client   User   @relation("AssignedToClient", fields: [clientId], references: [id])
+
+  status     AssignmentStatus @default(ACTIVE)
+  assignedAt DateTime         @default(now())
+  startDate  DateTime?
+  endDate    DateTime?
+  updatedAt  DateTime         @updatedAt
+
+  @@index([clientId])
+  @@index([coachId])
+}
+
+model CoachProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  bio             String?
+  specialties     String[]
+  yearsExperience Int?
+}
+
+model ClientProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  heightCm Int?
+  weightKg Float?
+  goals    String?
 }
