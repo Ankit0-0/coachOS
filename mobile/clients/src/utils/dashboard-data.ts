@@ -2,6 +2,14 @@ import { ComponentProps } from 'react';
 
 import { SymbolView } from 'expo-symbols';
 
+import {
+  assignedCoach,
+  assignedDietPlan,
+  assignedWorkoutPlan,
+  coachProfiles,
+  demoClient,
+} from '@/data/mock-data';
+
 type SymbolName = ComponentProps<typeof SymbolView>['name'];
 
 export type HomePlanCard = {
@@ -41,10 +49,10 @@ export const todaysPlanCards: HomePlanCard[] = [
   {
     id: 'workout',
     title: "Today's workout",
-    eyebrow: 'Strength + mobility',
-    summary: 'Lower body focus with a short core finisher.',
-    metric: '42 min',
-    detail: 'Squats, lunges, hip work, and 8 minutes of core.',
+    eyebrow: assignedWorkoutPlan.focus,
+    summary: assignedWorkoutPlan.summary,
+    metric: assignedWorkoutPlan.duration,
+    detail: assignedWorkoutPlan.exercises.slice(0, 2).map((exercise) => exercise.name).join(' • '),
     route: '/workout',
     iconName: { ios: 'figure.strengthtraining.traditional', android: 'fitness_center', web: 'fitness_center' },
     accentColor: '#0F8B8D',
@@ -54,9 +62,9 @@ export const todaysPlanCards: HomePlanCard[] = [
     id: 'diet',
     title: "Today's diet",
     eyebrow: 'Balanced fuel',
-    summary: 'High protein meals with steady carbs around training.',
-    metric: '1,950 kcal',
-    detail: 'Three meals, two snacks, and a hydration target.',
+    summary: assignedDietPlan.summary,
+    metric: assignedDietPlan.calories,
+    detail: assignedDietPlan.meals.slice(0, 2).join(' • '),
     route: '/diet',
     iconName: { ios: 'fork.knife.circle', android: 'restaurant', web: 'restaurant' },
     accentColor: '#D97904',
@@ -70,56 +78,95 @@ export const workoutDetails: {
   focus: string;
   exercises: WorkoutExercise[];
 } = {
-  title: 'Lower body strength',
-  time: '42 min',
-  focus: 'Build controlled strength through legs, glutes, and trunk.',
-  exercises: [
-    {
-      id: 'goblet-squat',
-      name: 'Goblet squat',
-      note: 'Keep ribs stacked and pause for control at the bottom.',
-      sets: [
-        { id: 'goblet-squat-1', setNumber: 1, reps: '8', weight: '18 kg' },
-        { id: 'goblet-squat-2', setNumber: 2, reps: '8', weight: '20 kg' },
-        { id: 'goblet-squat-3', setNumber: 3, reps: '8', weight: '20 kg' },
-        { id: 'goblet-squat-4', setNumber: 4, reps: '8', weight: '22 kg' },
-      ],
-    },
-    {
-      id: 'reverse-lunge',
-      name: 'Reverse lunge',
-      note: 'Step back softly and keep the front knee tracking over toes.',
-      sets: [
-        { id: 'reverse-lunge-1', setNumber: 1, reps: '10 each', weight: '10 kg' },
-        { id: 'reverse-lunge-2', setNumber: 2, reps: '10 each', weight: '12 kg' },
-        { id: 'reverse-lunge-3', setNumber: 3, reps: '10 each', weight: '12 kg' },
-      ],
-    },
-    {
-      id: 'hip-bridge',
-      name: 'Hip bridge',
-      note: 'Drive through heels and hold the top position for one second.',
-      sets: [
-        { id: 'hip-bridge-1', setNumber: 1, reps: '12', weight: 'Bodyweight' },
-        { id: 'hip-bridge-2', setNumber: 2, reps: '12', weight: 'Bodyweight' },
-        { id: 'hip-bridge-3', setNumber: 3, reps: '12', weight: 'Bodyweight' },
-      ],
-    },
-    {
-      id: 'core-finisher',
-      name: 'Core finisher',
-      note: 'Move slowly and stop if your lower back takes over.',
-      sets: [
-        { id: 'core-finisher-1', setNumber: 1, reps: '40 sec', weight: 'Dead bug' },
-        { id: 'core-finisher-2', setNumber: 2, reps: '40 sec', weight: 'Side plank' },
-      ],
-    },
-  ],
+  title: assignedWorkoutPlan.title,
+  time: assignedWorkoutPlan.duration,
+  focus: assignedWorkoutPlan.focus,
+  exercises: assignedWorkoutPlan.exercises.map((exercise) => ({
+    id: exercise.id,
+    name: exercise.name,
+    note: exercise.note,
+    sets: exercise.sets.map((set) => ({
+      id: set.id,
+      setNumber: set.setNumber,
+      reps: set.reps,
+      weight: set.weight,
+    })),
+  })),
 };
 
 export const dietDetails = {
-  title: 'Balanced training day',
-  calories: '1,950 kcal',
-  focus: 'Keep protein high and place most carbs around the workout.',
-  meals: ['Breakfast: eggs, toast, fruit', 'Lunch: chicken rice bowl', 'Snack: Greek yogurt and berries', 'Dinner: salmon, potatoes, greens', 'Hydration: 2.5L water'],
+  title: assignedDietPlan.title,
+  calories: assignedDietPlan.calories,
+  focus: assignedDietPlan.focus,
+  meals: assignedDietPlan.meals,
 };
+
+export type DietMealStatus = {
+  id: string;
+  meal: string;
+  checked: boolean;
+  imageUri?: string;
+  comment: string;
+};
+
+let dietMealState: DietMealStatus[] = [];
+let dietComment = '';
+
+export function getDietMealStatusItems(): DietMealStatus[] {
+  const meals = assignedDietPlan.meals;
+
+  if (
+    dietMealState.length !== meals.length ||
+    dietMealState.some((item, index) => item.meal !== meals[index])
+  ) {
+    dietMealState = meals.map((meal, index) => ({
+      id: `meal-${index}`,
+      meal,
+      checked: false,
+      imageUri: undefined,
+      comment: '',
+    }));
+  }
+
+  return dietMealState;
+}
+
+export function updateDietMealStatus(id: string, changes: Partial<DietMealStatus>) {
+  dietMealState = getDietMealStatusItems().map((item) =>
+    item.id === id ? { ...item, ...changes } : item,
+  );
+
+  return dietMealState;
+}
+
+export function getDietProgress() {
+  const items = getDietMealStatusItems();
+  const checked = items.filter((item) => item.checked).length;
+  const total = items.length || 1;
+
+  return {
+    checked,
+    total,
+    percent: (checked / total) * 100,
+  };
+}
+
+export function setDietComment(comment: string) {
+  dietComment = comment;
+}
+
+export function getDietComment() {
+  return dietComment;
+}
+
+export const availableCoaches = coachProfiles;
+export const clientProfile = demoClient;
+export const myCoach = assignedCoach;
+
+export const clientGoals = [
+  { label: 'Goal', value: clientProfile.goal },
+  { label: 'Current weight', value: clientProfile.metrics.weight },
+  { label: 'Weekly change', value: clientProfile.metrics.weeklyChange },
+  { label: 'Recovery', value: clientProfile.metrics.recovery },
+  { label: 'Sleep', value: clientProfile.metrics.sleep },
+];

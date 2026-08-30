@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { StyleSheet, View } from 'react-native';
 
 import { ScreenScaffold } from '@/components/screen-scaffold';
@@ -5,8 +6,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-
-const coachTypes = ['Strength', 'Fat loss', 'Mobility', 'Nutrition'];
+import { availableCoaches } from '@/utils/dashboard-data';
 
 export function ExploreCoachesScreen() {
   const theme = useTheme();
@@ -21,16 +21,23 @@ export function ExploreCoachesScreen() {
           Find the right fit
         </ThemedText>
         <ThemedText themeColor="textSecondary">
-          Browse coaching styles and specialties before marketplace data is connected.
+          Browse coach profiles and specialties using the local mock dataset while the backend is still being built.
         </ThemedText>
       </View>
 
       <View style={styles.grid}>
-        {coachTypes.map((type) => (
-          <ThemedView key={type} type="backgroundElement" style={[styles.tile, { borderColor: theme.border }]}>
-            <ThemedText type="smallBold">{type}</ThemedText>
+        {availableCoaches.map((coach) => (
+          <ThemedView key={coach.id} type="backgroundElement" style={[styles.tile, { borderColor: theme.border }]}>
+            <Image source={{ uri: coach.image }} style={styles.avatar} />
+            <ThemedText type="smallBold">{coach.name}</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
-              Coming soon
+              {coach.title}
+            </ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              {coach.specialties.join(' • ')}
+            </ThemedText>
+            <ThemedText type="smallBold" style={{ color: coach.accent }}>
+              {coach.rating.toFixed(1)} ★ ({coach.reviews})
             </ThemedText>
           </ThemedView>
         ))}
@@ -56,9 +63,15 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.two,
     borderWidth: StyleSheet.hairlineWidth,
     padding: Spacing.three,
-    minHeight: 96,
+    minHeight: 196,
     flexBasis: '48%',
     flexGrow: 1,
     gap: Spacing.one,
+  },
+  avatar: {
+    width: '100%',
+    height: 110,
+    borderRadius: Spacing.two,
+    marginBottom: Spacing.half,
   },
 });

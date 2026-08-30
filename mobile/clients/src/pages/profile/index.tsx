@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { StyleSheet, View } from 'react-native';
 
 import { ScreenScaffold } from '@/components/screen-scaffold';
@@ -5,6 +6,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { clientGoals, clientProfile } from '@/utils/dashboard-data';
 
 export function ProfileScreen() {
   const theme = useTheme();
@@ -19,22 +21,27 @@ export function ProfileScreen() {
           Profile
         </ThemedText>
         <ThemedText themeColor="textSecondary">
-          Your goals, progress, preferences, and account settings will live here.
+          Your goals, progress, preferences, and account settings live here using the local demo data store.
         </ThemedText>
       </View>
 
       <ThemedView type="backgroundElement" style={[styles.profileCard, { borderColor: theme.border }]}>
-        <View style={[styles.avatar, { backgroundColor: theme.accentSoft }]}>
-          <ThemedText type="subtitle" style={{ color: theme.accent }}>
-            C
-          </ThemedText>
-        </View>
+        <Image source={{ uri: clientProfile.avatar }} style={styles.avatar} />
         <View style={styles.profileCopy}>
-          <ThemedText type="smallBold">Client profile</ThemedText>
+          <ThemedText type="smallBold">{clientProfile.name}</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
-            Fitness goal and body metrics can be added next.
+            {clientProfile.goal} • {clientProfile.level}
           </ThemedText>
         </View>
+      </ThemedView>
+
+      <ThemedView type="backgroundElement" style={[styles.metricsCard, { borderColor: theme.border }]}>
+        {clientGoals.map((metric) => (
+          <View key={metric.label} style={styles.metricRow}>
+            <ThemedText type="small" themeColor="textSecondary">{metric.label}</ThemedText>
+            <ThemedText type="smallBold">{metric.value}</ThemedText>
+          </View>
+        ))}
       </ThemedView>
     </ScreenScaffold>
   );
@@ -60,11 +67,21 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   profileCopy: {
     flex: 1,
     gap: Spacing.one,
+  },
+  metricsCard: {
+    borderRadius: Spacing.two,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: Spacing.three,
+    gap: Spacing.two,
+    marginTop: Spacing.three,
+  },
+  metricRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
 });

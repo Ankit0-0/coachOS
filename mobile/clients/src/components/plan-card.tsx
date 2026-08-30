@@ -1,12 +1,14 @@
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
+import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import Svg, { Circle } from 'react-native-svg';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { HomePlanCard } from '@/utils/dashboard-data';
+import { getDietProgress, HomePlanCard } from '@/utils/dashboard-data';
 
 type PlanCardProps = {
   plan: HomePlanCard;
@@ -14,6 +16,20 @@ type PlanCardProps = {
 
 export function PlanCard({ plan }: PlanCardProps) {
   const theme = useTheme();
+  const [dietProgress, setDietProgress] = useState(() => (plan.id === 'diet' ? getDietProgress() : null));
+
+  useFocusEffect(
+    useCallback(() => {
+      if (plan.id === 'diet') {
+        setDietProgress(getDietProgress());
+      }
+    }, [plan.id]),
+  );
+
+  const progressPercent = dietProgress ? Math.round(dietProgress.percent) : 0;
+  const radius = 18;
+  const circumference = 2 * Math.PI * radius;
+  const dashOffset = circumference - (progressPercent / 100) * circumference;
 
   return (
     <Pressable
@@ -46,11 +62,36 @@ export function PlanCard({ plan }: PlanCardProps) {
           </View>
         </View>
 
-        <SymbolView
-          name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
-          size={18}
-          tintColor={theme.textSecondary}
-        />
+        {dietProgress ? (
+          <View style={styles.progressWrap}>
+            <Svg width={46} height={46} viewBox="0 0 46 46">
+              <Circle cx={23} cy={23} r={18} stroke={theme.border} strokeWidth={3} fill="none" />
+              <Circle
+                cx={23}
+                cy={23}
+                r={18}
+                stroke={plan.accentColor}
+                strokeWidth={3}
+                fill="none"
+                strokeDasharray={circumference}
+                strokeDashoffset={dashOffset}
+                strokeLinecap="round"
+                transform="rotate(-90 23 23)"
+              />
+            </Svg>
+            <View style={styles.progressValue}>
+              <ThemedText type="smallBold" style={{ color: plan.accentColor, fontSize: 10 }}>
+                {progressPercent}%
+              </ThemedText>
+            </View>
+          </View>
+        ) : (
+          <SymbolView
+            name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
+            size={18}
+            tintColor={theme.textSecondary}
+          />
+        )}
       </ThemedView>
     </Pressable>
   );
@@ -92,5 +133,16 @@ const styles = StyleSheet.create({
   },
   detail: {
     flexShrink: 1,
+  },
+  progressWrap: {
+    width: 46,
+    height: 46,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  progressValue: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

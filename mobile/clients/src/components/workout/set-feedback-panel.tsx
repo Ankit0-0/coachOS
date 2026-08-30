@@ -101,16 +101,34 @@ export function SetFeedbackPanel({
 
           <View style={styles.field}>
             <ThemedText type="smallBold">Video reference</ThemedText>
-            <TextInput
-              value={feedback.videoReference}
-              onChangeText={(videoReference) => onChange({ ...feedback, videoReference })}
-              placeholder="Paste a video link or temporary file name."
-              placeholderTextColor={theme.textSecondary}
-              style={[
-                styles.input,
-                { borderColor: theme.border, color: theme.text, backgroundColor: theme.backgroundElement },
-              ]}
-            />
+
+            <View style={styles.videoActions}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => onChange({ ...feedback, videoReference: 'Recorded video captured locally' })}
+                style={({ pressed }) => [styles.videoButton, { borderColor: theme.border, opacity: pressed ? 0.7 : 1 }]}>
+                <ThemedText type="smallBold" style={styles.videoButtonText}>
+                  Record video
+                </ThemedText>
+              </Pressable>
+
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => onChange({ ...feedback, videoReference: 'Video uploaded locally' })}
+                style={({ pressed }) => [styles.videoButton, { borderColor: theme.border, opacity: pressed ? 0.7 : 1 }]}>
+                <ThemedText type="smallBold" style={styles.videoButtonText}>
+                  Upload video
+                </ThemedText>
+              </Pressable>
+            </View>
+
+            {feedback.videoReference ? (
+              <View style={[styles.videoStatus, { backgroundColor: '#E8FFF6', borderColor: '#99E2B4' }]}>
+                <ThemedText type="smallBold" style={{ color: '#166534' }}>
+                  {feedback.videoReference}
+                </ThemedText>
+              </View>
+            ) : null}
           </View>
 
           <Pressable
@@ -206,6 +224,29 @@ const styles = StyleSheet.create({
   },
   commentInput: {
     minHeight: 110,
+  },
+  videoActions: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  videoButton: {
+    flex: 1,
+    borderRadius: Spacing.two,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.two,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(58, 123, 255, 0.08)',
+  },
+  videoButtonText: {
+    color: '#3A7BFF',
+  },
+  videoStatus: {
+    borderRadius: Spacing.two,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.two,
   },
   doneButton: {
     borderRadius: Spacing.two,

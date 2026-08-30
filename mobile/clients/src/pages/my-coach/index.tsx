@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { StyleSheet, View } from 'react-native';
 
 import { ScreenScaffold } from '@/components/screen-scaffold';
@@ -5,6 +6,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { myCoach } from '@/utils/dashboard-data';
 
 export function MyCoachScreen() {
   const theme = useTheme();
@@ -19,14 +21,24 @@ export function MyCoachScreen() {
           Your coaching hub
         </ThemedText>
         <ThemedText themeColor="textSecondary">
-          Messages, weekly check-ins, and assigned plans will live here.
+          Your coach assignment and weekly plan details are powered by the mock data layer until the backend is live.
         </ThemedText>
       </View>
 
       <ThemedView type="backgroundElement" style={[styles.panel, { borderColor: theme.border }]}>
-        <ThemedText type="smallBold">Coach assignment</ThemedText>
-        <ThemedText themeColor="textSecondary">
-          No coach profile is connected yet. This placeholder keeps the navigation ready.
+        <Image source={{ uri: myCoach.image }} style={styles.image} />
+        <ThemedText type="smallBold">{myCoach.name}</ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          {myCoach.title}
+        </ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          {myCoach.specialties.join(' • ')}
+        </ThemedText>
+        <ThemedText type="smallBold" style={{ color: myCoach.accent }}>
+          {myCoach.rating.toFixed(1)} ★ • {myCoach.availability}
+        </ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          {myCoach.bio}
         </ThemedText>
       </ThemedView>
     </ScreenScaffold>
@@ -45,6 +57,11 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.two,
     borderWidth: StyleSheet.hairlineWidth,
     padding: Spacing.three,
-    gap: Spacing.one,
+    gap: Spacing.two,
+  },
+  image: {
+    width: '100%',
+    height: 180,
+    borderRadius: Spacing.two,
   },
 });
