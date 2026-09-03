@@ -1,15 +1,32 @@
-import { Image } from 'expo-image';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, Pressable } from 'react-native';
 
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { clientGoals, clientProfile } from '@/utils/dashboard-data';
+import { useAuth } from '@/contexts/auth';
+import { clientGoals } from '@/utils/dashboard-data';
+
+function initialsFor(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('');
+}
 
 export function ProfileScreen() {
   const theme = useTheme();
+  const { user, signOut } = useAuth();
+  const displayName = user?.name ?? 'Guest';
+  const roleLabel = user?.role === 'COACH' ? 'Coach' : 'Client';
+
+  const handleSignOut = async () => {
+    await signOut();
+    // Auth provider will automatically redirect to auth screen based on isSignedIn state
+  };
 
   return (
     <ScreenScaffold includeBottomTabInset>
@@ -21,16 +38,23 @@ export function ProfileScreen() {
           Profile
         </ThemedText>
         <ThemedText themeColor="textSecondary">
-          Your goals, progress, preferences, and account settings live here using the local demo data store.
+          Your account details, goals, progress, and preferences live here.
         </ThemedText>
       </View>
 
       <ThemedView type="backgroundElement" style={[styles.profileCard, { borderColor: theme.border }]}>
-        <Image source={{ uri: clientProfile.avatar }} style={styles.avatar} />
+        <View style={[styles.avatar, { backgroundColor: theme.accentSoft }]}>
+          <ThemedText type="smallBold" themeColor="accent" style={styles.avatarInitials}>
+            {initialsFor(displayName) || 'C'}
+          </ThemedText>
+        </View>
         <View style={styles.profileCopy}>
-          <ThemedText type="smallBold">{clientProfile.name}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {clientProfile.goal} • {clientProfile.level}
+          <ThemedText type="smallBold">{displayName}</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+            {user?.email}
+          </ThemedText>
+          <ThemedText type="small" themeColor="accent">
+            {roleLabel}
           </ThemedText>
         </View>
       </ThemedView>
@@ -43,6 +67,15 @@ export function ProfileScreen() {
           </View>
         ))}
       </ThemedView>
+
+      <Pressable
+        style={[styles.signOutButton, { backgroundColor: theme.warning }]}
+        onPress={handleSignOut}
+      >
+        <ThemedText type="smallBold" style={{ color: '#FFFFFF' }}>
+          Sign Out
+        </ThemedText>
+      </Pressable>
     </ScreenScaffold>
   );
 }
@@ -67,6 +100,12 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitials: {
+    fontSize: 24,
+    lineHeight: 30,
   },
   profileCopy: {
     flex: 1,
@@ -83,5 +122,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  signOutButton: {
+    padding: Spacing.three,
+    borderRadius: Spacing.two,
+    alignItems: 'center',
+    marginTop: Spacing.three,
   },
 });

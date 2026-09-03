@@ -35,6 +35,7 @@ model User {
   plansCreated        Plan[]           @relation("PlanCreator")
   assignmentsGiven    PlanAssignment[] @relation("AssignedByCoach")
   assignmentsReceived PlanAssignment[] @relation("AssignedToClient")
+  weightEntries       WeightEntry[]    @relation("ClientWeightEntries")
 
   coachProfile  CoachProfile?
   clientProfile ClientProfile?
@@ -88,6 +89,8 @@ model PlanAssignment {
   endDate    DateTime?
   updatedAt  DateTime         @updatedAt
 
+  checkIns CheckIn[]
+
   @@index([clientId])
   @@index([coachId])
 }
@@ -110,4 +113,33 @@ model ClientProfile {
   heightCm Int?
   weightKg Float?
   goals    String?
+}
+
+model CheckIn {
+  id           String         @id @default(cuid())
+  assignmentId String
+  assignment   PlanAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+
+  date             DateTime @db.Date
+  completedItemIds String[]
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([assignmentId, date])
+  @@index([assignmentId])
+}
+
+model WeightEntry {
+  id       String @id @default(cuid())
+  clientId String
+  client   User   @relation("ClientWeightEntries", fields: [clientId], references: [id], onDelete: Cascade)
+
+  date      DateTime @db.Date
+  weightKg  Float
+  photoUrl  String?
+  createdAt DateTime @default(now())
+
+  @@unique([clientId, date])
+  @@index([clientId])
 }

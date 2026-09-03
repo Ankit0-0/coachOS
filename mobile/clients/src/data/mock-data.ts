@@ -44,7 +44,7 @@ export type DietPlan = {
   calories: string;
   focus: string;
   summary: string;
-  meals: string[];
+  meals: { id: string; label: string }[];
 };
 
 export type ClientProfile = {
@@ -210,11 +210,11 @@ export const dietPlans: DietPlan[] = [
     focus: 'Keep protein high and place most carbs around the workout.',
     summary: 'A high-protein split with steady carbs and recovery-friendly fats.',
     meals: [
-      'Breakfast: eggs, toast, fruit',
-      'Lunch: chicken rice bowl',
-      'Snack: Greek yogurt and berries',
-      'Dinner: salmon, potatoes, greens',
-      'Hydration: 2.5L water',
+      { id: 'breakfast', label: 'Breakfast: eggs, toast, fruit' },
+      { id: 'lunch', label: 'Lunch: chicken rice bowl' },
+      { id: 'snack', label: 'Snack: Greek yogurt and berries' },
+      { id: 'dinner', label: 'Dinner: salmon, potatoes, greens' },
+      { id: 'hydration', label: 'Hydration: 2.5L water' },
     ],
   },
   {
@@ -224,11 +224,11 @@ export const dietPlans: DietPlan[] = [
     focus: 'Sustainable calories with higher fiber and meal consistency.',
     summary: 'Prioritizes protein, volume, and steady energy through the day.',
     meals: [
-      'Breakfast: oats, berries, protein shake',
-      'Lunch: turkey salad wrap',
-      'Snack: apple and cottage cheese',
-      'Dinner: grilled chicken, cauliflower rice, greens',
-      'Hydration: 2.2L water',
+      { id: 'breakfast', label: 'Breakfast: oats, berries, protein shake' },
+      { id: 'lunch', label: 'Lunch: turkey salad wrap' },
+      { id: 'snack', label: 'Snack: apple and cottage cheese' },
+      { id: 'dinner', label: 'Dinner: grilled chicken, cauliflower rice, greens' },
+      { id: 'hydration', label: 'Hydration: 2.2L water' },
     ],
   },
 ];
@@ -258,21 +258,6 @@ export const assignments: ClientCoachAssignment[] = [
     dietPlanId: 'balanced-training-day',
     startedAt: '2026-08-15',
   },
-];
-
-export type WeightHistoryPoint = {
-  day: string;
-  value: number;
-};
-
-export const weightHistory: WeightHistoryPoint[] = [
-  { day: 'Mon', value: 72.4 },
-  { day: 'Tue', value: 72.1 },
-  { day: 'Wed', value: 71.8 },
-  { day: 'Thu', value: 71.6 },
-  { day: 'Fri', value: 71.3 },
-  { day: 'Sat', value: 70.9 },
-  { day: 'Sun', value: 70.7 },
 ];
 
 export const assignedCoach =

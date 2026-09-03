@@ -44,7 +44,10 @@ export async function login(input: { email: string; password: string }) {
 
 export async function loginWithGoogle(input: { idToken: string; role?: Role }) {
   if (!env.googleClientId) throw new Error("GOOGLE_NOT_CONFIGURED");
-  const ticket = await googleClient.verifyIdToken({ idToken: input.idToken, audience: env.googleClientId });
+  const ticket = await googleClient.verifyIdToken({
+    idToken: input.idToken,
+    audience: env.googleClientAudiences,
+  });
   const payload = ticket.getPayload();
   if (!payload?.sub || !payload.email || payload.email_verified !== true) throw new Error("INVALID_GOOGLE_TOKEN");
 

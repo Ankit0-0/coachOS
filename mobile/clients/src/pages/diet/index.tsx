@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Image, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { DetailHeader } from '@/components/detail-header';
@@ -7,6 +7,9 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { useTrackingAssignments } from '@/hooks/use-assignments';
+import { trackingApi } from '@/lib/api';
+import { todayKey } from '@/lib/dates';
 import {
   dietDetails,
   getDietComment,
@@ -17,22 +20,67 @@ import {
 
 export function DietDetailsScreen() {
   const theme = useTheme();
+  const { diet: dietAssignment } = useTrackingAssignments();
   const [meals, setMeals] = useState(() => getDietMealStatusItems());
   const [comment, setCommentState] = useState(() => getDietComment());
+  const [isSavingLog, setIsSavingLog] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+
+  // Restore today's already-checked meals so progress survives app restarts.
+  const hasLoadedToday = useRef(false);
+  useEffect(() => {
+    if (!dietAssignment || hasLoadedToday.current) return;
+    hasLoadedToday.current = true;
+
+    (async () => {
+      try {
+        const rows = await trackingApi.listCheckIns({
+          assignmentId: dietAssignment.id,
+          from: todayKey(),
+          to: todayKey(),
+        });
+        const checkIn = rows[0];
+        if (!checkIn) return;
+
+        const completed = new Set(checkIn.completedItemIds);
+        setMeals((current) =>
+          current.map((meal) => ({ ...meal, checked: completed.has(meal.id) })),
+        );
+        // Keep the module-level cache in sync for other screens in this session.
+        for (const meal of getDietMealStatusItems()) {
+          updateDietMealStatus(meal.id, { checked: completed.has(meal.id) });
+        }
+      } catch {
+        // Could not restore — leave today's screen empty.
+      }
+    })();
+  }, [dietAssignment]);
 
   const handleToggleMeal = (id: string) => {
-    setMeals((current) => {
-      const next = current.map((meal) =>
-        meal.id === id ? { ...meal, checked: !meal.checked } : meal,
-      );
+    const next = meals.map((meal) =>
+      meal.id === id ? { ...meal, checked: !meal.checked } : meal,
+    );
 
-      const updatedMeal = next.find((meal) => meal.id === id);
-      if (updatedMeal) {
-        updateDietMealStatus(id, { checked: updatedMeal.checked });
-      }
+    setMeals(next);
+    setSaveMessage(null);
 
-      return next;
-    });
+    const updatedMeal = next.find((meal) => meal.id === id);
+    if (updatedMeal) {
+      updateDietMealStatus(id, { checked: updatedMeal.checked });
+    }
+
+    if (dietAssignment) {
+      const completedItemIds = next.filter((meal) => meal.checked).map((meal) => meal.id);
+      trackingApi
+        .saveCheckIn({
+          assignmentId: dietAssignment.id,
+          date: todayKey(),
+          completedItemIds,
+        })
+        .catch(() => {
+          // Optimistic UI — keep the local toggle even if the sync fails.
+        });
+    }
   };
 
   const handlePhotoPick = (id: string) => {
@@ -51,6 +99,29 @@ export function DietDetailsScreen() {
   const handleCommentChange = (value: string) => {
     setCommentState(value);
     setDietComment(value);
+  };
+
+  const handleSaveDietLog = async () => {
+    if (!dietAssignment) {
+      setSaveMessage('No active diet assignment found.');
+      return;
+    }
+    try {
+      setIsSavingLog(true);
+      const completedItemIds = meals.filter((meal) => meal.checked).map((meal) => meal.id);
+      await trackingApi.saveCheckIn({
+        assignmentId: dietAssignment.id,
+        date: todayKey(),
+        completedItemIds,
+      });
+      setSaveMessage('Diet log saved to your history.');
+    } catch (error) {
+      setSaveMessage(
+        error instanceof Error ? error.message : 'Could not save the diet log. Please try again.',
+      );
+    } finally {
+      setIsSavingLog(false);
+    }
   };
 
   return (
@@ -106,6 +177,29 @@ export function DietDetailsScreen() {
           placeholderTextColor={theme.textSecondary}
         />
       </ThemedView>
+
+      <View style={styles.footer}>
+        {saveMessage ? (
+          <ThemedText
+            type="small"
+            themeColor={saveMessage.startsWith('Diet log saved') ? 'success' : 'warning'}
+            style={styles.footerMessage}>
+            {saveMessage}
+          </ThemedText>
+        ) : null}
+        <Pressable
+          accessibilityRole="button"
+          onPress={handleSaveDietLog}
+          disabled={isSavingLog}
+          style={({ pressed }) => [
+            styles.saveLogButton,
+            { backgroundColor: theme.accent, opacity: isSavingLog ? 0.6 : pressed ? 0.8 : 1 },
+          ]}>
+          <ThemedText type="smallBold" style={styles.saveLogButtonText}>
+            {isSavingLog ? 'Saving…' : 'Save diet log'}
+          </ThemedText>
+        </Pressable>
+      </View>
     </ScreenScaffold>
   );
 }
@@ -191,5 +285,21 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.two,
     padding: Spacing.two,
     textAlignVertical: 'top',
+  },
+  footer: {
+    marginTop: Spacing.three,
+    gap: Spacing.one,
+  },
+  footerMessage: {
+    textAlign: 'center',
+  },
+  saveLogButton: {
+    paddingVertical: Spacing.three,
+    borderRadius: Spacing.two,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveLogButtonText: {
+    color: '#FFFFFF',
   },
 });

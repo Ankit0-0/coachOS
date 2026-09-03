@@ -64,7 +64,7 @@ export const todaysPlanCards: HomePlanCard[] = [
     eyebrow: 'Balanced fuel',
     summary: assignedDietPlan.summary,
     metric: assignedDietPlan.calories,
-    detail: assignedDietPlan.meals.slice(0, 2).join(' • '),
+    detail: assignedDietPlan.meals.slice(0, 2).map((meal) => meal.label).join(' • '),
     route: '/diet',
     iconName: { ios: 'fork.knife.circle', android: 'restaurant', web: 'restaurant' },
     accentColor: '#D97904',
@@ -117,11 +117,11 @@ export function getDietMealStatusItems(): DietMealStatus[] {
 
   if (
     dietMealState.length !== meals.length ||
-    dietMealState.some((item, index) => item.meal !== meals[index])
+    dietMealState.some((item, index) => item.meal !== meals[index].label)
   ) {
-    dietMealState = meals.map((meal, index) => ({
-      id: `meal-${index}`,
-      meal,
+    dietMealState = meals.map((meal) => ({
+      id: meal.id,
+      meal: meal.label,
       checked: false,
       imageUri: undefined,
       comment: '',
