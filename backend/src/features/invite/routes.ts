@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 
 import { logger } from "../../config/logger.js";
 import { requireAuth } from "../../middleware/auth.js";
+import { requireRole } from "../../middleware/role.js";
 import { sendError } from "../../utils/http-error.js";
 import { createInviteSchema, listInvitesQuerySchema } from "./schemas.js";
 import {
@@ -14,27 +15,6 @@ import {
 
 export const coachInviteRouter: ReturnType<typeof Router> = Router();
 export const clientInviteRouter: ReturnType<typeof Router> = Router();
-
-function requireRole(request: Request, response: Response, role: "COACH" | "CLIENT") {
-  const user = request.user;
-  if (!user) {
-    logger.debug(
-      { method: request.method, url: request.originalUrl },
-      "requireRole: rejected — no authenticated user on request (requireAuth should have run first)",
-    );
-    sendError(response, 401);
-    return null;
-  }
-  if (user.role !== role) {
-    logger.debug(
-      { method: request.method, url: request.originalUrl, userId: user.id, userRole: user.role, requiredRole: role },
-      "requireRole: rejected — user role does not match required role",
-    );
-    sendError(response, 403);
-    return null;
-  }
-  return user;
-}
 
 function respondToInviteError(response: Response, request: Request, error: unknown) {
   const code = error instanceof Error ? error.message : "INTERNAL_ERROR";
