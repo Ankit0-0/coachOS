@@ -169,3 +169,111 @@ export const coachInviteApi = {
     }).then((data) => data.invite);
   },
 };
+
+// ---------------------------------------------------------------------------
+// Plans & assignments
+// ---------------------------------------------------------------------------
+
+export type PlanType = 'WORKOUT' | 'DIET';
+
+export interface ExerciseContent {
+  id: string;
+  name: string;
+  note: string;
+  sets: number;
+}
+
+export interface WorkoutContent {
+  duration: string;
+  focus: string;
+  summary: string;
+  difficulty: string;
+  exercises: ExerciseContent[];
+}
+
+export interface MealContent {
+  id: string;
+  label: string;
+}
+
+export interface DietContent {
+  calories: string;
+  focus: string;
+  summary: string;
+  meals: MealContent[];
+}
+
+export interface Plan {
+  id: string;
+  type: PlanType;
+  title: string;
+  description: string | null;
+  content: WorkoutContent | DietContent;
+  isDefault: boolean;
+  createdById: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type AssignmentStatus = 'ACTIVE' | 'COMPLETED' | 'PAUSED';
+
+export interface PlanAssignment {
+  id: string;
+  planId: string;
+  plan: Plan;
+  coachId: string;
+  clientId: string;
+  status: AssignmentStatus;
+  assignedAt: string;
+  startDate: string | null;
+  endDate: string | null;
+}
+
+export const planApi = {
+  list(type: PlanType): Promise<{ own: Plan[]; defaults: Plan[] }> {
+    return apiRequest<{ own: Plan[]; defaults: Plan[] }>(`/coach/plans?type=${type}`);
+  },
+
+  get(id: string): Promise<Plan> {
+    return apiRequest<{ plan: Plan }>(`/coach/plans/${id}`).then((data) => data.plan);
+  },
+
+  create(input: {
+    type: PlanType;
+    title: string;
+    description?: string;
+    content: WorkoutContent | DietContent;
+  }): Promise<Plan> {
+    return apiRequest<{ plan: Plan }>('/coach/plans', { method: 'POST', body: input }).then(
+      (data) => data.plan,
+    );
+  },
+
+  update(
+    id: string,
+    input: { title?: string; description?: string; content?: WorkoutContent | DietContent },
+  ): Promise<Plan> {
+    return apiRequest<{ plan: Plan }>(`/coach/plans/${id}`, { method: 'PATCH', body: input }).then(
+      (data) => data.plan,
+    );
+  },
+
+  remove(id: string): Promise<void> {
+    return apiRequest<void>(`/coach/plans/${id}`, { method: 'DELETE' });
+  },
+};
+
+export const assignmentApi = {
+  create(input: { clientId: string; planId: string }): Promise<PlanAssignment> {
+    return apiRequest<{ assignment: PlanAssignment }>('/coach/assignments', {
+      method: 'POST',
+      body: input,
+    }).then((data) => data.assignment);
+  },
+
+  listForClient(clientId: string): Promise<PlanAssignment[]> {
+    return apiRequest<{ assignments: PlanAssignment[] }>(
+      `/coach/assignments?clientId=${encodeURIComponent(clientId)}`,
+    ).then((data) => data.assignments);
+  },
+};

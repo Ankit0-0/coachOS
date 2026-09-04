@@ -9,6 +9,16 @@ import type { PlanListEntry } from '@/components/saved-plans/PlanListCard';
 export function PlanList({ items }: { items: PlanListEntry[] }) {
   const theme = useTheme();
 
+  if (items.length === 0) {
+    return (
+      <ThemedView type="backgroundElement" style={[styles.card, { borderColor: theme.border }]}>
+        <ThemedText type="small" themeColor="textSecondary">
+          No plans yet.
+        </ThemedText>
+      </ThemedView>
+    );
+  }
+
   return (
     <ThemedView type="backgroundElement" style={[styles.card, { borderColor: theme.border }]}>
       {items.map((item, index) => (

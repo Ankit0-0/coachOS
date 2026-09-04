@@ -30,23 +30,29 @@ export function PlanListCard({ eyebrow, items, showAllHref }: PlanListCardProps)
 
       <View style={[styles.headerDivider, { backgroundColor: theme.border }]} />
 
-      <View>
-        {items.map((item, index) => (
-          <View key={item.id}>
-            <View style={styles.row}>
-              <ThemedText type="small" style={styles.name}>
-                {item.title}
-              </ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                {item.stats}
-              </ThemedText>
+      {items.length === 0 ? (
+        <ThemedText type="small" themeColor="textSecondary">
+          No plans yet.
+        </ThemedText>
+      ) : (
+        <View>
+          {items.map((item, index) => (
+            <View key={item.id}>
+              <View style={styles.row}>
+                <ThemedText type="small" style={styles.name}>
+                  {item.title}
+                </ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {item.stats}
+                </ThemedText>
+              </View>
+              {index < items.length - 1 ? (
+                <View style={[styles.separator, { backgroundColor: theme.border }]} />
+              ) : null}
             </View>
-            {index < items.length - 1 ? (
-              <View style={[styles.separator, { backgroundColor: theme.border }]} />
-            ) : null}
-          </View>
-        ))}
-      </View>
+          ))}
+        </View>
+      )}
 
       <Pressable style={styles.showAll} onPress={() => router.push(showAllHref)}>
         <ThemedText type="small" style={{ color: theme.accent }}>
