@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { MonthlyActivityCalendar, type DailyActivity } from '@/components/history/MonthlyActivityCalendar';
 import { WeightChart, type WeightPoint } from '@/components/history/WeightChart';
+import { LockedState } from '@/components/locked-state';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { useOnboardingStatus } from '@/hooks/use-onboarding-status';
 import { useTheme } from '@/hooks/use-theme';
 import { useTrackingAssignments } from '@/hooks/use-assignments';
 import { trackingApi, type CheckIn, type TrackingAssignment, type WeightEntry } from '@/lib/api';
@@ -38,6 +40,7 @@ function completedMatches(checkIn: CheckIn | undefined, validIds: Set<string>): 
 
 export function HistoryScreen() {
   const theme = useTheme();
+  const { hasCoach, isLoading: isCheckingOnboarding } = useOnboardingStatus();
   const { workout: workoutAssignment, diet: dietAssignment } = useTrackingAssignments();
 
   const [workoutCheckIns, setWorkoutCheckIns] = useState<CheckIn[]>([]);
@@ -144,6 +147,18 @@ export function HistoryScreen() {
       setIsLoggingWeight(false);
     }
   };
+
+  if (isCheckingOnboarding) {
+    return (
+      <ScreenScaffold>
+        <ActivityIndicator color={theme.textSecondary} />
+      </ScreenScaffold>
+    );
+  }
+
+  if (!hasCoach) {
+    return <LockedState title="History" />;
+  }
 
   return (
     <ScreenScaffold>

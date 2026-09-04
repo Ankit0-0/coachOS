@@ -4,11 +4,15 @@ import * as ImagePicker from 'expo-image-picker';
 
 import { useRouter } from 'expo-router';
 
+import { ActivityIndicator } from 'react-native';
+
+import { LockedState } from '@/components/locked-state';
 import { PlanCard } from '@/components/plan-card';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { useOnboardingStatus } from '@/hooks/use-onboarding-status';
 import { useTheme } from '@/hooks/use-theme';
 import { trackingApi } from '@/lib/api';
 import { todayKey } from '@/lib/dates';
@@ -17,6 +21,7 @@ import { todaysPlanCards } from '@/utils/dashboard-data';
 export function HomeScreen() {
   const theme = useTheme();
   const router = useRouter();
+  const { hasCoach, isLoading: isCheckingOnboarding } = useOnboardingStatus();
   const [physiqueImage, setPhysiqueImage] = useState<string | null>(null);
   const [weightValue, setWeightValue] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -61,6 +66,18 @@ export function HomeScreen() {
       setIsSaving(false);
     }
   };
+
+  if (isCheckingOnboarding) {
+    return (
+      <ScreenScaffold includeBottomTabInset>
+        <ActivityIndicator color={theme.textSecondary} />
+      </ScreenScaffold>
+    );
+  }
+
+  if (!hasCoach) {
+    return <LockedState title="Home" />;
+  }
 
   return (
     <ScreenScaffold includeBottomTabInset>

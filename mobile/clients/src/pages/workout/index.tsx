@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { DetailHeader } from '@/components/detail-header';
+import { LockedState } from '@/components/locked-state';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ExerciseCard } from '@/components/workout/exercise-card';
 import { SetFeedbackPanel } from '@/components/workout/set-feedback-panel';
 import { Spacing } from '@/constants/theme';
+import { useOnboardingStatus } from '@/hooks/use-onboarding-status';
 import { useTheme } from '@/hooks/use-theme';
 import { useTrackingAssignments } from '@/hooks/use-assignments';
 import { trackingApi } from '@/lib/api';
@@ -27,6 +29,7 @@ const emptyFeedback: SetFeedback = {
 
 export function WorkoutDetailsScreen() {
   const theme = useTheme();
+  const { hasCoach, isLoading: isCheckingOnboarding } = useOnboardingStatus();
   const workoutExercises = workoutDetails.exercises ?? [];
   const { workout: workoutAssignment } = useTrackingAssignments();
   const [feedbackBySet, setFeedbackBySet] = useState<Record<string, SetFeedback>>({});
@@ -138,6 +141,18 @@ export function WorkoutDetailsScreen() {
       }
     })();
   }, [workoutAssignment, workoutExercises]);
+
+  if (isCheckingOnboarding) {
+    return (
+      <ScreenScaffold>
+        <ActivityIndicator color={theme.textSecondary} />
+      </ScreenScaffold>
+    );
+  }
+
+  if (!hasCoach) {
+    return <LockedState title="Workout" />;
+  }
 
   return (
     <ScreenScaffold>

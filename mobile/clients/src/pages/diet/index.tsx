@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { Image, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { DetailHeader } from '@/components/detail-header';
+import { LockedState } from '@/components/locked-state';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { useOnboardingStatus } from '@/hooks/use-onboarding-status';
 import { useTheme } from '@/hooks/use-theme';
 import { useTrackingAssignments } from '@/hooks/use-assignments';
 import { trackingApi } from '@/lib/api';
@@ -20,6 +22,7 @@ import {
 
 export function DietDetailsScreen() {
   const theme = useTheme();
+  const { hasCoach, isLoading: isCheckingOnboarding } = useOnboardingStatus();
   const { diet: dietAssignment } = useTrackingAssignments();
   const [meals, setMeals] = useState(() => getDietMealStatusItems());
   const [comment, setCommentState] = useState(() => getDietComment());
@@ -123,6 +126,18 @@ export function DietDetailsScreen() {
       setIsSavingLog(false);
     }
   };
+
+  if (isCheckingOnboarding) {
+    return (
+      <ScreenScaffold>
+        <ActivityIndicator color={theme.textSecondary} />
+      </ScreenScaffold>
+    );
+  }
+
+  if (!hasCoach) {
+    return <LockedState title="Diet" />;
+  }
 
   return (
     <ScreenScaffold>
