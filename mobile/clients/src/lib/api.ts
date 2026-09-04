@@ -167,6 +167,50 @@ function queryString(params: Record<string, string>): string {
     .join('&');
 }
 
+// ---------------------------------------------------------------------------
+// Coach ↔ client invites
+// ---------------------------------------------------------------------------
+
+export type InviteStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED';
+
+export interface InvitePerson {
+  id: string;
+  name: string;
+  email: string;
+}
+
+export interface ClientInvite {
+  id: string;
+  coachId: string;
+  coach?: InvitePerson;
+  clientEmail: string;
+  clientId: string | null;
+  status: InviteStatus;
+  createdAt: string;
+  respondedAt: string | null;
+}
+
+export const clientInviteApi = {
+  list(status?: InviteStatus): Promise<ClientInvite[]> {
+    const query = status ? `?status=${encodeURIComponent(status)}` : '';
+    return apiRequest<{ invites: ClientInvite[] }>(`/client/invites${query}`).then(
+      (data) => data.invites,
+    );
+  },
+
+  accept(inviteId: string): Promise<ClientInvite> {
+    return apiRequest<{ invite: ClientInvite }>(`/client/invites/${inviteId}/accept`, {
+      method: 'POST',
+    }).then((data) => data.invite);
+  },
+
+  decline(inviteId: string): Promise<ClientInvite> {
+    return apiRequest<{ invite: ClientInvite }>(`/client/invites/${inviteId}/decline`, {
+      method: 'POST',
+    }).then((data) => data.invite);
+  },
+};
+
 export const trackingApi = {
   listAssignments(): Promise<TrackingAssignment[]> {
     return apiRequest<{ assignments: TrackingAssignment[] }>('/tracking/assignments').then(

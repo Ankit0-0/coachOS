@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import { StyleSheet, View, Pressable } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
 import { useTheme } from '@/hooks/use-theme';
 import { Spacing } from '@/constants/theme';
 
@@ -14,6 +15,11 @@ export default function AuthScreen() {
         <ThemedText type="smallBold" themeColor="accent" style={styles.logo}>
           Coach OS
         </ThemedText>
+        <ThemedView type="accentSoft" style={styles.appBadge}>
+          <ThemedText type="small" themeColor="accent" style={styles.appBadgeText}>
+            Client App
+          </ThemedText>
+        </ThemedView>
         <ThemedText type="subtitle" style={styles.title}>
           Your Personal Training Hub
         </ThemedText>
@@ -58,6 +64,15 @@ const styles = StyleSheet.create({
   },
   logo: {
     fontSize: 24,
+  },
+  appBadge: {
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.half,
+    borderRadius: Spacing.four,
+  },
+  appBadgeText: {
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   title: {
     fontSize: 28,

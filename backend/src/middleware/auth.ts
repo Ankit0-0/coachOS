@@ -1,5 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 
+import { logger } from "../config/logger.js";
+import { sendError } from "../utils/http-error.js";
 import { verifyAccessToken } from "../utils/jwt.js";
 
 export function requireAuth(request: Request, response: Response, next: NextFunction): void {
@@ -7,10 +9,11 @@ export function requireAuth(request: Request, response: Response, next: NextFunc
   const token = header?.startsWith("Bearer ") ? header.slice(7) : undefined;
 
   if (!token) {
-    response.status(401).json({
-      message: "Authentication failed. A Bearer token is required.",
-      error: "Bearer token required",
-    });
+    logger.debug(
+      { method: request.method, url: request.originalUrl, hasAuthHeader: !!header },
+      "requireAuth: rejected — no Bearer token in Authorization header",
+    );
+    sendError(response, 401);
     return;
   }
 
@@ -18,10 +21,15 @@ export function requireAuth(request: Request, response: Response, next: NextFunc
     const payload = verifyAccessToken(token);
     request.user = { id: payload.sub, email: payload.email, name: payload.name, role: payload.role };
     next();
-  } catch {
-    response.status(401).json({
-      message: "Authentication failed. The token is invalid or expired.",
-      error: "Invalid or expired token",
-    });
+  } catch (error) {
+    logger.debug(
+      {
+        method: request.method,
+        url: request.originalUrl,
+        reason: error instanceof Error ? error.message : String(error),
+      },
+      "requireAuth: rejected — token failed verification",
+    );
+    sendError(response, 401);
   }
 }

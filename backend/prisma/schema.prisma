@@ -22,6 +22,13 @@ enum AssignmentStatus {
   PAUSED
 }
 
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  CANCELLED
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -39,6 +46,29 @@ model User {
 
   coachProfile  CoachProfile?
   clientProfile ClientProfile?
+
+  sentInvites     CoachClientInvite[] @relation("SentInvites")
+  receivedInvites CoachClientInvite[] @relation("ReceivedInvites")
+}
+
+model CoachClientInvite {
+  id String @id @default(cuid())
+
+  coachId String
+  coach   User   @relation("SentInvites", fields: [coachId], references: [id], onDelete: Cascade)
+
+  clientEmail String
+  clientId    String?
+  client      User?   @relation("ReceivedInvites", fields: [clientId], references: [id], onDelete: SetNull)
+
+  status      InviteStatus @default(PENDING)
+  token       String       @unique @default(cuid())
+  createdAt   DateTime     @default(now())
+  respondedAt DateTime?
+
+  @@index([coachId])
+  @@index([clientEmail])
+  @@index([clientId])
 }
 
 model Account {

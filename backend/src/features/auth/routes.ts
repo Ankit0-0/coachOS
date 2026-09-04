@@ -1,5 +1,7 @@
 import { Router } from "express";
 
+import { logger } from "../../config/logger.js";
+import { sendError } from "../../utils/http-error.js";
 import { googleSchema, loginSchema, registerSchema } from "./schemas.js";
 import { login, loginWithGoogle, register } from "./service.js";
 
@@ -8,11 +10,8 @@ export const authRouter: ReturnType<typeof Router> = Router();
 authRouter.post("/register", async (request, response) => {
   const parsed = registerSchema.safeParse(request.body);
   if (!parsed.success) {
-    response.status(400).json({
-      message: "Registration failed. Please check the submitted details.",
-      error: "Invalid request",
-      details: parsed.error.flatten(),
-    });
+    logger.debug({ issues: parsed.error.flatten() }, "POST /auth/register: rejected — invalid request body");
+    sendError(response, 400);
     return;
   }
   try {
@@ -22,21 +21,18 @@ authRouter.post("/register", async (request, response) => {
     });
   } catch (error) {
     const emailInUse = error instanceof Error && error.message === "EMAIL_IN_USE";
-    response.status(emailInUse ? 409 : 500).json({
-      message: emailInUse ? "Registration failed. This email is already registered." : "Registration failed due to a server error.",
-      error: emailInUse ? "Email already registered" : "Internal server error",
-    });
+    if (!emailInUse) {
+      logger.error({ err: error }, "POST /auth/register: unexpected error");
+    }
+    sendError(response, emailInUse ? 409 : 500);
   }
 });
 
 authRouter.post("/login", async (request, response) => {
   const parsed = loginSchema.safeParse(request.body);
   if (!parsed.success) {
-    response.status(400).json({
-      message: "Login failed. Please provide a valid email and password.",
-      error: "Invalid request",
-      details: parsed.error.flatten(),
-    });
+    logger.debug({ issues: parsed.error.flatten() }, "POST /auth/login: rejected — invalid request body");
+    sendError(response, 400);
     return;
   }
   try {
@@ -45,21 +41,17 @@ authRouter.post("/login", async (request, response) => {
       ...(await login(parsed.data)),
     });
   } catch {
-    response.status(401).json({
-      message: "Login failed. The email or password is incorrect.",
-      error: "Invalid email or password",
-    });
+    // service.login already logged the specific reason (unknown email, no
+    // password set, wrong password) at debug level.
+    sendError(response, 401);
   }
 });
 
 authRouter.post("/google", async (request, response) => {
   const parsed = googleSchema.safeParse(request.body);
   if (!parsed.success) {
-    response.status(400).json({
-      message: "Google sign-in failed. Please provide a valid Google ID token.",
-      error: "Invalid request",
-      details: parsed.error.flatten(),
-    });
+    logger.debug({ issues: parsed.error.flatten() }, "POST /auth/google: rejected — invalid request body");
+    sendError(response, 400);
     return;
   }
   try {
@@ -72,13 +64,12 @@ authRouter.post("/google", async (request, response) => {
       ...(await loginWithGoogle(input)),
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "GOOGLE_AUTH_FAILED";
-    const notConfigured = message === "GOOGLE_NOT_CONFIGURED";
-    response.status(notConfigured ? 503 : 401).json({
-      message: notConfigured
-        ? "Google sign-in is unavailable because it is not configured."
-        : "Google sign-in failed. Please use a valid Google ID token.",
-      error: notConfigured ? "Google authentication is not configured" : "Google sign-in failed",
-    });
+    const code = error instanceof Error ? error.message : "GOOGLE_AUTH_FAILED";
+    const notConfigured = code === "GOOGLE_NOT_CONFIGURED";
+    const invalidToken = code === "INVALID_GOOGLE_TOKEN";
+    if (!notConfigured && !invalidToken) {
+      logger.error({ err: error }, "POST /auth/google: unexpected error");
+    }
+    sendError(response, notConfigured ? 503 : 401);
   }
 });
