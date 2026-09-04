@@ -39,6 +39,7 @@ export default function SignInScreen() {
       </Pressable>
 
       <View style={styles.header}>
+        <Text style={styles.appBadge}>Coach OS · Client App</Text>
         <Text style={styles.title}>Sign In</Text>
         <Text style={styles.subtitle}>Enter your credentials</Text>
       </View>
@@ -113,6 +114,13 @@ const styles = StyleSheet.create({
   },
   header: {
     gap: 8,
+  },
+  appBadge: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F8B8D',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
   title: {
     fontSize: 28,

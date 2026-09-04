@@ -51,6 +51,7 @@ export default function SignUpScreen() {
       </Pressable>
 
       <View style={styles.header}>
+        <Text style={styles.appBadge}>Coach OS · Client App</Text>
         <Text style={styles.title}>Sign Up</Text>
         <Text style={styles.subtitle}>Create your Coach OS account</Text>
       </View>
@@ -144,6 +145,13 @@ const styles = StyleSheet.create({
   },
   header: {
     gap: 8,
+  },
+  appBadge: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F8B8D',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
   title: {
     fontSize: 28,
