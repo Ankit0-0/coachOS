@@ -3,6 +3,7 @@ import type { Role, User } from "@prisma/client";
 
 import { env } from "../../config/env.js";
 import { GOOGLE_PROVIDER } from "../../constants/auth.js";
+import { logger } from "../../config/logger.js";
 import { prisma } from "../../config/prisma.config.js";
 import { normalizeEmail } from "../../utils/email.js";
 import { hashPassword, verifyPassword } from "../../utils/password.js";
@@ -26,30 +27,54 @@ function result(user: User) {
 export async function register(input: { email: string; password: string; name: string; role: Role }) {
   const email = normalizeEmail(input.email);
   const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) throw new Error("EMAIL_IN_USE");
+  if (existing) {
+    logger.debug({ email }, "register: rejected — email already in use");
+    throw new Error("EMAIL_IN_USE");
+  }
 
   const user = await prisma.user.create({
     data: { email, password: await hashPassword(input.password), name: input.name.trim(), role: input.role },
   });
+  logger.debug({ userId: user.id, email, role: user.role }, "register: new user created");
   return result(user);
 }
 
 export async function login(input: { email: string; password: string }) {
-  const user = await prisma.user.findUnique({ where: { email: normalizeEmail(input.email) } });
-  if (!user?.password || !(await verifyPassword(input.password, user.password))) {
+  const email = normalizeEmail(input.email);
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) {
+    logger.debug({ email }, "login: rejected — no user with this email");
     throw new Error("INVALID_CREDENTIALS");
   }
+  if (!user.password) {
+    logger.debug({ email, userId: user.id }, "login: rejected — account has no password set (Google-only account)");
+    throw new Error("INVALID_CREDENTIALS");
+  }
+  if (!(await verifyPassword(input.password, user.password))) {
+    logger.debug({ email, userId: user.id }, "login: rejected — password did not match");
+    throw new Error("INVALID_CREDENTIALS");
+  }
+  logger.debug({ email, userId: user.id }, "login: successful");
   return result(user);
 }
 
 export async function loginWithGoogle(input: { idToken: string; role?: Role }) {
-  if (!env.googleClientId) throw new Error("GOOGLE_NOT_CONFIGURED");
+  if (!env.googleClientId) {
+    logger.debug("loginWithGoogle: rejected — GOOGLE_CLIENT_ID is not configured on the server");
+    throw new Error("GOOGLE_NOT_CONFIGURED");
+  }
   const ticket = await googleClient.verifyIdToken({
     idToken: input.idToken,
     audience: env.googleClientAudiences,
   });
   const payload = ticket.getPayload();
-  if (!payload?.sub || !payload.email || payload.email_verified !== true) throw new Error("INVALID_GOOGLE_TOKEN");
+  if (!payload?.sub || !payload.email || payload.email_verified !== true) {
+    logger.debug(
+      { hasSub: !!payload?.sub, hasEmail: !!payload?.email, emailVerified: payload?.email_verified },
+      "loginWithGoogle: rejected — Google token payload missing sub/email or email unverified",
+    );
+    throw new Error("INVALID_GOOGLE_TOKEN");
+  }
 
   const email = normalizeEmail(payload.email);
   const existingAccount = await prisma.account.findUnique({

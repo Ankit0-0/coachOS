@@ -23,16 +23,17 @@ Success:
 ```ts
 response.status(201).json({ message: "Registration successful.", ...data });
 ```
-Failure:
+Failure: a bare status code, **no response body** — use `sendError(response, status)`
+from `utils/http-error.ts`:
 ```ts
-response.status(400).json({
-  message: "Registration failed. Please check the submitted details.",
-  error: "Invalid request",
-  details: parsed.error.flatten(), // only for validation errors
-});
+sendError(response, 400);
 ```
-Keep this identical across every route — both mobile apps will depend on
-`message`/`error`/`details` always being present in that shape.
+The client never sees why a request failed beyond the HTTP status code. The
+actual reason (validation issues, which credential check failed, role
+mismatch, etc.) goes to the server log via `logger.debug` (expected/handled
+failures) or `logger.error` (unexpected ones) right before the `sendError`
+call — see `middleware/auth.ts` and `features/invite/routes.ts` for the
+pattern. Never put diagnostic detail in the response body; put it in the log.
 
 ## Imports
 ESM + NodeNext (`"type": "module"`, `"module": "nodenext"`). Every

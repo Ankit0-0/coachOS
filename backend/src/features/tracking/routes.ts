@@ -1,6 +1,8 @@
 import { Router, type Request, type Response } from "express";
 
+import { logger } from "../../config/logger.js";
 import { requireAuth } from "../../middleware/auth.js";
+import { sendError } from "../../utils/http-error.js";
 import { checkInQuerySchema, checkInSchema, weightQuerySchema, weightSchema } from "./schemas.js";
 import {
   listActiveAssignments,
@@ -15,13 +17,25 @@ export const trackingRouter: ReturnType<typeof Router> = Router();
 function currentUserId(request: Request, response: Response): string | null {
   const userId = request.user?.id;
   if (!userId) {
-    response.status(401).json({
-      message: "Authentication failed. Please sign in and try again.",
-      error: "Unauthorized",
-    });
+    logger.debug({ method: request.method, url: request.originalUrl }, "tracking: rejected — no authenticated user on request");
+    sendError(response, 401);
     return null;
   }
   return userId;
+}
+
+function respondToTrackingError(response: Response, request: Request, error: unknown, notFoundMessage: string, forbiddenMessage: string) {
+  const code = error instanceof Error ? error.message : "INTERNAL_ERROR";
+  if (code === "ASSIGNMENT_NOT_FOUND") {
+    logger.debug({ url: request.originalUrl }, `tracking: rejected — ${notFoundMessage}`);
+    sendError(response, 404);
+  } else if (code === "FORBIDDEN") {
+    logger.debug({ url: request.originalUrl, userId: request.user?.id }, `tracking: rejected — ${forbiddenMessage}`);
+    sendError(response, 403);
+  } else {
+    logger.error({ err: error, url: request.originalUrl }, "tracking: unexpected error");
+    sendError(response, 500);
+  }
 }
 
 trackingRouter.use(requireAuth);
@@ -34,22 +48,17 @@ trackingRouter.get("/assignments", async (request, response) => {
       message: "Active assignments retrieved successfully.",
       assignments: await listActiveAssignments(userId),
     });
-  } catch {
-    response.status(500).json({
-      message: "Failed to retrieve active assignments.",
-      error: "Internal server error",
-    });
+  } catch (error) {
+    logger.error({ err: error, url: request.originalUrl }, "tracking: unexpected error");
+    sendError(response, 500);
   }
 });
 
 trackingRouter.post("/checkin", async (request, response) => {
   const parsed = checkInSchema.safeParse(request.body);
   if (!parsed.success) {
-    response.status(400).json({
-      message: "Could not save the check-in. Please check the submitted details.",
-      error: "Invalid request",
-      details: parsed.error.flatten(),
-    });
+    logger.debug({ issues: parsed.error.flatten() }, "POST /tracking/checkin: rejected — invalid request body");
+    sendError(response, 400);
     return;
   }
   const userId = currentUserId(request, response);
@@ -60,25 +69,15 @@ trackingRouter.post("/checkin", async (request, response) => {
       checkIn: await upsertCheckIn(parsed.data, userId),
     });
   } catch (error) {
-    const code = error instanceof Error ? error.message : "INTERNAL_ERROR";
-    if (code === "ASSIGNMENT_NOT_FOUND") {
-      response.status(404).json({ message: "The assignment could not be found.", error: "Assignment not found" });
-    } else if (code === "FORBIDDEN") {
-      response.status(403).json({ message: "You can only check in to your own assignments.", error: "Forbidden" });
-    } else {
-      response.status(500).json({ message: "Could not save the check-in due to a server error.", error: "Internal server error" });
-    }
+    respondToTrackingError(response, request, error, "assignment not found", "check-in does not belong to this client");
   }
 });
 
 trackingRouter.get("/checkin", async (request, response) => {
   const parsed = checkInQuerySchema.safeParse(request.query);
   if (!parsed.success) {
-    response.status(400).json({
-      message: "Could not retrieve check-ins. Please check the query parameters.",
-      error: "Invalid request",
-      details: parsed.error.flatten(),
-    });
+    logger.debug({ issues: parsed.error.flatten() }, "GET /tracking/checkin: rejected — invalid query parameters");
+    sendError(response, 400);
     return;
   }
   const userId = currentUserId(request, response);
@@ -89,25 +88,15 @@ trackingRouter.get("/checkin", async (request, response) => {
       checkIns: await listCheckIns(parsed.data, userId),
     });
   } catch (error) {
-    const code = error instanceof Error ? error.message : "INTERNAL_ERROR";
-    if (code === "ASSIGNMENT_NOT_FOUND") {
-      response.status(404).json({ message: "The assignment could not be found.", error: "Assignment not found" });
-    } else if (code === "FORBIDDEN") {
-      response.status(403).json({ message: "You can only view your own assignments.", error: "Forbidden" });
-    } else {
-      response.status(500).json({ message: "Could not retrieve check-ins due to a server error.", error: "Internal server error" });
-    }
+    respondToTrackingError(response, request, error, "assignment not found", "assignment does not belong to this client");
   }
 });
 
 trackingRouter.post("/weight", async (request, response) => {
   const parsed = weightSchema.safeParse(request.body);
   if (!parsed.success) {
-    response.status(400).json({
-      message: "Could not save the weight entry. Please check the submitted details.",
-      error: "Invalid request",
-      details: parsed.error.flatten(),
-    });
+    logger.debug({ issues: parsed.error.flatten() }, "POST /tracking/weight: rejected — invalid request body");
+    sendError(response, 400);
     return;
   }
   const userId = currentUserId(request, response);
@@ -117,19 +106,17 @@ trackingRouter.post("/weight", async (request, response) => {
       message: "Weight entry saved successfully.",
       weightEntry: await upsertWeight(parsed.data, userId),
     });
-  } catch {
-    response.status(500).json({ message: "Could not save the weight entry due to a server error.", error: "Internal server error" });
+  } catch (error) {
+    logger.error({ err: error, url: request.originalUrl }, "tracking: unexpected error");
+    sendError(response, 500);
   }
 });
 
 trackingRouter.get("/weight", async (request, response) => {
   const parsed = weightQuerySchema.safeParse(request.query);
   if (!parsed.success) {
-    response.status(400).json({
-      message: "Could not retrieve weight entries. Please check the query parameters.",
-      error: "Invalid request",
-      details: parsed.error.flatten(),
-    });
+    logger.debug({ issues: parsed.error.flatten() }, "GET /tracking/weight: rejected — invalid query parameters");
+    sendError(response, 400);
     return;
   }
   const userId = currentUserId(request, response);
@@ -139,7 +126,8 @@ trackingRouter.get("/weight", async (request, response) => {
       message: "Weight entries retrieved successfully.",
       weightEntries: await listWeights(parsed.data, userId),
     });
-  } catch {
-    response.status(500).json({ message: "Could not retrieve weight entries due to a server error.", error: "Internal server error" });
+  } catch (error) {
+    logger.error({ err: error, url: request.originalUrl }, "tracking: unexpected error");
+    sendError(response, 500);
   }
 });
