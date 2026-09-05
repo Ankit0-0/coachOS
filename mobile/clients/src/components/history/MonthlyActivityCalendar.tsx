@@ -94,7 +94,7 @@ export function MonthlyActivityCalendar({ entries, daysInMonth = 30 }: MonthlyAc
                   <View style={styles.emptyDayCircle} />
                 )}
               </View>
-              <View style={styles.dayNumber}>{dayNumber}</View>
+              <Text style={styles.dayNumber}>{dayNumber}</Text>
             </View>
           );
         })}
