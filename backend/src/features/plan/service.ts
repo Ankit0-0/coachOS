@@ -2,6 +2,7 @@ import type { Plan, PlanAssignment, PlanType, Prisma } from "@prisma/client";
 
 import { logger } from "../../config/logger.js";
 import { prisma } from "../../config/prisma.config.js";
+import { findAcceptedInvite } from "../../utils/coach-access.js";
 
 const PLAN_LIMIT_PER_TYPE = 10;
 
@@ -158,9 +159,7 @@ export async function deletePlan(coachId: string, planId: string) {
 }
 
 export async function createAssignment(coachId: string, input: { clientId: string; planId: string }) {
-  const invite = await prisma.coachClientInvite.findFirst({
-    where: { coachId, clientId: input.clientId, status: "ACCEPTED" },
-  });
+  const invite = await findAcceptedInvite(coachId, input.clientId);
   if (!invite) {
     logger.debug(
       { coachId, clientId: input.clientId },
@@ -200,9 +199,7 @@ export async function createAssignment(coachId: string, input: { clientId: strin
 }
 
 export async function listClientAssignments(coachId: string, clientId: string) {
-  const invite = await prisma.coachClientInvite.findFirst({
-    where: { coachId, clientId, status: "ACCEPTED" },
-  });
+  const invite = await findAcceptedInvite(coachId, clientId);
   if (!invite) {
     logger.debug({ coachId, clientId }, "listClientAssignments: rejected — no accepted invite between this coach and client");
     throw new Error("NOT_YOUR_CLIENT");
