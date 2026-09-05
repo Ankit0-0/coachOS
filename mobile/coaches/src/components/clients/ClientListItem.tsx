@@ -7,16 +7,20 @@ import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 type ClientListItemProps = {
+  clientId: string;
   name: string;
   email: string;
 };
 
-export function ClientListItem({ name, email }: ClientListItemProps) {
+export function ClientListItem({ clientId, name, email }: ClientListItemProps) {
   const theme = useTheme();
   const router = useRouter();
 
   return (
-    <Pressable onPress={() => router.push('/clients')}>
+    <Pressable
+      onPress={() =>
+        router.push({ pathname: '/clients/[id]', params: { id: clientId, name, email } })
+      }>
       <ThemedView type="backgroundElement" style={[styles.row, { borderColor: theme.border }]}>
         <ThemedText type="smallBold">{name}</ThemedText>
         <ThemedText type="small" themeColor="textSecondary">

@@ -46,6 +46,7 @@ export function ClientsScreen() {
           {clients.map((invite) => (
             <ClientListItem
               key={invite.id}
+              clientId={invite.clientId ?? invite.client?.id ?? ''}
               name={invite.client?.name ?? invite.clientEmail}
               email={invite.client?.email ?? invite.clientEmail}
             />

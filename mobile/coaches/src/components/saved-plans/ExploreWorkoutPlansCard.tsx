@@ -1,16 +1,13 @@
 import { PlanListCard } from '@/components/saved-plans/PlanListCard';
-import { dummyExploreWorkoutPlans } from '@/data/saved-plans-mock';
+import type { Plan } from '@/lib/api';
+import { planStatsLabel } from '@/lib/plan-format';
 
-export function ExploreWorkoutPlansCard() {
+export function ExploreWorkoutPlansCard({ plans }: { plans: Plan[] }) {
   return (
     <PlanListCard
       eyebrow="Workout"
       showAllHref="/explore-workout-plans"
-      items={dummyExploreWorkoutPlans.map((plan) => ({
-        id: plan.id,
-        title: plan.title,
-        stats: `${plan.exercises} exercises • ${plan.minutes} min`,
-      }))}
+      items={plans.map((plan) => ({ id: plan.id, title: plan.title, stats: planStatsLabel(plan) }))}
     />
   );
 }
