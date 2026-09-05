@@ -277,3 +277,63 @@ export const assignmentApi = {
     ).then((data) => data.assignments);
   },
 };
+
+// ---------------------------------------------------------------------------
+// Coach-scoped reads of a client's own data
+// ---------------------------------------------------------------------------
+
+export interface CheckIn {
+  id: string;
+  assignmentId: string;
+  date: string;
+  completedItemIds: string[];
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface WeightEntry {
+  id: string;
+  clientId: string;
+  date: string;
+  weightKg: number;
+  photoUrl: string | null;
+  createdAt: string;
+}
+
+export interface ClientProfile {
+  name: string;
+  email: string;
+  heightCm: number | null;
+  weightKg: number | null;
+  goals: string | null;
+  onboardedAt: string | null;
+}
+
+function queryString(params: Record<string, string>): string {
+  return Object.entries(params)
+    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+    .join('&');
+}
+
+export const coachClientApi = {
+  listCheckIns(
+    clientId: string,
+    params: { assignmentId: string; from: string; to: string },
+  ): Promise<CheckIn[]> {
+    return apiRequest<{ checkIns: CheckIn[] }>(
+      `/coach/clients/${encodeURIComponent(clientId)}/checkins?${queryString(params)}`,
+    ).then((data) => data.checkIns);
+  },
+
+  listWeights(clientId: string, params: { from: string; to: string }): Promise<WeightEntry[]> {
+    return apiRequest<{ weightEntries: WeightEntry[] }>(
+      `/coach/clients/${encodeURIComponent(clientId)}/weight?${queryString(params)}`,
+    ).then((data) => data.weightEntries);
+  },
+
+  getProfile(clientId: string): Promise<ClientProfile> {
+    return apiRequest<{ profile: ClientProfile }>(
+      `/coach/clients/${encodeURIComponent(clientId)}/profile`,
+    ).then((data) => data.profile);
+  },
+};
