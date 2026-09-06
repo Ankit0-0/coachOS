@@ -7,7 +7,7 @@ import { PlanList } from '@/components/saved-plans/PlanList';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { useTheme } from '@/hooks/use-theme';
 import { planApi, type Plan } from '@/lib/api';
-import { planStatsLabel } from '@/lib/plan-format';
+import { toPlanListEntry } from '@/lib/plan-format';
 
 export function ExploreDietPlansScreen() {
   const theme = useTheme();
@@ -34,11 +34,11 @@ export function ExploreDietPlansScreen() {
 
   return (
     <ScreenScaffold>
-      <DetailHeader title="Explore Diet Plans" subtitle="Prebuilt plans available to every coach." />
+      <DetailHeader title="Shared diet plans" subtitle="Prebuilt plans any coach can assign." />
       {isLoading ? (
         <ActivityIndicator color={theme.textSecondary} />
       ) : (
-        <PlanList items={plans.map((plan) => ({ id: plan.id, title: plan.title, stats: planStatsLabel(plan) }))} />
+        <PlanList items={plans.map(toPlanListEntry)} emptyLabel="No shared diet plans are available yet." />
       )}
     </ScreenScaffold>
   );

@@ -171,6 +171,43 @@ export const coachInviteApi = {
 };
 
 // ---------------------------------------------------------------------------
+// Coach profile
+// ---------------------------------------------------------------------------
+
+export interface CoachProfile {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  memberSince: string;
+  bio: string | null;
+  specialties: string[];
+  yearsExperience: number | null;
+  phone: string | null;
+}
+
+export interface CoachProfileUpdate {
+  name?: string;
+  bio?: string;
+  specialties?: string[];
+  yearsExperience?: number | null;
+  phone?: string;
+}
+
+export const coachProfileApi = {
+  get(): Promise<CoachProfile> {
+    return apiRequest<{ profile: CoachProfile }>('/coach/profile').then((data) => data.profile);
+  },
+
+  update(input: CoachProfileUpdate): Promise<CoachProfile> {
+    return apiRequest<{ profile: CoachProfile }>('/coach/profile', {
+      method: 'PATCH',
+      body: input,
+    }).then((data) => data.profile);
+  },
+};
+
+// ---------------------------------------------------------------------------
 // Plans & assignments
 // ---------------------------------------------------------------------------
 

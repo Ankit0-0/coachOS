@@ -7,7 +7,7 @@ import { PlanList } from '@/components/saved-plans/PlanList';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { useTheme } from '@/hooks/use-theme';
 import { planApi, type Plan } from '@/lib/api';
-import { planStatsLabel } from '@/lib/plan-format';
+import { toPlanListEntry } from '@/lib/plan-format';
 
 export function WorkoutPlansScreen() {
   const theme = useTheme();
@@ -34,11 +34,14 @@ export function WorkoutPlansScreen() {
 
   return (
     <ScreenScaffold>
-      <DetailHeader title="Workout Plans" subtitle="All of your saved workout plans." />
+      <DetailHeader title="Workout plans" subtitle="Every workout plan you've built." />
       {isLoading ? (
         <ActivityIndicator color={theme.textSecondary} />
       ) : (
-        <PlanList items={plans.map((plan) => ({ id: plan.id, title: plan.title, stats: planStatsLabel(plan) }))} />
+        <PlanList
+          items={plans.map(toPlanListEntry)}
+          emptyLabel="No workout plans yet. Create one from the Plans tab."
+        />
       )}
     </ScreenScaffold>
   );

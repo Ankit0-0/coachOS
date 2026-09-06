@@ -9,14 +9,9 @@ export function HomeScreen() {
   return (
     <ScreenScaffold includeBottomTabInset>
       <View style={styles.header}>
-        <ThemedText type="smallBold" themeColor="accent">
-          Coach OS
-        </ThemedText>
-        <ThemedText type="subtitle" style={styles.headline}>
-          Welcome back
-        </ThemedText>
-        <ThemedText themeColor="textSecondary">
-          Keep track of your clients and grow your roster.
+        <ThemedText type="display">Clients</ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          Everyone you coach, and anyone you&apos;ve invited who hasn&apos;t replied yet.
         </ThemedText>
       </View>
 
@@ -29,9 +24,5 @@ const styles = StyleSheet.create({
   header: {
     gap: Spacing.one,
     paddingTop: Spacing.two,
-  },
-  headline: {
-    fontSize: 34,
-    lineHeight: 40,
   },
 });

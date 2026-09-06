@@ -2,96 +2,98 @@ import { useRouter, type Href } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { Card } from '@/components/ui/card';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export type PlanListEntry = {
   id: string;
   title: string;
-  stats: string;
+  /** Short figure, e.g. "5 exercises". */
+  primaryStat: string;
+  /** Supporting figure, e.g. "45 min". */
+  secondaryStat: string;
 };
 
 type PlanListCardProps = {
-  eyebrow: string;
   items: PlanListEntry[];
   showAllHref: Href;
+  emptyLabel: string;
 };
 
-export function PlanListCard({ eyebrow, items, showAllHref }: PlanListCardProps) {
+export function PlanListCard({ items, showAllHref, emptyLabel }: PlanListCardProps) {
   const theme = useTheme();
   const router = useRouter();
 
-  return (
-    <ThemedView type="backgroundElement" style={[styles.card, { borderColor: theme.border }]}>
-      <ThemedText type="small" themeColor="textSecondary" style={styles.eyebrow}>
-        {eyebrow}
-      </ThemedText>
-
-      <View style={[styles.headerDivider, { backgroundColor: theme.border }]} />
-
-      {items.length === 0 ? (
+  if (items.length === 0) {
+    return (
+      <Card>
         <ThemedText type="small" themeColor="textSecondary">
-          No plans yet.
+          {emptyLabel}
         </ThemedText>
-      ) : (
-        <View>
-          {items.map((item, index) => (
-            <View key={item.id}>
-              <View style={styles.row}>
-                <ThemedText type="small" style={styles.name}>
-                  {item.title}
-                </ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {item.stats}
-                </ThemedText>
-              </View>
-              {index < items.length - 1 ? (
-                <View style={[styles.separator, { backgroundColor: theme.border }]} />
-              ) : null}
-            </View>
-          ))}
-        </View>
-      )}
+      </Card>
+    );
+  }
 
-      <Pressable style={styles.showAll} onPress={() => router.push(showAllHref)}>
-        <ThemedText type="small" style={{ color: theme.accent }}>
-          Show all
-        </ThemedText>
+  return (
+    <Card padded={false}>
+      {items.map((item, index) => (
+        <View
+          key={item.id}
+          style={[
+            styles.row,
+            index < items.length - 1 && {
+              borderBottomWidth: StyleSheet.hairlineWidth,
+              borderBottomColor: theme.border,
+            },
+          ]}>
+          <ThemedText type="smallBold" style={styles.title} numberOfLines={1}>
+            {item.title}
+          </ThemedText>
+          <View style={styles.stats}>
+            <ThemedText type="meta" themeColor="textSecondary">
+              {item.primaryStat}
+            </ThemedText>
+            <ThemedText type="meta">{item.secondaryStat}</ThemedText>
+          </View>
+        </View>
+      ))}
+
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => router.push(showAllHref)}
+        style={({ pressed }) => [
+          styles.showAll,
+          { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.border },
+          pressed && styles.pressed,
+        ]}>
+        <ThemedText type="linkPrimary">Show all</ThemedText>
       </Pressable>
-    </ThemedView>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    borderRadius: Spacing.two,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: Spacing.three,
-    gap: Spacing.two,
-  },
-  eyebrow: {
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  headerDivider: {
-    height: StyleSheet.hairlineWidth,
-  },
   row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: Spacing.two,
-    gap: Spacing.two,
+    justifyContent: 'space-between',
+    gap: Spacing.three,
+    paddingVertical: Spacing.three,
+    paddingHorizontal: Spacing.three,
   },
-  name: {
+  title: {
     flex: 1,
   },
-  separator: {
-    height: StyleSheet.hairlineWidth,
+  stats: {
+    alignItems: 'flex-end',
+    gap: Spacing.half,
   },
   showAll: {
     alignItems: 'center',
-    paddingTop: Spacing.one,
+    paddingVertical: Spacing.three,
+  },
+  pressed: {
+    opacity: 0.6,
   },
 });

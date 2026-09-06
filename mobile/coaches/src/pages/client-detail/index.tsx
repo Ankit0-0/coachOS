@@ -7,7 +7,11 @@ import { WeightChart, type WeightPoint } from '@/components/client-detail/Weight
 import { DetailHeader } from '@/components/detail-header';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { Avatar } from '@/components/ui/avatar';
+import { Card } from '@/components/ui/card';
+import { FieldRow } from '@/components/ui/field-row';
+import { Pill } from '@/components/ui/pill';
+import { Section } from '@/components/ui/section';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
@@ -24,7 +28,7 @@ import {
   type WorkoutContent,
 } from '@/lib/api';
 import { currentMonthRange, dayOfMonth, lastNDaysRange, longDateLabel, weekdayLabel } from '@/lib/dates';
-import { planStatsLabel } from '@/lib/plan-format';
+import { planStats } from '@/lib/plan-format';
 
 const WEIGHT_LOOKBACK_DAYS = 30;
 const WEIGHT_CHART_POINTS = 7;
@@ -196,42 +200,49 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
     }
   };
 
-  const renderPlanCard = (label: string, type: PlanType, assignment: PlanAssignment | undefined) => (
-    <ThemedView type="backgroundElement" style={[styles.card, { borderColor: theme.border }]}>
-      <View style={styles.cardHeader}>
-        <ThemedText type="smallBold">{label}</ThemedText>
-        <Pressable onPress={() => openPicker(type)}>
-          <ThemedText type="small" style={{ color: theme.accent }}>
-            {assignment?.status === 'ACTIVE' ? 'Change plan' : 'Assign plan'}
-          </ThemedText>
-        </Pressable>
-      </View>
-      {assignment ? (
-        <>
-          <View style={styles.cardHeader}>
-            <ThemedText type="small" style={styles.planTitle}>
-              {assignment.plan.title}
+  const renderPlanCard = (label: string, type: PlanType, assignment: PlanAssignment | undefined) => {
+    const stats = assignment ? planStats(assignment.plan) : null;
+
+    return (
+      <Card>
+        <View style={styles.cardHeader}>
+          <ThemedText type="smallBold">{label}</ThemedText>
+          <Pressable accessibilityRole="button" onPress={() => openPicker(type)} hitSlop={8}>
+            <ThemedText type="linkPrimary">
+              {assignment?.status === 'ACTIVE' ? 'Change plan' : 'Assign plan'}
             </ThemedText>
-            <ThemedText
-              type="small"
-              themeColor={assignment.status === 'ACTIVE' ? 'success' : 'textSecondary'}>
-              {assignment.status}
+          </Pressable>
+        </View>
+
+        {assignment && stats ? (
+          <View style={styles.planBody}>
+            <View style={styles.planTitleRow}>
+              <ThemedText type="heading" style={styles.planTitle}>
+                {assignment.plan.title}
+              </ThemedText>
+              <Pill
+                label={assignment.status === 'ACTIVE' ? 'Active' : assignment.status.toLowerCase()}
+                tone={assignment.status === 'ACTIVE' ? 'success' : 'neutral'}
+              />
+            </View>
+            <ThemedText type="small" themeColor="textSecondary">
+              {planSummary(assignment.plan)}
             </ThemedText>
+            <View style={styles.planStats}>
+              <ThemedText type="meta" themeColor="textSecondary">
+                {stats.primary}
+              </ThemedText>
+              <ThemedText type="meta">{stats.secondary}</ThemedText>
+            </View>
           </View>
+        ) : (
           <ThemedText type="small" themeColor="textSecondary">
-            {planSummary(assignment.plan)}
+            No {label.toLowerCase()} plan assigned yet.
           </ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {planStatsLabel(assignment.plan)}
-          </ThemedText>
-        </>
-      ) : (
-        <ThemedText type="small" themeColor="textSecondary">
-          No {label.toLowerCase()} plan assigned yet.
-        </ThemedText>
-      )}
-    </ThemedView>
-  );
+        )}
+      </Card>
+    );
+  };
 
   return (
     <ScreenScaffold includeBottomTabInset>
@@ -241,53 +252,30 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
         <ActivityIndicator color={theme.textSecondary} />
       ) : (
         <>
-          <ThemedText type="small" themeColor="textSecondary">
-            {profile?.onboardedAt ? `Client since ${longDateLabel(profile.onboardedAt)}` : 'Client since —'}
-          </ThemedText>
-
-          <View style={styles.section}>
-            <ThemedText type="smallBold" themeColor="textSecondary">
-              Profile &amp; Goals
-            </ThemedText>
-            <ThemedView type="backgroundElement" style={[styles.card, { borderColor: theme.border }]}>
-              <View style={styles.statRow}>
-                <ThemedText type="small" themeColor="textSecondary">
-                  Height
-                </ThemedText>
-                <ThemedText type="small">
-                  {profile?.heightCm != null ? `${profile.heightCm} cm` : 'Not set'}
-                </ThemedText>
-              </View>
-              <View style={[styles.separator, { backgroundColor: theme.border }]} />
-              <View style={styles.statRow}>
-                <ThemedText type="small" themeColor="textSecondary">
-                  Latest weight
-                </ThemedText>
-                <ThemedText type="small">
-                  {displayWeight != null ? `${displayWeight} kg` : 'Not set'}
-                </ThemedText>
-              </View>
-              <View style={[styles.separator, { backgroundColor: theme.border }]} />
-              <View style={styles.goalsBlock}>
-                <ThemedText type="small" themeColor="textSecondary">
-                  Goals
-                </ThemedText>
-                <ThemedText type="small">
-                  {profile?.goals && profile.goals.trim().length > 0 ? profile.goals : 'Not set'}
-                </ThemedText>
-              </View>
-            </ThemedView>
+          <View style={styles.identity}>
+            <Avatar name={name} size="md" />
+            <View style={styles.identityCopy}>
+              <ThemedText type="smallBold">{name}</ThemedText>
+              <ThemedText type="meta">
+                {profile?.onboardedAt ? `Client since ${longDateLabel(profile.onboardedAt)}` : 'Start date unknown'}
+              </ThemedText>
+            </View>
           </View>
 
-          <View style={styles.section}>
-            <ThemedText type="smallBold" themeColor="textSecondary">
-              Current Plans
-            </ThemedText>
+          <Section title="Profile and goals">
+            <Card padded={false} style={styles.fieldCard}>
+              <FieldRow label="Height" value={profile?.heightCm != null ? `${profile.heightCm} cm` : null} />
+              <FieldRow label="Latest weight" value={displayWeight != null ? `${displayWeight} kg` : null} />
+              <FieldRow label="Goals" value={profile?.goals} stacked divider={false} />
+            </Card>
+          </Section>
+
+          <Section title="Current plans">
             {renderPlanCard('Workout', 'WORKOUT', latestWorkout)}
             {renderPlanCard('Diet', 'DIET', latestDiet)}
 
             {pickerType ? (
-              <ThemedView type="backgroundElement" style={[styles.card, { borderColor: theme.border }]}>
+              <Card>
                 <ThemedText type="smallBold">
                   Choose a {pickerType === 'WORKOUT' ? 'workout' : 'diet'} plan
                 </ThemedText>
@@ -295,106 +283,119 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
                   <ActivityIndicator color={theme.textSecondary} />
                 ) : pickerPlans.own.length === 0 && pickerPlans.defaults.length === 0 ? (
                   <ThemedText type="small" themeColor="textSecondary">
-                    No plans available yet — create one from Saved Plans.
+                    No plans available yet — create one from the Plans tab.
                   </ThemedText>
                 ) : (
                   <View style={styles.pickerList}>
-                    {[...pickerPlans.own, ...pickerPlans.defaults].map((plan) => (
-                      <Pressable
-                        key={plan.id}
-                        style={[styles.pickerRow, { borderColor: theme.border }]}
-                        disabled={isAssigning}
-                        onPress={() => handleAssign(plan.id)}>
-                        <View style={styles.pickerRowText}>
-                          <ThemedText type="small">{plan.title}</ThemedText>
-                          <ThemedText type="small" themeColor="textSecondary">
-                            {planStatsLabel(plan)}
-                            {plan.isDefault ? ' • Default' : ''}
-                          </ThemedText>
-                        </View>
-                        {isAssigning ? <ActivityIndicator color={theme.textSecondary} size="small" /> : null}
-                      </Pressable>
-                    ))}
+                    {[...pickerPlans.own, ...pickerPlans.defaults].map((plan) => {
+                      const stats = planStats(plan);
+                      return (
+                        <Pressable
+                          key={plan.id}
+                          accessibilityRole="button"
+                          disabled={isAssigning}
+                          onPress={() => handleAssign(plan.id)}
+                          style={({ pressed }) => [pressed && styles.pressed]}>
+                          <Card variant="inset" style={styles.pickerRow}>
+                            <View style={styles.pickerCopy}>
+                              <ThemedText type="smallBold" numberOfLines={1}>
+                                {plan.title}
+                              </ThemedText>
+                              <View style={styles.planStats}>
+                                <ThemedText type="meta" themeColor="textSecondary">
+                                  {stats.primary}
+                                </ThemedText>
+                                <ThemedText type="meta">{stats.secondary}</ThemedText>
+                              </View>
+                            </View>
+                            {plan.isDefault ? <Pill label="Shared" tone="neutral" /> : null}
+                            {isAssigning ? <ActivityIndicator color={theme.textSecondary} size="small" /> : null}
+                          </Card>
+                        </Pressable>
+                      );
+                    })}
                   </View>
                 )}
-              </ThemedView>
+              </Card>
             ) : null}
-          </View>
+          </Section>
 
-          <View style={styles.section}>
-            <ThemedText type="smallBold" themeColor="textSecondary">
-              Progress History
-            </ThemedText>
-
-            <ThemedView type="backgroundElement" style={[styles.card, { borderColor: theme.border }]}>
+          <Section title="Progress">
+            <Card>
               <View style={styles.cardHeader}>
                 <ThemedText type="smallBold">Weight trend</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {latestWeightEntry ? `${latestWeightEntry.weightKg} kg latest` : 'No data yet'}
-                </ThemedText>
+                {latestWeightEntry ? (
+                  <View style={styles.latestWeight}>
+                    <ThemedText type="numeric">{latestWeightEntry.weightKg}</ThemedText>
+                    <ThemedText type="meta">kg</ThemedText>
+                  </View>
+                ) : (
+                  <ThemedText type="meta">No data yet</ThemedText>
+                )}
               </View>
               <WeightChart data={weightPoints} />
-            </ThemedView>
+            </Card>
 
-            <ThemedView type="backgroundElement" style={[styles.card, { borderColor: theme.border }]}>
+            <Card>
               <View style={styles.cardHeader}>
-                <ThemedText type="smallBold">{month.label} activity</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {completedDays}/{month.daysInMonth} days
+                <ThemedText type="smallBold">{month.label}</ThemedText>
+                <ThemedText type="meta">
+                  {completedDays} of {month.daysInMonth} days logged
                 </ThemedText>
               </View>
               <View style={styles.legendRow}>
                 <View style={styles.legendItem}>
-                  <View style={[styles.legendDot, styles.workoutDot]} />
-                  <ThemedText type="small" themeColor="textSecondary">
+                  <View style={[styles.legendDot, { backgroundColor: theme.chartWorkout }]} />
+                  <ThemedText type="meta" themeColor="textSecondary">
                     Workout
                   </ThemedText>
                 </View>
                 <View style={styles.legendItem}>
-                  <View style={[styles.legendDot, styles.dietDot]} />
-                  <ThemedText type="small" themeColor="textSecondary">
+                  <View style={[styles.legendDot, { backgroundColor: theme.chartDiet }]} />
+                  <ThemedText type="meta" themeColor="textSecondary">
                     Diet
                   </ThemedText>
                 </View>
               </View>
               <MonthlyActivityCalendar entries={dailyActivity} daysInMonth={month.daysInMonth} />
-            </ThemedView>
-          </View>
+            </Card>
+          </Section>
 
-          <View style={styles.section}>
-            <ThemedText type="smallBold" themeColor="textSecondary">
-              Recent Notes
-            </ThemedText>
+          <Section title="Recent notes">
             {recentNotes.length === 0 ? (
-              <ThemedText type="small" themeColor="textSecondary">
-                No notes from this client yet.
-              </ThemedText>
+              <Card>
+                <ThemedText type="small" themeColor="textSecondary">
+                  Nothing yet. Notes your client leaves on a check-in show up here.
+                </ThemedText>
+              </Card>
             ) : (
-              recentNotes.map((checkIn) => (
-                <ThemedView
-                  key={checkIn.id}
-                  type="backgroundElement"
-                  style={[styles.card, { borderColor: theme.border }]}>
-                  <ThemedText type="small" themeColor="textSecondary">
-                    {longDateLabel(checkIn.date)}
-                  </ThemedText>
-                  <ThemedText type="small">{checkIn.notes}</ThemedText>
-                </ThemedView>
-              ))
+              <Card padded={false} style={styles.fieldCard}>
+                {recentNotes.map((checkIn, index) => (
+                  <View
+                    key={checkIn.id}
+                    style={[
+                      styles.noteRow,
+                      index < recentNotes.length - 1 && {
+                        borderBottomWidth: StyleSheet.hairlineWidth,
+                        borderBottomColor: theme.border,
+                      },
+                    ]}>
+                    <ThemedText type="meta">{longDateLabel(checkIn.date)}</ThemedText>
+                    <ThemedText type="small">{checkIn.notes}</ThemedText>
+                  </View>
+                ))}
+              </Card>
             )}
-          </View>
+          </Section>
 
-          <View style={styles.section}>
-            <ThemedText type="smallBold" themeColor="textSecondary">
-              Payment
-            </ThemedText>
-            <ThemedView type="backgroundElement" style={[styles.card, { borderColor: theme.border }]}>
-              <ThemedText type="smallBold">Payment integration coming soon</ThemedText>
+          <Section title="Payment">
+            <Card>
+              <ThemedText type="smallBold">Billing isn&apos;t connected yet</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
-                Billing, invoices, and subscription status for this client will live here.
+                Invoices and subscription status for this client will appear here.
               </ThemedText>
-            </ThemedView>
-          </View>
+            </Card>
+          </Section>
         </>
       )}
     </ScreenScaffold>
@@ -402,14 +403,17 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
 }
 
 const styles = StyleSheet.create({
-  section: {
-    gap: Spacing.two,
+  identity: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
   },
-  card: {
-    borderRadius: Spacing.two,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: Spacing.three,
+  identityCopy: {
+    flex: 1,
     gap: Spacing.half,
+  },
+  fieldCard: {
+    paddingHorizontal: Spacing.three,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -417,59 +421,64 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
   },
+  planBody: {
+    gap: Spacing.one,
+    paddingTop: Spacing.one,
+  },
+  planTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+  },
   planTitle: {
     flex: 1,
   },
-  statRow: {
+  planStats: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: Spacing.one,
+    alignItems: 'baseline',
     gap: Spacing.two,
   },
-  goalsBlock: {
-    paddingVertical: Spacing.one,
+  latestWeight: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
     gap: Spacing.half,
-  },
-  separator: {
-    height: StyleSheet.hairlineWidth,
   },
   legendRow: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    gap: Spacing.two,
+    gap: Spacing.three,
     paddingBottom: Spacing.one,
   },
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.half,
+    gap: Spacing.one,
   },
   legendDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  workoutDot: {
-    backgroundColor: '#3A7BFF',
-  },
-  dietDot: {
-    backgroundColor: '#34D399',
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   pickerList: {
     gap: Spacing.two,
+    paddingTop: Spacing.one,
   },
   pickerRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: Spacing.two,
-    padding: Spacing.two,
     gap: Spacing.two,
+    paddingVertical: Spacing.three,
   },
-  pickerRowText: {
+  pickerCopy: {
     flex: 1,
+    gap: Spacing.half,
+  },
+  pressed: {
+    opacity: 0.6,
+  },
+  noteRow: {
+    paddingVertical: Spacing.three,
     gap: Spacing.half,
   },
 });
