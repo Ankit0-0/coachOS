@@ -133,6 +133,7 @@ model CoachProfile {
   bio             String?
   specialties     String[]
   yearsExperience Int?
+  phone           String?
 }
 
 model ClientProfile {
