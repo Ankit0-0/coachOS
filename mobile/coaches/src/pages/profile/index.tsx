@@ -1,6 +1,6 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, TextInput, View } from 'react-native';
 
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
@@ -54,6 +54,8 @@ export function ProfileScreen() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [draft, setDraft] = useState<Draft | null>(null);
+  // Shown inline rather than via Alert, which is a no-op on React Native Web.
+  const [formError, setFormError] = useState<string | null>(null);
 
   const load = useCallback(() => {
     Promise.all([
@@ -83,30 +85,33 @@ export function ProfileScreen() {
   const startEditing = () => {
     if (!profile) return;
     setDraft(draftFrom(profile));
+    setFormError(null);
     setIsEditing(true);
   };
 
   const cancelEditing = () => {
     setIsEditing(false);
     setDraft(null);
+    setFormError(null);
   };
 
   const handleSave = async () => {
     if (!draft) return;
     if (!draft.name.trim()) {
-      Alert.alert('Name required', 'Your name is how clients recognise you — it cannot be empty.');
+      setFormError('Your name is how clients recognise you — it cannot be empty.');
       return;
     }
 
     const years = draft.yearsExperience.trim();
     const parsedYears = years === '' ? null : Number.parseInt(years, 10);
     if (parsedYears !== null && (Number.isNaN(parsedYears) || parsedYears < 0)) {
-      Alert.alert('Check years of experience', 'Enter a whole number of years, or leave it blank.');
+      setFormError('Enter a whole number of years of experience, or leave it blank.');
       return;
     }
 
     try {
       setIsSaving(true);
+      setFormError(null);
       const updated = await coachProfileApi.update({
         name: draft.name.trim(),
         phone: draft.phone.trim(),
@@ -121,18 +126,15 @@ export function ProfileScreen() {
       setIsEditing(false);
       setDraft(null);
     } catch (error) {
-      Alert.alert('Could not save profile', errorMessage(error));
+      setFormError(errorMessage(error));
     } finally {
       setIsSaving(false);
     }
   };
 
-  const confirmSignOut = () => {
-    Alert.alert('Sign out', 'You will need to sign in again to reach your clients.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign out', style: 'destructive', onPress: () => void signOut() },
-    ]);
-  };
+  // Confirmed inline rather than with Alert, which is a no-op on React Native
+  // Web — routed through Alert, the sign-out button did nothing in a browser.
+  const [isConfirmingSignOut, setIsConfirmingSignOut] = useState(false);
 
   if (isLoading) {
     return (
@@ -264,6 +266,14 @@ export function ProfileScreen() {
               />
             </View>
 
+            {formError ? (
+              <View style={[styles.errorBanner, { backgroundColor: theme.dangerSoft }]}>
+                <ThemedText type="small" themeColor="danger">
+                  {formError}
+                </ThemedText>
+              </View>
+            ) : null}
+
             <View style={styles.formActions}>
               <View style={styles.formAction}>
                 <Button label="Cancel" variant="secondary" onPress={cancelEditing} disabled={isSaving} fullWidth />
@@ -311,7 +321,29 @@ export function ProfileScreen() {
           <ThemedText type="small" themeColor="textSecondary" style={styles.accountCopy}>
             Your email is your sign-in and can&apos;t be changed here yet.
           </ThemedText>
-          <Button label="Sign out" variant="danger" onPress={confirmSignOut} fullWidth />
+
+          {isConfirmingSignOut ? (
+            <View style={styles.confirmBlock}>
+              <ThemedText type="small" themeColor="textSecondary">
+                You&apos;ll need to sign in again to reach your clients.
+              </ThemedText>
+              <View style={styles.confirmActions}>
+                <View style={styles.confirmAction}>
+                  <Button
+                    label="Cancel"
+                    variant="secondary"
+                    onPress={() => setIsConfirmingSignOut(false)}
+                    fullWidth
+                  />
+                </View>
+                <View style={styles.confirmAction}>
+                  <Button label="Sign out" variant="danger" onPress={() => void signOut()} fullWidth />
+                </View>
+              </View>
+            </View>
+          ) : (
+            <Button label="Sign out" variant="danger" onPress={() => setIsConfirmingSignOut(true)} fullWidth />
+          )}
         </Card>
       </Section>
     </ScreenScaffold>
@@ -391,7 +423,21 @@ const styles = StyleSheet.create({
   accountCopy: {
     marginBottom: Spacing.two,
   },
+  confirmBlock: {
+    gap: Spacing.two,
+  },
+  confirmActions: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  confirmAction: {
+    flex: 1,
+  },
   errorCopy: {
     marginBottom: Spacing.two,
+  },
+  errorBanner: {
+    borderRadius: Radii.sm,
+    padding: Spacing.three,
   },
 });

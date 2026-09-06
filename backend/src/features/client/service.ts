@@ -17,22 +17,33 @@ async function assertAccess(coachId: string, clientId: string, action: string) {
 export async function listClientCheckIns(
   coachId: string,
   clientId: string,
-  input: { assignmentId: string; from: DateString; to: DateString },
+  input: { assignmentId?: string | undefined; from: DateString; to: DateString },
 ) {
   await assertAccess(coachId, clientId, "listClientCheckIns");
 
-  const assignment = await prisma.planAssignment.findUnique({ where: { id: input.assignmentId } });
-  if (!assignment || assignment.clientId !== clientId) {
-    logger.debug(
-      { coachId, clientId, assignmentId: input.assignmentId },
-      "listClientCheckIns: rejected — assignment not found or does not belong to this client",
-    );
-    throw new Error("ASSIGNMENT_NOT_FOUND");
+  let assignmentIds: string[];
+  if (input.assignmentId) {
+    const assignment = await prisma.planAssignment.findUnique({ where: { id: input.assignmentId } });
+    if (!assignment || assignment.clientId !== clientId) {
+      logger.debug(
+        { coachId, clientId, assignmentId: input.assignmentId },
+        "listClientCheckIns: rejected — assignment not found or does not belong to this client",
+      );
+      throw new Error("ASSIGNMENT_NOT_FOUND");
+    }
+    assignmentIds = [assignment.id];
+  } else {
+    // Every assignment this client has ever had, so history survives a plan change.
+    const assignments = await prisma.planAssignment.findMany({
+      where: { clientId },
+      select: { id: true },
+    });
+    assignmentIds = assignments.map((assignment) => assignment.id);
   }
 
   const rows = await prisma.checkIn.findMany({
     where: {
-      assignmentId: input.assignmentId,
+      assignmentId: { in: assignmentIds },
       date: { gte: parseDate(input.from), lte: parseDate(input.to) },
     },
     orderBy: { date: "asc" },

@@ -353,9 +353,10 @@ function queryString(params: Record<string, string>): string {
 }
 
 export const coachClientApi = {
+  /** Omit `assignmentId` to get every check-in in the range, across all assignments. */
   listCheckIns(
     clientId: string,
-    params: { assignmentId: string; from: string; to: string },
+    params: { assignmentId?: string; from: string; to: string },
   ): Promise<CheckIn[]> {
     return apiRequest<{ checkIns: CheckIn[] }>(
       `/coach/clients/${encodeURIComponent(clientId)}/checkins?${queryString(params)}`,

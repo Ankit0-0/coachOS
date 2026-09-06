@@ -77,8 +77,9 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
   const [assignments, setAssignments] = useState<PlanAssignment[]>([]);
   const [profile, setProfile] = useState<ClientProfile | null>(null);
   const [weights, setWeights] = useState<WeightEntry[]>([]);
-  const [workoutCheckIns, setWorkoutCheckIns] = useState<CheckIn[]>([]);
-  const [dietCheckIns, setDietCheckIns] = useState<CheckIn[]>([]);
+  // Every check-in in the month, across all assignments — not just the active
+  // ones, so switching a client's plan doesn't erase their history here.
+  const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [pickerType, setPickerType] = useState<PlanType | null>(null);
   const [pickerPlans, setPickerPlans] = useState<{ own: Plan[]; defaults: Plan[] } | null>(null);
@@ -89,37 +90,16 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
   const loadAll = useCallback(async () => {
     const weightRange = lastNDaysRange(WEIGHT_LOOKBACK_DAYS);
     try {
-      const [assignmentRows, profileRow, weightRows] = await Promise.all([
+      const [assignmentRows, profileRow, weightRows, checkInRows] = await Promise.all([
         assignmentApi.listForClient(clientId),
         coachClientApi.getProfile(clientId),
         coachClientApi.listWeights(clientId, weightRange),
+        coachClientApi.listCheckIns(clientId, { from: month.from, to: month.to }),
       ]);
       setAssignments(assignmentRows);
       setProfile(profileRow);
       setWeights(weightRows);
-
-      // Check-ins are per-assignment, so they can only be fetched once the
-      // client's active assignments are known.
-      const activeWorkoutRow = assignmentRows.find((a) => a.status === 'ACTIVE' && a.plan.type === 'WORKOUT');
-      const activeDietRow = assignmentRows.find((a) => a.status === 'ACTIVE' && a.plan.type === 'DIET');
-      const [workoutRows, dietRows] = await Promise.all([
-        activeWorkoutRow
-          ? coachClientApi.listCheckIns(clientId, {
-              assignmentId: activeWorkoutRow.id,
-              from: month.from,
-              to: month.to,
-            })
-          : Promise.resolve<CheckIn[]>([]),
-        activeDietRow
-          ? coachClientApi.listCheckIns(clientId, {
-              assignmentId: activeDietRow.id,
-              from: month.from,
-              to: month.to,
-            })
-          : Promise.resolve<CheckIn[]>([]),
-      ]);
-      setWorkoutCheckIns(workoutRows);
-      setDietCheckIns(dietRows);
+      setCheckIns(checkInRows);
     } catch {
       // Leave whatever loaded; the screen renders its empty states.
     } finally {
@@ -143,13 +123,22 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
   const latestWeightEntry = weights.length > 0 ? weights[weights.length - 1] : undefined;
   const displayWeight = latestWeightEntry?.weightKg ?? profile?.weightKg ?? null;
 
-  const workoutIds = workoutItemIds(activeWorkout?.plan);
-  const dietIds = dietItemIds(activeDiet?.plan);
+  // A check-in belongs to the plan that was assigned at the time, which may no
+  // longer be the active one — so score each against its own plan.
+  const planByAssignmentId = new Map(assignments.map((assignment) => [assignment.id, assignment.plan]));
+  const checkInsOfType = (type: PlanType) =>
+    checkIns.filter((checkIn) => planByAssignmentId.get(checkIn.assignmentId)?.type === type);
+  const workoutCheckIns = checkInsOfType('WORKOUT');
+  const dietCheckIns = checkInsOfType('DIET');
 
   const dailyActivity: DailyActivity[] = Array.from({ length: month.daysInMonth }, (_, index) => index + 1).map(
     (day) => {
       const workoutCheckIn = workoutCheckIns.find((checkIn) => dayOfMonth(checkIn.date) === day);
       const dietCheckIn = dietCheckIns.find((checkIn) => dayOfMonth(checkIn.date) === day);
+      const workoutIds = workoutItemIds(
+        workoutCheckIn ? planByAssignmentId.get(workoutCheckIn.assignmentId) : undefined,
+      );
+      const dietIds = dietItemIds(dietCheckIn ? planByAssignmentId.get(dietCheckIn.assignmentId) : undefined);
       return {
         date: day,
         workoutCompleted: completedMatches(workoutCheckIn, workoutIds),
@@ -167,7 +156,7 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
     .slice(-WEIGHT_CHART_POINTS)
     .map((entry) => ({ day: weekdayLabel(entry.date), value: entry.weightKg }));
 
-  const recentNotes = [...workoutCheckIns, ...dietCheckIns]
+  const recentNotes = checkIns
     .filter((checkIn) => checkIn.notes && checkIn.notes.trim().length > 0)
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, MAX_RECENT_NOTES);
