@@ -31,8 +31,14 @@ export default function AppTabs() {
           </TabTrigger>
           <TabTrigger name="saved-plans" href="/saved-plans" asChild>
             <TabButton
-              label="Saved Plans"
+              label="Plans"
               iconName={{ ios: 'doc.text', android: 'description', web: 'description' }}
+            />
+          </TabTrigger>
+          <TabTrigger name="profile" href="/profile" asChild>
+            <TabButton
+              label="Profile"
+              iconName={{ ios: 'person.crop.circle', android: 'account_circle', web: 'account_circle' }}
             />
           </TabTrigger>
         </CustomTabList>

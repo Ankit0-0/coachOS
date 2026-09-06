@@ -1,7 +1,12 @@
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
-const TOKEN_KEY = 'coachos.access_token';
+/**
+ * Namespaced per app. On web both apps are served from localhost, and
+ * storage is scoped by origin — so a shared key means whichever app last
+ * signed in on a given port hands its token to the other one.
+ */
+const TOKEN_KEY = 'coachos.coach.access_token';
 
 /**
  * In-memory fallback so the app never crashes if native storage is

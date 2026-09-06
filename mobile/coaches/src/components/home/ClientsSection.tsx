@@ -1,10 +1,14 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, TextInput, View } from 'react-native';
 
 import { ClientListItem } from '@/components/clients/ClientListItem';
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Pill } from '@/components/ui/pill';
+import { Section } from '@/components/ui/section';
+import { Radii, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { coachInviteApi, type CoachInvite } from '@/lib/api';
 
@@ -42,7 +46,7 @@ export function ClientsSection() {
   const handleInvite = async () => {
     const trimmed = email.trim();
     if (!trimmed) {
-      Alert.alert('Error', 'Please enter a client email');
+      Alert.alert('Enter an email', 'Add the email address your client signs in with.');
       return;
     }
 
@@ -59,118 +63,101 @@ export function ClientsSection() {
   };
 
   const preview = clients.slice(0, PREVIEW_COUNT);
+  const hasMore = clients.length > PREVIEW_COUNT;
 
   return (
     <View style={styles.container}>
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => router.push('/clients')}
-        style={styles.header}>
-        <ThemedText type="smallBold" themeColor="textSecondary">
-          Clients ({clients.length})
-        </ThemedText>
-        <ThemedText type="small" style={{ color: theme.accent }}>
-          View all
-        </ThemedText>
-      </Pressable>
-
-      {isLoading ? (
-        <ActivityIndicator color={theme.textSecondary} />
-      ) : preview.length === 0 ? (
-        <ThemedText themeColor="textSecondary">No clients yet. Invite one below.</ThemedText>
-      ) : (
-        <View style={styles.list}>
-          {preview.map((invite) => (
-            <ClientListItem
-              key={invite.id}
-              clientId={invite.clientId ?? invite.client?.id ?? ''}
-              name={invite.client?.name ?? invite.clientEmail}
-              email={invite.client?.email ?? invite.clientEmail}
-            />
-          ))}
-        </View>
-      )}
-
-      <View style={styles.inviteRow}>
-        <TextInput
-          style={[styles.input, { borderColor: theme.border, color: theme.text }]}
-          placeholder="client@example.com"
-          placeholderTextColor={theme.textSecondary}
-          value={email}
-          onChangeText={setEmail}
-          editable={!isSending}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-        <Pressable
-          style={[styles.inviteButton, { backgroundColor: theme.accent, opacity: isSending ? 0.6 : 1 }]}
-          onPress={handleInvite}
-          disabled={isSending}>
-          {isSending ? (
-            <ActivityIndicator color="#FFFFFF" size="small" />
-          ) : (
-            <ThemedText type="smallBold" style={styles.inviteButtonLabel}>
-              Send invite
+      <Section
+        title={clients.length > 0 ? `Roster (${clients.length})` : 'Roster'}
+        {...(hasMore ? { actionLabel: 'View all', onActionPress: () => router.push('/clients') } : {})}>
+        {isLoading ? (
+          <ActivityIndicator color={theme.textSecondary} />
+        ) : preview.length === 0 ? (
+          <Card>
+            <ThemedText type="smallBold">No clients yet</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              Invite someone below and they&apos;ll appear here once they accept.
             </ThemedText>
-          )}
-        </Pressable>
-      </View>
+          </Card>
+        ) : (
+          <Card padded={false}>
+            {preview.map((invite, index) => (
+              <ClientListItem
+                key={invite.id}
+                clientId={invite.clientId ?? invite.client?.id ?? ''}
+                name={invite.client?.name ?? invite.clientEmail}
+                email={invite.client?.email ?? invite.clientEmail}
+                divider={index < preview.length - 1}
+              />
+            ))}
+          </Card>
+        )}
+      </Section>
 
-      {pending.length > 0 ? (
-        <View style={styles.pendingList}>
-          {pending.map((invite) => (
-            <View key={invite.id} style={styles.pendingRow}>
-              <ThemedText type="small">{invite.clientEmail}</ThemedText>
-              <ThemedText type="small" themeColor="warning">
-                Pending
-              </ThemedText>
+      <Section title="Invite a client">
+        <Card>
+          <View style={styles.inviteRow}>
+            <TextInput
+              style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+              placeholder="client@example.com"
+              placeholderTextColor={theme.textMuted}
+              value={email}
+              onChangeText={setEmail}
+              editable={!isSending}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <Button label="Send" onPress={handleInvite} loading={isSending} />
+          </View>
+
+          {pending.length > 0 ? (
+            <View style={styles.pendingList}>
+              {pending.map((invite) => (
+                <View key={invite.id} style={styles.pendingRow}>
+                  <ThemedText type="small" themeColor="textSecondary" numberOfLines={1} style={styles.pendingEmail}>
+                    {invite.clientEmail}
+                  </ThemedText>
+                  <Pill label="Awaiting reply" tone="warning" />
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
-      ) : null}
+          ) : null}
+        </Card>
+      </Section>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    gap: Spacing.two,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  list: {
-    gap: Spacing.two,
+    gap: Spacing.four,
   },
   inviteRow: {
     flexDirection: 'row',
     gap: Spacing.two,
+    alignItems: 'center',
   },
   input: {
     flex: 1,
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: Spacing.two,
+    borderRadius: Radii.sm,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     fontSize: 16,
-  },
-  inviteButton: {
-    borderRadius: Spacing.two,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  inviteButtonLabel: {
-    color: '#FFFFFF',
+    minHeight: 48,
   },
   pendingList: {
-    gap: Spacing.one,
+    gap: Spacing.two,
     paddingTop: Spacing.one,
   },
   pendingRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
+    gap: Spacing.two,
+  },
+  pendingEmail: {
+    flexShrink: 1,
   },
 });

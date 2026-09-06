@@ -1,8 +1,14 @@
-import { useState } from 'react';
 import { useRouter } from 'expo-router';
-import { StyleSheet, View, Pressable, TextInput, Alert, Text } from 'react-native';
+import { useState } from 'react';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+
 import { GoogleSignInButton } from '@/components/auth/google-sign-in-button';
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+import { Button } from '@/components/ui/button';
+import { Radii, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth';
+import { useTheme } from '@/hooks/use-theme';
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Something went wrong. Please try again.';
@@ -10,179 +16,164 @@ function errorMessage(error: unknown): string {
 
 export default function SignInScreen() {
   const router = useRouter();
+  const theme = useTheme();
   const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  // Shown inline rather than via Alert, which is a no-op on React Native Web.
+  const [formError, setFormError] = useState<string | null>(null);
 
   const handleSignIn = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      setFormError('Enter your email and password to sign in.');
       return;
     }
 
     try {
       setIsLoading(true);
+      setFormError(null);
       await signIn(email.trim().toLowerCase(), password);
       // The root layout watches isSignedIn and redirects to the app tabs.
     } catch (error) {
-      Alert.alert('Sign in failed', errorMessage(error));
+      setFormError(errorMessage(error));
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Pressable onPress={() => router.back()} style={styles.backButton}>
-        <Text style={styles.backText}>← Back</Text>
-      </Pressable>
-
-      <View style={styles.header}>
-        <Text style={styles.appBadge}>Coach OS · Coach App</Text>
-        <Text style={styles.title}>Sign In</Text>
-        <Text style={styles.subtitle}>Enter your credentials</Text>
-      </View>
-
-      <View style={styles.formContainer}>
-        <Text style={styles.label}>Email</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter your email"
-          value={email}
-          onChangeText={setEmail}
-          editable={!isLoading}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-
-        <Text style={styles.label}>Password</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter your password"
-          value={password}
-          onChangeText={setPassword}
-          editable={!isLoading}
-          secureTextEntry={true}
-        />
-      </View>
-
-      <View style={styles.buttonContainer}>
-        <Pressable
-          style={[styles.button, { opacity: isLoading ? 0.6 : 1 }]}
-          onPress={handleSignIn}
-          disabled={isLoading}
-        >
-          <Text style={styles.buttonText}>
-            {isLoading ? 'Signing In...' : 'Sign In'}
-          </Text>
+    <ThemedView style={styles.container}>
+      <View style={styles.top}>
+        <Pressable accessibilityRole="button" onPress={() => router.back()} hitSlop={8} style={styles.back}>
+          <ThemedText type="linkPrimary">Back</ThemedText>
         </Pressable>
 
+        <View style={styles.header}>
+          <ThemedText type="display">Sign in</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            Coach OS · coach app
+          </ThemedText>
+        </View>
+
+        <View style={styles.form}>
+          <View style={styles.field}>
+            <ThemedText type="label" themeColor="textSecondary">
+              Email
+            </ThemedText>
+            <TextInput
+              style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+              placeholder="you@example.com"
+              placeholderTextColor={theme.textMuted}
+              value={email}
+              onChangeText={setEmail}
+              editable={!isLoading}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
+
+          <View style={styles.field}>
+            <ThemedText type="label" themeColor="textSecondary">
+              Password
+            </ThemedText>
+            <TextInput
+              style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+              placeholder="Your password"
+              placeholderTextColor={theme.textMuted}
+              value={password}
+              onChangeText={setPassword}
+              editable={!isLoading}
+              secureTextEntry
+            />
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.actions}>
+        {formError ? (
+          <View style={[styles.errorBanner, { backgroundColor: theme.dangerSoft }]}>
+            <ThemedText type="small" themeColor="danger">
+              {formError}
+            </ThemedText>
+          </View>
+        ) : null}
+
+        <Button label="Sign in" onPress={handleSignIn} loading={isLoading} fullWidth />
+
         <View style={styles.dividerRow}>
-          <View style={styles.divider} />
-          <Text style={styles.dividerText}>or</Text>
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: theme.border }]} />
+          <ThemedText type="meta">or</ThemedText>
+          <View style={[styles.divider, { backgroundColor: theme.border }]} />
         </View>
 
         <GoogleSignInButton />
 
-        <View style={styles.signUpPrompt}>
-          <Text>Don't have an account? </Text>
-          <Pressable onPress={() => router.push('/auth/signup')}>
-            <Text style={styles.link}>Sign Up</Text>
+        <View style={styles.prompt}>
+          <ThemedText type="small" themeColor="textSecondary">
+            Don&apos;t have an account?
+          </ThemedText>
+          <Pressable accessibilityRole="button" onPress={() => router.push('/auth/signup')} hitSlop={8}>
+            <ThemedText type="linkPrimary">Create one</ThemedText>
           </Pressable>
         </View>
       </View>
-    </View>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
     justifyContent: 'space-between',
-    backgroundColor: '#ffffff',
+    padding: Spacing.four,
+    paddingTop: Spacing.five,
+    paddingBottom: Spacing.five,
   },
-  backButton: {
-    paddingVertical: 8,
+  top: {
+    gap: Spacing.four,
   },
-  backText: {
-    fontSize: 14,
-    color: '#0F8B8D',
-    fontWeight: '600',
+  back: {
+    alignSelf: 'flex-start',
   },
   header: {
-    gap: 8,
+    gap: Spacing.one,
   },
-  appBadge: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#0F8B8D',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
+  form: {
+    gap: Spacing.three,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#000000',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#60646C',
-  },
-  formContainer: {
-    gap: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#000000',
+  field: {
+    gap: Spacing.one,
   },
   input: {
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Radii.sm,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
     fontSize: 16,
-    borderColor: '#E6E6EB',
-    backgroundColor: '#F0F0F3',
+    minHeight: 48,
   },
-  buttonContainer: {
-    gap: 16,
-    paddingBottom: 24,
+  actions: {
+    gap: Spacing.three,
+  },
+  errorBanner: {
+    borderRadius: Radii.sm,
+    padding: Spacing.three,
   },
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: Spacing.two,
   },
   divider: {
     flex: 1,
     height: StyleSheet.hairlineWidth,
-    backgroundColor: '#E6E6EB',
   },
-  dividerText: {
-    fontSize: 13,
-    color: '#60646C',
-  },
-  button: {
-    backgroundColor: '#0F8B8D',
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  signUpPrompt: {
+  prompt: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 4,
-  },
-  link: {
-    color: '#0F8B8D',
-    fontWeight: '600',
+    alignItems: 'center',
+    gap: Spacing.one,
   },
 });

@@ -1,12 +1,12 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator } from 'react-native';
 
 import { ClientListItem } from '@/components/clients/ClientListItem';
 import { DetailHeader } from '@/components/detail-header';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { Card } from '@/components/ui/card';
 import { useTheme } from '@/hooks/use-theme';
 import { coachInviteApi, type CoachInvite } from '@/lib/api';
 
@@ -35,30 +35,33 @@ export function ClientsScreen() {
 
   return (
     <ScreenScaffold>
-      <DetailHeader title="Clients" subtitle="Everyone who has accepted your invite." />
+      <DetailHeader
+        title="Roster"
+        subtitle={clients.length === 1 ? '1 client' : `${clients.length} clients`}
+      />
 
       {isLoading ? (
         <ActivityIndicator color={theme.textSecondary} />
       ) : clients.length === 0 ? (
-        <ThemedText themeColor="textSecondary">No clients yet.</ThemedText>
+        <Card>
+          <ThemedText type="smallBold">No clients yet</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            Invite someone from the Clients tab and they&apos;ll appear here once they accept.
+          </ThemedText>
+        </Card>
       ) : (
-        <View style={styles.list}>
-          {clients.map((invite) => (
+        <Card padded={false}>
+          {clients.map((invite, index) => (
             <ClientListItem
               key={invite.id}
               clientId={invite.clientId ?? invite.client?.id ?? ''}
               name={invite.client?.name ?? invite.clientEmail}
               email={invite.client?.email ?? invite.clientEmail}
+              divider={index < clients.length - 1}
             />
           ))}
-        </View>
+        </Card>
       )}
     </ScreenScaffold>
   );
 }
-
-const styles = StyleSheet.create({
-  list: {
-    gap: Spacing.two,
-  },
-});

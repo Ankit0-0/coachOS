@@ -7,7 +7,7 @@ import { PlanList } from '@/components/saved-plans/PlanList';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { useTheme } from '@/hooks/use-theme';
 import { planApi, type Plan } from '@/lib/api';
-import { planStatsLabel } from '@/lib/plan-format';
+import { toPlanListEntry } from '@/lib/plan-format';
 
 export function DietPlansScreen() {
   const theme = useTheme();
@@ -34,11 +34,14 @@ export function DietPlansScreen() {
 
   return (
     <ScreenScaffold>
-      <DetailHeader title="Diet Plans" subtitle="All of your saved diet plans." />
+      <DetailHeader title="Diet plans" subtitle="Every diet plan you've built." />
       {isLoading ? (
         <ActivityIndicator color={theme.textSecondary} />
       ) : (
-        <PlanList items={plans.map((plan) => ({ id: plan.id, title: plan.title, stats: planStatsLabel(plan) }))} />
+        <PlanList
+          items={plans.map(toPlanListEntry)}
+          emptyLabel="No diet plans yet. Create one from the Plans tab."
+        />
       )}
     </ScreenScaffold>
   );

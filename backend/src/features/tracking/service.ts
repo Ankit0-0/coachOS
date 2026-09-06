@@ -4,15 +4,15 @@ import { prisma } from "../../config/prisma.config.js";
 
 type DateString = string;
 
-function parseDate(value: DateString): Date {
+export function parseDate(value: DateString): Date {
   return new Date(`${value}T00:00:00.000Z`);
 }
 
-function dateKey(value: Date): DateString {
+export function dateKey(value: Date): DateString {
   return value.toISOString().slice(0, 10);
 }
 
-function serializeCheckIn(row: CheckIn) {
+export function serializeCheckIn(row: CheckIn) {
   return {
     id: row.id,
     assignmentId: row.assignmentId,
@@ -23,7 +23,7 @@ function serializeCheckIn(row: CheckIn) {
   };
 }
 
-function serializeWeight(row: WeightEntry) {
+export function serializeWeight(row: WeightEntry) {
   return {
     id: row.id,
     clientId: row.clientId,

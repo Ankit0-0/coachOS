@@ -1,12 +1,13 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { DetailHeader } from '@/components/detail-header';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Radii, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError, planApi, type DietContent, type PlanType, type WorkoutContent } from '@/lib/api';
 
@@ -138,7 +139,7 @@ export function CreatePlanScreen() {
             type === 'WORKOUT' && { backgroundColor: theme.accent, borderColor: theme.accent },
           ]}
           onPress={() => setType('WORKOUT')}>
-          <ThemedText type="smallBold" style={type === 'WORKOUT' ? styles.typePillLabelActive : undefined}>
+          <ThemedText type="smallBold" themeColor={type === 'WORKOUT' ? 'onAccent' : 'text'}>
             Workout
           </ThemedText>
         </Pressable>
@@ -149,120 +150,120 @@ export function CreatePlanScreen() {
             type === 'DIET' && { backgroundColor: theme.accent, borderColor: theme.accent },
           ]}
           onPress={() => setType('DIET')}>
-          <ThemedText type="smallBold" style={type === 'DIET' ? styles.typePillLabelActive : undefined}>
+          <ThemedText type="smallBold" themeColor={type === 'DIET' ? 'onAccent' : 'text'}>
             Diet
           </ThemedText>
         </Pressable>
       </View>
 
-      <ThemedView type="backgroundElement" style={[styles.panel, { borderColor: theme.border }]}>
-        <ThemedText type="small" themeColor="textSecondary">
+      <Card style={styles.panel}>
+        <ThemedText type="label" themeColor="textSecondary">
           Title
         </ThemedText>
         <TextInput
           style={[styles.input, { borderColor: theme.border, color: theme.text }]}
           placeholder="e.g. Lower body strength"
-          placeholderTextColor={theme.textSecondary}
+          placeholderTextColor={theme.textMuted}
           value={title}
           onChangeText={setTitle}
         />
 
-        <ThemedText type="small" themeColor="textSecondary">
+        <ThemedText type="label" themeColor="textSecondary">
           Description (optional)
         </ThemedText>
         <TextInput
           style={[styles.input, { borderColor: theme.border, color: theme.text }]}
           placeholder="Short description"
-          placeholderTextColor={theme.textSecondary}
+          placeholderTextColor={theme.textMuted}
           value={description}
           onChangeText={setDescription}
         />
-      </ThemedView>
+      </Card>
 
       {type === 'WORKOUT' ? (
-        <ThemedView type="backgroundElement" style={[styles.panel, { borderColor: theme.border }]}>
-          <ThemedText type="small" themeColor="textSecondary">
+        <Card style={styles.panel}>
+          <ThemedText type="label" themeColor="textSecondary">
             Duration
           </ThemedText>
           <TextInput
             style={[styles.input, { borderColor: theme.border, color: theme.text }]}
             placeholder="e.g. 45 min"
-            placeholderTextColor={theme.textSecondary}
+            placeholderTextColor={theme.textMuted}
             value={duration}
             onChangeText={setDuration}
           />
 
-          <ThemedText type="small" themeColor="textSecondary">
+          <ThemedText type="label" themeColor="textSecondary">
             Difficulty
           </ThemedText>
           <TextInput
             style={[styles.input, { borderColor: theme.border, color: theme.text }]}
             placeholder="e.g. Intermediate"
-            placeholderTextColor={theme.textSecondary}
+            placeholderTextColor={theme.textMuted}
             value={difficulty}
             onChangeText={setDifficulty}
           />
 
-          <ThemedText type="small" themeColor="textSecondary">
+          <ThemedText type="label" themeColor="textSecondary">
             Focus
           </ThemedText>
           <TextInput
             style={[styles.input, { borderColor: theme.border, color: theme.text }]}
             placeholder="What this plan targets"
-            placeholderTextColor={theme.textSecondary}
+            placeholderTextColor={theme.textMuted}
             value={workoutFocus}
             onChangeText={setWorkoutFocus}
           />
 
-          <ThemedText type="small" themeColor="textSecondary">
+          <ThemedText type="label" themeColor="textSecondary">
             Summary
           </ThemedText>
           <TextInput
             style={[styles.input, { borderColor: theme.border, color: theme.text }]}
             placeholder="One-line summary"
-            placeholderTextColor={theme.textSecondary}
+            placeholderTextColor={theme.textMuted}
             value={workoutSummary}
             onChangeText={setWorkoutSummary}
           />
-        </ThemedView>
+        </Card>
       ) : (
-        <ThemedView type="backgroundElement" style={[styles.panel, { borderColor: theme.border }]}>
-          <ThemedText type="small" themeColor="textSecondary">
+        <Card style={styles.panel}>
+          <ThemedText type="label" themeColor="textSecondary">
             Calories
           </ThemedText>
           <TextInput
             style={[styles.input, { borderColor: theme.border, color: theme.text }]}
             placeholder="e.g. 2,000 kcal"
-            placeholderTextColor={theme.textSecondary}
+            placeholderTextColor={theme.textMuted}
             value={calories}
             onChangeText={setCalories}
           />
 
-          <ThemedText type="small" themeColor="textSecondary">
+          <ThemedText type="label" themeColor="textSecondary">
             Focus
           </ThemedText>
           <TextInput
             style={[styles.input, { borderColor: theme.border, color: theme.text }]}
             placeholder="What this plan targets"
-            placeholderTextColor={theme.textSecondary}
+            placeholderTextColor={theme.textMuted}
             value={dietFocus}
             onChangeText={setDietFocus}
           />
 
-          <ThemedText type="small" themeColor="textSecondary">
+          <ThemedText type="label" themeColor="textSecondary">
             Summary
           </ThemedText>
           <TextInput
             style={[styles.input, { borderColor: theme.border, color: theme.text }]}
             placeholder="One-line summary"
-            placeholderTextColor={theme.textSecondary}
+            placeholderTextColor={theme.textMuted}
             value={dietSummary}
             onChangeText={setDietSummary}
           />
-        </ThemedView>
+        </Card>
       )}
 
-      <ThemedView type="backgroundElement" style={[styles.panel, { borderColor: theme.border }]}>
+      <Card style={styles.panel}>
         <ThemedText type="smallBold">{type === 'WORKOUT' ? 'Exercises' : 'Meals'}</ThemedText>
 
         {type === 'WORKOUT'
@@ -271,21 +272,21 @@ export function CreatePlanScreen() {
                 <TextInput
                   style={[styles.input, styles.rowInput, { borderColor: theme.border, color: theme.text }]}
                   placeholder="Exercise name"
-                  placeholderTextColor={theme.textSecondary}
+                  placeholderTextColor={theme.textMuted}
                   value={row.name}
                   onChangeText={(value) => updateExercise(row.rowId, { name: value })}
                 />
                 <TextInput
                   style={[styles.input, styles.rowInput, { borderColor: theme.border, color: theme.text }]}
                   placeholder="Note (optional)"
-                  placeholderTextColor={theme.textSecondary}
+                  placeholderTextColor={theme.textMuted}
                   value={row.note}
                   onChangeText={(value) => updateExercise(row.rowId, { note: value })}
                 />
                 <TextInput
                   style={[styles.input, styles.setsInput, { borderColor: theme.border, color: theme.text }]}
                   placeholder="Sets"
-                  placeholderTextColor={theme.textSecondary}
+                  placeholderTextColor={theme.textMuted}
                   keyboardType="number-pad"
                   value={row.sets}
                   onChangeText={(value) => updateExercise(row.rowId, { sets: value })}
@@ -302,7 +303,7 @@ export function CreatePlanScreen() {
                 <TextInput
                   style={[styles.input, styles.rowInput, { borderColor: theme.border, color: theme.text }]}
                   placeholder="e.g. Breakfast: eggs, toast, fruit"
-                  placeholderTextColor={theme.textSecondary}
+                  placeholderTextColor={theme.textMuted}
                   value={row.label}
                   onChangeText={(value) => updateMeal(row.rowId, value)}
                 />
@@ -321,20 +322,9 @@ export function CreatePlanScreen() {
             + Add {type === 'WORKOUT' ? 'exercise' : 'meal'}
           </ThemedText>
         </Pressable>
-      </ThemedView>
+      </Card>
 
-      <Pressable
-        style={[styles.createButton, { backgroundColor: theme.accent, opacity: isSaving ? 0.6 : 1 }]}
-        onPress={handleCreate}
-        disabled={isSaving}>
-        {isSaving ? (
-          <ActivityIndicator color="#FFFFFF" size="small" />
-        ) : (
-          <ThemedText type="smallBold" style={styles.createButtonLabel}>
-            Create plan
-          </ThemedText>
-        )}
-      </Pressable>
+      <Button label="Create plan" onPress={handleCreate} loading={isSaving} fullWidth />
     </ScreenScaffold>
   );
 }
@@ -347,25 +337,20 @@ const styles = StyleSheet.create({
   typePill: {
     flex: 1,
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.two,
+    borderRadius: Radii.sm,
+    paddingVertical: Spacing.three,
     alignItems: 'center',
   },
-  typePillLabelActive: {
-    color: '#FFFFFF',
-  },
   panel: {
-    borderRadius: Spacing.two,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: Spacing.three,
     gap: Spacing.two,
   },
   input: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: Spacing.two,
+    borderRadius: Radii.sm,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,
     fontSize: 16,
+    minHeight: 44,
   },
   rowEditor: {
     flexDirection: 'row',
@@ -383,17 +368,8 @@ const styles = StyleSheet.create({
   },
   addButton: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.two,
-    alignItems: 'center',
-  },
-  createButton: {
-    borderRadius: Spacing.two,
+    borderRadius: Radii.sm,
     paddingVertical: Spacing.three,
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  createButtonLabel: {
-    color: '#FFFFFF',
   },
 });
