@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { GoogleSignInButton } from '@/components/auth/google-sign-in-button';
 import { ThemedText } from '@/components/themed-text';
@@ -21,19 +21,22 @@ export default function SignInScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  // Shown inline rather than via Alert, which is a no-op on React Native Web.
+  const [formError, setFormError] = useState<string | null>(null);
 
   const handleSignIn = async () => {
     if (!email || !password) {
-      Alert.alert('Missing details', 'Enter your email and password to sign in.');
+      setFormError('Enter your email and password to sign in.');
       return;
     }
 
     try {
       setIsLoading(true);
+      setFormError(null);
       await signIn(email.trim().toLowerCase(), password);
       // The root layout watches isSignedIn and redirects to the app tabs.
     } catch (error) {
-      Alert.alert('Sign in failed', errorMessage(error));
+      setFormError(errorMessage(error));
     } finally {
       setIsLoading(false);
     }
@@ -89,6 +92,14 @@ export default function SignInScreen() {
       </View>
 
       <View style={styles.actions}>
+        {formError ? (
+          <View style={[styles.errorBanner, { backgroundColor: theme.dangerSoft }]}>
+            <ThemedText type="small" themeColor="danger">
+              {formError}
+            </ThemedText>
+          </View>
+        ) : null}
+
         <Button label="Sign in" onPress={handleSignIn} loading={isLoading} fullWidth />
 
         <View style={styles.dividerRow}>
@@ -145,6 +156,10 @@ const styles = StyleSheet.create({
   },
   actions: {
     gap: Spacing.three,
+  },
+  errorBanner: {
+    borderRadius: Radii.sm,
+    padding: Spacing.three,
   },
   dividerRow: {
     flexDirection: 'row',

@@ -7,7 +7,7 @@ import React, {
   useState,
 } from 'react';
 
-import { ApiError, authApi, fetchCurrentUser, type AuthUser } from '@/lib/api';
+import { ApiError, authApi, fetchCurrentUser, type AuthPayload, type AuthUser } from '@/lib/api';
 import { clearAccessToken, loadAccessToken, saveAccessToken } from '@/lib/token-storage';
 
 export interface AuthContextType {
@@ -21,6 +21,10 @@ export interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+/** This app only serves coaches — a client's token is valid but 403s on every screen here. */
+const APP_ROLE = 'COACH';
+const WRONG_ROLE_MESSAGE = 'That’s a client account. Sign in with a coach account, or use the Coach OS client app.';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -39,6 +43,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
         const currentUser = await fetchCurrentUser();
+        if (currentUser.role !== APP_ROLE) {
+          // Valid token, wrong app. Drop it rather than restoring a session
+          // that would 403 on every screen.
+          await clearAccessToken();
+          if (active) setUser(null);
+          return;
+        }
         if (active) setUser(currentUser);
       } catch (error) {
         // Token missing, expired or backend unreachable → clear local session.
@@ -60,23 +71,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    const payload = await authApi.signIn({ email, password });
+  /** Only keep a session that belongs to this app's role. */
+  const acceptSession = useCallback(async (payload: AuthPayload) => {
+    if (payload.user.role !== APP_ROLE) {
+      await clearAccessToken();
+      throw new Error(WRONG_ROLE_MESSAGE);
+    }
     await saveAccessToken(payload.accessToken);
     setUser(payload.user);
   }, []);
 
-  const signUp = useCallback(async (email: string, password: string, name: string) => {
-    const payload = await authApi.signUp({ name, email, password });
-    await saveAccessToken(payload.accessToken);
-    setUser(payload.user);
-  }, []);
+  const signIn = useCallback(
+    async (email: string, password: string) => {
+      await acceptSession(await authApi.signIn({ email, password }));
+    },
+    [acceptSession],
+  );
 
-  const signInWithGoogle = useCallback(async (idToken: string) => {
-    const payload = await authApi.signInWithGoogle(idToken);
-    await saveAccessToken(payload.accessToken);
-    setUser(payload.user);
-  }, []);
+  const signUp = useCallback(
+    async (email: string, password: string, name: string) => {
+      await acceptSession(await authApi.signUp({ name, email, password }));
+    },
+    [acceptSession],
+  );
+
+  const signInWithGoogle = useCallback(
+    async (idToken: string) => {
+      await acceptSession(await authApi.signInWithGoogle(idToken));
+    },
+    [acceptSession],
+  );
 
   const signOut = useCallback(async () => {
     setUser(null);

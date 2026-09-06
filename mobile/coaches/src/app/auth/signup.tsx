@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 import { GoogleSignInButton } from '@/components/auth/google-sign-in-button';
 import { ThemedText } from '@/components/themed-text';
@@ -23,29 +23,32 @@ export default function SignUpScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  // Shown inline rather than via Alert, which is a no-op on React Native Web.
+  const [formError, setFormError] = useState<string | null>(null);
 
   const handleSignUp = async () => {
     if (!name || !email || !password || !confirmPassword) {
-      Alert.alert('Missing details', 'Fill in every field to create your account.');
+      setFormError('Fill in every field to create your account.');
       return;
     }
 
     if (password.length < 8) {
-      Alert.alert('Password too short', 'Use at least 8 characters.');
+      setFormError('Use at least 8 characters for your password.');
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Passwords do not match', 'Re-enter the same password in both fields.');
+      setFormError('Those passwords do not match.');
       return;
     }
 
     try {
       setIsLoading(true);
+      setFormError(null);
       await signUp(email.trim().toLowerCase(), password, name.trim());
       // The root layout watches isSignedIn and redirects to the app tabs.
     } catch (error) {
-      Alert.alert('Sign up failed', errorMessage(error));
+      setFormError(errorMessage(error));
     } finally {
       setIsLoading(false);
     }
@@ -129,6 +132,14 @@ export default function SignUpScreen() {
         </View>
 
         <View style={styles.actions}>
+          {formError ? (
+            <View style={[styles.errorBanner, { backgroundColor: theme.dangerSoft }]}>
+              <ThemedText type="small" themeColor="danger">
+                {formError}
+              </ThemedText>
+            </View>
+          ) : null}
+
           <Button label="Create account" onPress={handleSignUp} loading={isLoading} fullWidth />
 
           <View style={styles.dividerRow}>
@@ -187,6 +198,10 @@ const styles = StyleSheet.create({
   actions: {
     gap: Spacing.three,
     marginTop: 'auto',
+  },
+  errorBanner: {
+    borderRadius: Radii.sm,
+    padding: Spacing.three,
   },
   dividerRow: {
     flexDirection: 'row',
