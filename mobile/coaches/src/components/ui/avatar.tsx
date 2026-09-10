@@ -1,7 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Radii } from '@/constants/theme';
+import { Fonts, Radii } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 type AvatarProps = {
@@ -32,9 +32,9 @@ export function Avatar({ name, size = 'md' }: AvatarProps) {
     <View
       style={[
         styles.circle,
-        { width: box, height: box, borderRadius: Radii.pill, backgroundColor: theme.accent },
+        { width: box, height: box, borderRadius: Radii.pill, backgroundColor: theme.surfaceSunken, borderWidth: StyleSheet.hairlineWidth, borderColor: theme.border },
       ]}>
-      <ThemedText themeColor="onAccent" style={[styles.initials, { fontSize: font }]}>
+      <ThemedText themeColor="textSecondary" style={[styles.initials, { fontSize: font }]}>
         {initialsOf(name)}
       </ThemedText>
     </View>
@@ -47,7 +47,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   initials: {
-    fontWeight: 700,
+    fontFamily: Fonts.sansSemibold,
     letterSpacing: 0.5,
   },
 });

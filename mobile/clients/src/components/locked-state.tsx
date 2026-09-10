@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Radii, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 type LockedStateProps = {
@@ -32,7 +32,7 @@ export function LockedState({ title }: LockedStateProps) {
         <Pressable
           style={[styles.button, { backgroundColor: theme.accent }]}
           onPress={() => router.push('/explore-coaches')}>
-          <ThemedText type="smallBold" style={styles.buttonLabel}>
+          <ThemedText type="smallBold" themeColor="onAccent">
             Explore coaches
           </ThemedText>
         </Pressable>
@@ -61,12 +61,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   button: {
-    borderRadius: Spacing.two,
+    borderRadius: Radii.sm,
     paddingHorizontal: Spacing.four,
     paddingVertical: Spacing.two,
     marginTop: Spacing.one,
-  },
-  buttonLabel: {
-    color: '#FFFFFF',
   },
 });

@@ -160,7 +160,7 @@ export function ProfileScreen() {
         <View style={styles.identityText}>
           <ThemedText type="display">{profile.name}</ThemedText>
           <View style={styles.identityMeta}>
-            <Pill label="Client" tone="accent" />
+            <Pill label="Client" />
             <ThemedText type="meta">Member since {formatMemberSince(profile.memberSince)}</ThemedText>
           </View>
         </View>

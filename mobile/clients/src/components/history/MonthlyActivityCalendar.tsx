@@ -1,6 +1,9 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
+
+import { ThemedText } from '@/components/themed-text';
+import { useTheme } from '@/hooks/use-theme';
 
 export type DailyActivity = {
   date: number;
@@ -26,12 +29,16 @@ const weekDays = [
 ];
 
 export function MonthlyActivityCalendar({ entries, daysInMonth = 30 }: MonthlyActivityCalendarProps) {
+  const theme = useTheme();
+
   return (
     <View>
       <View style={styles.weekRow}>
         {weekDays.map((day) => (
           <View key={day.key} style={styles.weekDay}>
-            <Text style={styles.weekDayLabel}>{day.label}</Text>
+            <ThemedText type="meta" themeColor="chartAxis">
+              {day.label}
+            </ThemedText>
           </View>
         ))}
       </View>
@@ -55,13 +62,13 @@ export function MonthlyActivityCalendar({ entries, daysInMonth = 30 }: MonthlyAc
               <View style={styles.dayIndicatorWrap}>
                 {isActive ? (
                   <Svg width={28} height={28} viewBox="0 0 28 28">
-                    <Circle cx={14} cy={14} r={9} fill="none" stroke="#1F2937" strokeWidth={2} opacity={0.5} />
+                    <Circle cx={14} cy={14} r={9} fill="none" stroke={theme.chartTrack} strokeWidth={2} opacity={0.5} />
                     <Circle
                       cx={14}
                       cy={14}
                       r={9}
                       fill="none"
-                      stroke="#3A7BFF"
+                      stroke={theme.chartWorkout}
                       strokeWidth={2.5}
                       strokeDasharray={`${ringCircumference} ${ringCircumference}`}
                       strokeDashoffset={ringCircumference - workoutDash}
@@ -73,7 +80,7 @@ export function MonthlyActivityCalendar({ entries, daysInMonth = 30 }: MonthlyAc
                       cy={14}
                       r={6}
                       fill="none"
-                      stroke="#1F2937"
+                      stroke={theme.chartTrack}
                       strokeWidth={2}
                       opacity={0.45}
                     />
@@ -82,7 +89,7 @@ export function MonthlyActivityCalendar({ entries, daysInMonth = 30 }: MonthlyAc
                       cy={14}
                       r={6}
                       fill="none"
-                      stroke="#34D399"
+                      stroke={theme.chartDiet}
                       strokeWidth={2.5}
                       strokeDasharray={`${ringCircumference} ${ringCircumference}`}
                       strokeDashoffset={ringCircumference - dietDash}
@@ -91,10 +98,12 @@ export function MonthlyActivityCalendar({ entries, daysInMonth = 30 }: MonthlyAc
                     />
                   </Svg>
                 ) : (
-                  <View style={styles.emptyDayCircle} />
+                  <View style={[styles.emptyDayCircle, { borderColor: theme.chartTrack }]} />
                 )}
               </View>
-              <Text style={styles.dayNumber}>{dayNumber}</Text>
+              <ThemedText type="meta" themeColor="chartAxis" style={styles.dayNumber}>
+                {dayNumber}
+              </ThemedText>
             </View>
           );
         })}
@@ -112,10 +121,6 @@ const styles = StyleSheet.create({
   weekDay: {
     width: '14.28%',
     alignItems: 'center',
-  },
-  weekDayLabel: {
-    fontSize: 12,
-    color: '#64748B',
   },
   calendarGrid: {
     flexDirection: 'row',
@@ -139,13 +144,8 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: '#2C3A4E',
-    backgroundColor: 'rgba(15, 23, 42, 0.15)',
   },
   dayNumber: {
     marginTop: 4,
-    fontSize: 12,
-    lineHeight: 14,
-    color: '#64748B',
   },
 });

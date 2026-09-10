@@ -6,7 +6,7 @@ import Svg, { Circle } from 'react-native-svg';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Radii, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { getDietProgress, HomePlanCard } from '@/utils/dashboard-data';
 
@@ -40,22 +40,18 @@ export function PlanCard({ plan }: PlanCardProps) {
       <ThemedView
         type="backgroundElement"
         style={[styles.card, { borderColor: theme.border }]}>
-        <View style={[styles.iconWrap, { backgroundColor: plan.accentBackground }]}>
-          <SymbolView name={plan.iconName} size={28} tintColor={plan.accentColor} />
+        <View style={[styles.iconWrap, { backgroundColor: theme.surfaceSunken }]}>
+          <SymbolView name={plan.iconName} size={28} tintColor={theme.textSecondary} />
         </View>
 
         <View style={styles.copy}>
-          <ThemedText type="smallBold" themeColor="textSecondary">
-            {plan.eyebrow}
-          </ThemedText>
-          <ThemedText type="subtitle" style={styles.title}>
+          <ThemedText type="meta">{plan.eyebrow}</ThemedText>
+          <ThemedText type="heading">
             {plan.title}
           </ThemedText>
           <ThemedText themeColor="textSecondary">{plan.summary}</ThemedText>
           <View style={styles.metaRow}>
-            <ThemedText type="smallBold" style={{ color: plan.accentColor }}>
-              {plan.metric}
-            </ThemedText>
+            <ThemedText type="smallBold">{plan.metric}</ThemedText>
             <ThemedText type="small" themeColor="textSecondary" style={styles.detail}>
               {plan.detail}
             </ThemedText>
@@ -70,7 +66,7 @@ export function PlanCard({ plan }: PlanCardProps) {
                 cx={23}
                 cy={23}
                 r={18}
-                stroke={plan.accentColor}
+                stroke={theme.accent}
                 strokeWidth={3}
                 fill="none"
                 strokeDasharray={circumference}
@@ -80,7 +76,7 @@ export function PlanCard({ plan }: PlanCardProps) {
               />
             </Svg>
             <View style={styles.progressValue}>
-              <ThemedText type="smallBold" style={{ color: plan.accentColor, fontSize: 10 }}>
+              <ThemedText type="meta" themeColor="accent">
                 {progressPercent}%
               </ThemedText>
             </View>
@@ -105,7 +101,7 @@ const styles = StyleSheet.create({
     opacity: 0.72,
   },
   card: {
-    borderRadius: Spacing.two,
+    borderRadius: Radii.md,
     borderWidth: StyleSheet.hairlineWidth,
     padding: Spacing.three,
     flexDirection: 'row',
@@ -115,17 +111,13 @@ const styles = StyleSheet.create({
   iconWrap: {
     width: 56,
     height: 56,
-    borderRadius: Spacing.two,
+    borderRadius: Radii.sm,
     alignItems: 'center',
     justifyContent: 'center',
   },
   copy: {
     flex: 1,
     gap: Spacing.one,
-  },
-  title: {
-    fontSize: 24,
-    lineHeight: 30,
   },
   metaRow: {
     gap: Spacing.one,

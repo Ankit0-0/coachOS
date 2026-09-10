@@ -7,7 +7,9 @@ type CardProps = ViewProps & {
   /**
    * `raised` — a card sitting on the page background.
    * `inset` — a row nested inside a raised card.
-   * Distinct fills and radii keep these from collapsing into one look.
+   * Both are flat: a hairline border separates them from the page rather
+   * than a shadow or a heavy grey fill, so a screen of cards reads as one
+   * surface with divisions instead of a stack of floating tiles.
    */
   variant?: 'raised' | 'inset';
   padded?: boolean;
@@ -20,7 +22,10 @@ export function Card({ variant = 'raised', padded = true, style, ...rest }: Card
     <View
       style={[
         variant === 'raised' ? styles.raised : styles.inset,
-        { backgroundColor: variant === 'raised' ? theme.surface : theme.surfaceSunken },
+        {
+          backgroundColor: variant === 'raised' ? theme.surface : theme.surfaceSunken,
+          borderColor: theme.border,
+        },
         padded && (variant === 'raised' ? styles.raisedPadding : styles.insetPadding),
         style,
       ]}
@@ -32,15 +37,17 @@ export function Card({ variant = 'raised', padded = true, style, ...rest }: Card
 const styles = StyleSheet.create({
   raised: {
     borderRadius: Radii.md,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   inset: {
     borderRadius: Radii.sm,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   raisedPadding: {
-    padding: Spacing.three,
+    padding: Spacing.four,
   },
   insetPadding: {
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
+    paddingVertical: Spacing.three,
   },
 });

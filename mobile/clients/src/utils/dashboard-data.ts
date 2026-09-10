@@ -21,8 +21,6 @@ export type HomePlanCard = {
   detail: string;
   route: '/workout' | '/diet';
   iconName: SymbolName;
-  accentColor: string;
-  accentBackground: string;
 };
 
 export type WorkoutSet = {
@@ -55,8 +53,6 @@ export const todaysPlanCards: HomePlanCard[] = [
     detail: assignedWorkoutPlan.exercises.slice(0, 2).map((exercise) => exercise.name).join(' • '),
     route: '/workout',
     iconName: { ios: 'figure.strengthtraining.traditional', android: 'fitness_center', web: 'fitness_center' },
-    accentColor: '#0F8B8D',
-    accentBackground: '#E4F5F4',
   },
   {
     id: 'diet',
@@ -67,8 +63,6 @@ export const todaysPlanCards: HomePlanCard[] = [
     detail: assignedDietPlan.meals.slice(0, 2).map((meal) => meal.label).join(' • '),
     route: '/diet',
     iconName: { ios: 'fork.knife.circle', android: 'restaurant', web: 'restaurant' },
-    accentColor: '#D97904',
-    accentBackground: '#FFF1DF',
   },
 ];
 
