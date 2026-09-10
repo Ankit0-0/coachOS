@@ -50,9 +50,10 @@ export default function SignInScreen() {
         </Pressable>
 
         <View style={styles.header}>
+          <ThemedText type="meta" themeColor="accent">COACH OS · COACH APP</ThemedText>
           <ThemedText type="display">Sign in</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
-            Coach OS · coach app
+            Welcome back.
           </ThemedText>
         </View>
 
@@ -88,6 +89,14 @@ export default function SignInScreen() {
               secureTextEntry
             />
           </View>
+
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push('/auth/forgot-password')}
+            hitSlop={8}
+            style={styles.forgot}>
+            <ThemedText type="linkPrimary">Forgot password?</ThemedText>
+          </Pressable>
         </View>
       </View>
 
@@ -145,6 +154,9 @@ const styles = StyleSheet.create({
   },
   field: {
     gap: Spacing.one,
+  },
+  forgot: {
+    alignSelf: 'flex-end',
   },
   input: {
     borderWidth: StyleSheet.hairlineWidth,

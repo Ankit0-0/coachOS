@@ -116,6 +116,22 @@ export const authApi = {
     });
   },
 
+  forgotPassword(email: string): Promise<{ message: string }> {
+    return apiRequest<{ message: string }>('/auth/forgot-password', {
+      method: 'POST',
+      body: { email },
+      auth: false,
+    });
+  },
+
+  resetPassword(input: { email: string; code: string; newPassword: string }): Promise<{ message: string }> {
+    return apiRequest<{ message: string }>('/auth/reset-password', {
+      method: 'POST',
+      body: input,
+      auth: false,
+    });
+  },
+
   signInWithGoogle(idToken: string): Promise<AuthPayload> {
     return apiRequest<AuthPayload>('/auth/google', {
       method: 'POST',

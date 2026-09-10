@@ -24,4 +24,12 @@ export const env = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   clientUrl: process.env.CLIENT_URL ?? "http://localhost:8081",
   logLevel: process.env.LOG_LEVEL ?? (process.env.NODE_ENV === "production" ? "info" : "debug"),
+  /**
+   * Optional. Without it, password reset codes are written to the log instead
+   * of emailed — fine for local development, but production needs a real key
+   * or no one can complete a reset.
+   */
+  resendApiKey: process.env.RESEND_API_KEY,
+  /** Resend's shared sender works without a verified domain of your own. */
+  resendFromEmail: process.env.RESEND_FROM_EMAIL ?? "CoachOS <onboarding@resend.dev>",
 };

@@ -1,42 +1,42 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
-import { GoogleSignInButton } from '@/components/auth/google-sign-in-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
 import { Radii, Spacing } from '@/constants/theme';
-import { useAuth } from '@/contexts/auth';
 import { useTheme } from '@/hooks/use-theme';
+import { authApi } from '@/lib/api';
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Something went wrong. Please try again.';
-}
-
-export default function SignUpScreen() {
+export default function ResetPasswordScreen() {
   const router = useRouter();
   const theme = useTheme();
-  const { signUp } = useAuth();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const params = useLocalSearchParams<{ email?: string }>();
+  const [email, setEmail] = useState(params.email ?? '');
+  const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  // Shown inline rather than via Alert, which is a no-op on React Native Web.
   const [formError, setFormError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
 
-  const handleSignUp = async () => {
-    if (!name || !email || !password || !confirmPassword) {
-      setFormError('Fill in every field to create your account.');
+  const handleReset = async () => {
+    const trimmedEmail = email.trim().toLowerCase();
+    const trimmedCode = code.trim().toUpperCase();
+
+    if (!trimmedEmail || !trimmedCode || !password || !confirmPassword) {
+      setFormError('Fill in every field to set a new password.');
       return;
     }
-
+    if (trimmedCode.length !== 8) {
+      setFormError('The code is 8 characters long.');
+      return;
+    }
     if (password.length < 8) {
-      setFormError('Use at least 8 characters for your password.');
+      setFormError('Use at least 8 characters for your new password.');
       return;
     }
-
     if (password !== confirmPassword) {
       setFormError('Those passwords do not match.');
       return;
@@ -45,14 +45,32 @@ export default function SignUpScreen() {
     try {
       setIsLoading(true);
       setFormError(null);
-      await signUp(email.trim().toLowerCase(), password, name.trim());
-      // The root layout watches isSignedIn and redirects to the app tabs.
-    } catch (error) {
-      setFormError(errorMessage(error));
+      await authApi.resetPassword({ email: trimmedEmail, code: trimmedCode, newPassword: password });
+      setDone(true);
+    } catch {
+      // The server won't say whether the code was wrong, expired, or already
+      // used, so cover all three here.
+      setFormError('That code didn’t work. It may have expired or already been used — request a new one.');
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (done) {
+    return (
+      <ThemedView style={styles.container}>
+        <View style={styles.top}>
+          <View style={styles.header}>
+            <ThemedText type="display">Password updated</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              You can sign in with your new password now.
+            </ThemedText>
+          </View>
+        </View>
+        <Button label="Back to sign in" onPress={() => router.replace('/auth/signin')} fullWidth />
+      </ThemedView>
+    );
+  }
 
   return (
     <ThemedView style={styles.container}>
@@ -62,28 +80,13 @@ export default function SignUpScreen() {
         </Pressable>
 
         <View style={styles.header}>
-          <ThemedText type="meta" themeColor="accent">COACH OS · COACH APP</ThemedText>
-          <ThemedText type="display">Create account</ThemedText>
+          <ThemedText type="display">Enter your code</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
-            Set up your coach profile — you can invite clients right after.
+            Check your email for the 8-character code. It expires 15 minutes after you asked for it.
           </ThemedText>
         </View>
 
         <View style={styles.form}>
-          <View style={styles.field}>
-            <ThemedText type="label" themeColor="textSecondary">
-              Full name
-            </ThemedText>
-            <TextInput
-              style={[styles.input, { borderColor: theme.border, color: theme.text }]}
-              placeholder="How clients will see you"
-              placeholderTextColor={theme.textMuted}
-              value={name}
-              onChangeText={setName}
-              editable={!isLoading}
-            />
-          </View>
-
           <View style={styles.field}>
             <ThemedText type="label" themeColor="textSecondary">
               Email
@@ -103,7 +106,24 @@ export default function SignUpScreen() {
 
           <View style={styles.field}>
             <ThemedText type="label" themeColor="textSecondary">
-              Password
+              Reset code
+            </ThemedText>
+            <TextInput
+              style={[styles.input, styles.codeInput, { borderColor: theme.border, color: theme.text }]}
+              placeholder="ABCD2345"
+              placeholderTextColor={theme.textMuted}
+              value={code}
+              onChangeText={(value) => setCode(value.toUpperCase())}
+              editable={!isLoading}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              maxLength={8}
+            />
+          </View>
+
+          <View style={styles.field}>
+            <ThemedText type="label" themeColor="textSecondary">
+              New password
             </ThemedText>
             <TextInput
               style={[styles.input, { borderColor: theme.border, color: theme.text }]}
@@ -118,11 +138,11 @@ export default function SignUpScreen() {
 
           <View style={styles.field}>
             <ThemedText type="label" themeColor="textSecondary">
-              Confirm password
+              Confirm new password
             </ThemedText>
             <TextInput
               style={[styles.input, { borderColor: theme.border, color: theme.text }]}
-              placeholder="Repeat your password"
+              placeholder="Repeat your new password"
               placeholderTextColor={theme.textMuted}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
@@ -141,22 +161,17 @@ export default function SignUpScreen() {
             </View>
           ) : null}
 
-          <Button label="Create account" onPress={handleSignUp} loading={isLoading} fullWidth />
-
-          <View style={styles.dividerRow}>
-            <View style={[styles.divider, { backgroundColor: theme.border }]} />
-            <ThemedText type="meta">or</ThemedText>
-            <View style={[styles.divider, { backgroundColor: theme.border }]} />
-          </View>
-
-          <GoogleSignInButton />
+          <Button label="Set new password" onPress={handleReset} loading={isLoading} fullWidth />
 
           <View style={styles.prompt}>
             <ThemedText type="small" themeColor="textSecondary">
-              Already have an account?
+              Need another code?
             </ThemedText>
-            <Pressable accessibilityRole="button" onPress={() => router.push('/auth/signin')} hitSlop={8}>
-              <ThemedText type="linkPrimary">Sign in</ThemedText>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.replace('/auth/forgot-password')}
+              hitSlop={8}>
+              <ThemedText type="linkPrimary">Request one</ThemedText>
             </Pressable>
           </View>
         </View>
@@ -168,12 +183,16 @@ export default function SignUpScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  content: {
-    flexGrow: 1,
+    justifyContent: 'space-between',
     padding: Spacing.four,
     paddingTop: Spacing.five,
     paddingBottom: Spacing.five,
+  },
+  content: {
+    flexGrow: 1,
+    gap: Spacing.four,
+  },
+  top: {
     gap: Spacing.four,
   },
   back: {
@@ -196,6 +215,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     minHeight: 48,
   },
+  codeInput: {
+    letterSpacing: 4,
+  },
   actions: {
     gap: Spacing.three,
     marginTop: 'auto',
@@ -203,15 +225,6 @@ const styles = StyleSheet.create({
   errorBanner: {
     borderRadius: Radii.sm,
     padding: Spacing.three,
-  },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  divider: {
-    flex: 1,
-    height: StyleSheet.hairlineWidth,
   },
   prompt: {
     flexDirection: 'row',
