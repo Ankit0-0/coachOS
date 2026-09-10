@@ -18,3 +18,13 @@ export const googleSchema = z.object({
   idToken: z.string().min(1),
   role: role.optional(),
 });
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+});
+
+export const resetPasswordSchema = z.object({
+  email: z.string().email(),
+  code: z.string().length(8),
+  newPassword: z.string().min(8),
+});

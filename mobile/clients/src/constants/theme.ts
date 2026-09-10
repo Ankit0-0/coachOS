@@ -19,6 +19,16 @@ export const Colors = {
     accentSoft: '#E4F5F4',
     success: '#2F8F46',
     warning: '#D97904',
+    /** Raised card sitting on `background`. */
+    surface: '#F2F4F7',
+    /** Inset row nested inside a `surface` card. */
+    surfaceSunken: '#E4E8EE',
+    /** Text/icons placed on an `accent` fill. */
+    onAccent: '#FFFFFF',
+    /** Quietest tier of text — timestamps, units, hints. */
+    textMuted: '#8A9099',
+    danger: '#C0362C',
+    dangerSoft: '#FDECEA',
   },
   dark: {
     text: '#ffffff',
@@ -31,6 +41,12 @@ export const Colors = {
     accentSoft: '#123133',
     success: '#7CD992',
     warning: '#F5B04C',
+    surface: '#17181C',
+    surfaceSunken: '#212328',
+    onAccent: '#04211F',
+    textMuted: '#787E87',
+    danger: '#FF7A6E',
+    dangerSoft: '#2A1512',
   },
 } as const;
 
@@ -73,3 +89,14 @@ export const Spacing = {
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
 export const MaxContentWidth = 800;
+
+/**
+ * Corner radius by role, so a badge, a card, and an avatar aren't all
+ * forced through the same value.
+ */
+export const Radii = {
+  sm: 8,
+  md: 14,
+  lg: 22,
+  pill: 999,
+} as const;

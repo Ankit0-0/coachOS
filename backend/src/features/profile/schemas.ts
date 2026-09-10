@@ -11,3 +11,18 @@ export const updateCoachProfileSchema = z
   .refine((value) => Object.keys(value).length > 0, {
     message: "At least one field must be provided",
   });
+
+export const updateClientProfileSchema = z
+  .object({
+    name: z.string().min(1).max(100).optional(),
+    heightCm: z.number().int().min(50).max(280).nullable().optional(),
+    /**
+     * Self-reported. Distinct from WeightEntry, which is the day-by-day
+     * tracked history — this is a single value the client sets themselves.
+     */
+    weightKg: z.number().min(20).max(500).nullable().optional(),
+    goals: z.string().max(1000).optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: "At least one field must be provided",
+  });

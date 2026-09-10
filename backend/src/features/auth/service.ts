@@ -6,8 +6,14 @@ import { GOOGLE_PROVIDER } from "../../constants/auth.js";
 import { logger } from "../../config/logger.js";
 import { prisma } from "../../config/prisma.config.js";
 import { normalizeEmail } from "../../utils/email.js";
+import { sendPasswordResetEmail } from "../../utils/mailer.js";
 import { hashPassword, verifyPassword } from "../../utils/password.js";
+import { generateResetCode, hashResetCode } from "../../utils/reset-code.js";
 import { createAccessToken } from "../../utils/jwt.js";
+
+const RESET_CODE_TTL_MINUTES = 15;
+/** Failed guesses allowed against one token before it's burned. */
+const RESET_MAX_ATTEMPTS = 5;
 
 const googleClient = new OAuth2Client(env.googleClientId);
 
@@ -98,4 +104,83 @@ export async function loginWithGoogle(input: { idToken: string; role?: Role }) {
     data: { provider: GOOGLE_PROVIDER, providerAccountId: payload.sub, userId: user.id },
   });
   return result(user);
+}
+
+/**
+ * Issues a reset code if the address belongs to an account. Callers must
+ * respond identically either way — whether an email is registered is not
+ * something this endpoint should reveal.
+ */
+export async function requestPasswordReset(input: { email: string }) {
+  const email = normalizeEmail(input.email);
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) {
+    logger.debug({ email }, "requestPasswordReset: no account for this email — responding generically anyway");
+    return;
+  }
+
+  const code = generateResetCode();
+  await prisma.passwordResetToken.create({
+    data: {
+      userId: user.id,
+      codeHash: hashResetCode(code),
+      expiresAt: new Date(Date.now() + RESET_CODE_TTL_MINUTES * 60 * 1000),
+    },
+  });
+
+  await sendPasswordResetEmail(user.email, code);
+  logger.debug({ email, userId: user.id }, "requestPasswordReset: reset code issued");
+}
+
+export async function resetPassword(input: { email: string; code: string; newPassword: string }) {
+  const email = normalizeEmail(input.email);
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) {
+    logger.debug({ email }, "resetPassword: rejected — no account for this email");
+    throw new Error("INVALID_RESET_CODE");
+  }
+
+  const token = await prisma.passwordResetToken.findFirst({
+    where: { userId: user.id, usedAt: null, expiresAt: { gt: new Date() } },
+    orderBy: { createdAt: "desc" },
+  });
+  if (!token) {
+    logger.debug({ email, userId: user.id }, "resetPassword: rejected — no unused, unexpired code outstanding");
+    throw new Error("INVALID_RESET_CODE");
+  }
+
+  if (token.attempts >= RESET_MAX_ATTEMPTS) {
+    logger.debug(
+      { email, userId: user.id, tokenId: token.id, attempts: token.attempts },
+      "resetPassword: rejected — too many failed attempts against this code",
+    );
+    throw new Error("INVALID_RESET_CODE");
+  }
+
+  if (token.codeHash !== hashResetCode(input.code)) {
+    const updated = await prisma.passwordResetToken.update({
+      where: { id: token.id },
+      data: { attempts: { increment: 1 } },
+    });
+    logger.debug(
+      { email, userId: user.id, tokenId: token.id, attempts: updated.attempts },
+      "resetPassword: rejected — code did not match",
+    );
+    throw new Error("INVALID_RESET_CODE");
+  }
+
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: user.id },
+      data: { password: await hashPassword(input.newPassword) },
+    }),
+    // Burn every outstanding code, not just this one, so an older code from a
+    // previous request can't be replayed after the password has changed.
+    prisma.passwordResetToken.updateMany({
+      where: { userId: user.id, usedAt: null },
+      data: { usedAt: new Date() },
+    }),
+  ]);
+
+  logger.debug({ email, userId: user.id }, "resetPassword: password changed and outstanding codes invalidated");
 }

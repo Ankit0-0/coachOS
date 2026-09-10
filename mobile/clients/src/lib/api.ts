@@ -116,6 +116,22 @@ export const authApi = {
     });
   },
 
+  forgotPassword(email: string): Promise<{ message: string }> {
+    return apiRequest<{ message: string }>('/auth/forgot-password', {
+      method: 'POST',
+      body: { email },
+      auth: false,
+    });
+  },
+
+  resetPassword(input: { email: string; code: string; newPassword: string }): Promise<{ message: string }> {
+    return apiRequest<{ message: string }>('/auth/reset-password', {
+      method: 'POST',
+      body: input,
+      auth: false,
+    });
+  },
+
   signInWithGoogle(idToken: string): Promise<AuthPayload> {
     return apiRequest<AuthPayload>('/auth/google', {
       method: 'POST',
@@ -189,6 +205,42 @@ export interface ClientInvite {
   createdAt: string;
   respondedAt: string | null;
 }
+
+// ---------------------------------------------------------------------------
+// Client profile
+// ---------------------------------------------------------------------------
+
+export interface ClientProfile {
+  id: string;
+  name: string;
+  email: string;
+  role: Role;
+  memberSince: string;
+  heightCm: number | null;
+  /** Self-reported. Separate from WeightEntry, which is the tracked history. */
+  weightKg: number | null;
+  goals: string | null;
+}
+
+export interface ClientProfileUpdate {
+  name?: string;
+  heightCm?: number | null;
+  weightKg?: number | null;
+  goals?: string;
+}
+
+export const clientProfileApi = {
+  get(): Promise<ClientProfile> {
+    return apiRequest<{ profile: ClientProfile }>('/client/profile').then((data) => data.profile);
+  },
+
+  update(input: ClientProfileUpdate): Promise<ClientProfile> {
+    return apiRequest<{ profile: ClientProfile }>('/client/profile', {
+      method: 'PATCH',
+      body: input,
+    }).then((data) => data.profile);
+  },
+};
 
 export const clientInviteApi = {
   list(status?: InviteStatus): Promise<ClientInvite[]> {

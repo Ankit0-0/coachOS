@@ -82,6 +82,31 @@ describe("coach-scoped client read endpoints", () => {
 
       expect(res.status).toBe(403);
     });
+
+    // Regression: the coach's view of a client's history used to be scoped to
+    // whichever assignment was ACTIVE, so reassigning a client to a different
+    // plan silently hid every check-in and note they had logged before.
+    it("still returns check-ins from an assignment that has since been completed", async () => {
+      const secondPlan = await api
+        .post("/v1/coach/plans")
+        .set("Authorization", `Bearer ${coachA.token}`)
+        .send({ type: "WORKOUT", title: "Replacement plan", content: VALID_WORKOUT_CONTENT });
+
+      // Assigning a second workout plan completes the first assignment.
+      await api
+        .post("/v1/coach/assignments")
+        .set("Authorization", `Bearer ${coachA.token}`)
+        .send({ clientId: client.id, planId: secondPlan.body.plan.id });
+
+      const res = await api
+        .get(`/v1/coach/clients/${client.id}/checkins`)
+        .query({ from: today, to: today })
+        .set("Authorization", `Bearer ${coachA.token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.checkIns).toHaveLength(1);
+      expect(res.body.checkIns[0].notes).toBe("felt great");
+    });
   });
 
   describe("GET /v1/coach/clients/:clientId/weight", () => {

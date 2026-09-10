@@ -1,4 +1,4 @@
-import type { CoachProfile, User } from "@prisma/client";
+import type { ClientProfile, CoachProfile, User } from "@prisma/client";
 
 import { logger } from "../../config/logger.js";
 import { prisma } from "../../config/prisma.config.js";
@@ -74,4 +74,73 @@ export async function updateCoachProfile(
 
   logger.debug({ coachId, fields: Object.keys(input) }, "updateCoachProfile: profile updated");
   return serializeCoachProfile(user, profile);
+}
+
+function serializeClientProfile(user: User, profile: ClientProfile | null) {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    memberSince: user.createdAt,
+    heightCm: profile?.heightCm ?? null,
+    weightKg: profile?.weightKg ?? null,
+    goals: profile?.goals ?? null,
+  };
+}
+
+export async function getClientProfile(clientId: string) {
+  const [user, profile] = await Promise.all([
+    prisma.user.findUnique({ where: { id: clientId } }),
+    prisma.clientProfile.findUnique({ where: { userId: clientId } }),
+  ]);
+  if (!user) {
+    logger.debug({ clientId }, "getClientProfile: rejected — user record not found");
+    throw new Error("USER_NOT_FOUND");
+  }
+  return serializeClientProfile(user, profile);
+}
+
+export async function updateClientProfile(
+  clientId: string,
+  input: {
+    name?: string | undefined;
+    heightCm?: number | null | undefined;
+    weightKg?: number | null | undefined;
+    goals?: string | undefined;
+  },
+) {
+  const { name, ...profileFields } = input;
+
+  // The User row holds the name; the rest lives on ClientProfile, which may not
+  // exist yet for clients who have never opened this screen.
+  const user = name !== undefined
+    ? await prisma.user.update({ where: { id: clientId }, data: { name } })
+    : await prisma.user.findUnique({ where: { id: clientId } });
+
+  if (!user) {
+    logger.debug({ clientId }, "updateClientProfile: rejected — user record not found");
+    throw new Error("USER_NOT_FOUND");
+  }
+
+  const hasProfileChanges = Object.values(profileFields).some((value) => value !== undefined);
+  const profile = hasProfileChanges
+    ? await prisma.clientProfile.upsert({
+        where: { userId: clientId },
+        update: {
+          ...(profileFields.heightCm !== undefined ? { heightCm: profileFields.heightCm } : {}),
+          ...(profileFields.weightKg !== undefined ? { weightKg: profileFields.weightKg } : {}),
+          ...(profileFields.goals !== undefined ? { goals: profileFields.goals } : {}),
+        },
+        create: {
+          userId: clientId,
+          heightCm: profileFields.heightCm ?? null,
+          weightKg: profileFields.weightKg ?? null,
+          goals: profileFields.goals ?? null,
+        },
+      })
+    : await prisma.clientProfile.findUnique({ where: { userId: clientId } });
+
+  logger.debug({ clientId, fields: Object.keys(input) }, "updateClientProfile: profile updated");
+  return serializeClientProfile(user, profile);
 }

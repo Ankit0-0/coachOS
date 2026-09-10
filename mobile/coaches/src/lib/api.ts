@@ -116,6 +116,22 @@ export const authApi = {
     });
   },
 
+  forgotPassword(email: string): Promise<{ message: string }> {
+    return apiRequest<{ message: string }>('/auth/forgot-password', {
+      method: 'POST',
+      body: { email },
+      auth: false,
+    });
+  },
+
+  resetPassword(input: { email: string; code: string; newPassword: string }): Promise<{ message: string }> {
+    return apiRequest<{ message: string }>('/auth/reset-password', {
+      method: 'POST',
+      body: input,
+      auth: false,
+    });
+  },
+
   signInWithGoogle(idToken: string): Promise<AuthPayload> {
     return apiRequest<AuthPayload>('/auth/google', {
       method: 'POST',
@@ -353,9 +369,10 @@ function queryString(params: Record<string, string>): string {
 }
 
 export const coachClientApi = {
+  /** Omit `assignmentId` to get every check-in in the range, across all assignments. */
   listCheckIns(
     clientId: string,
-    params: { assignmentId: string; from: string; to: string },
+    params: { assignmentId?: string; from: string; to: string },
   ): Promise<CheckIn[]> {
     return apiRequest<{ checkIns: CheckIn[] }>(
       `/coach/clients/${encodeURIComponent(clientId)}/checkins?${queryString(params)}`,

@@ -49,6 +49,21 @@ model User {
 
   sentInvites     CoachClientInvite[] @relation("SentInvites")
   receivedInvites CoachClientInvite[] @relation("ReceivedInvites")
+
+  passwordResetTokens PasswordResetToken[]
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String    @unique
+  expiresAt DateTime
+  attempts  Int       @default(0)
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
 }
 
 model CoachClientInvite {
