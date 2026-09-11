@@ -1,4 +1,4 @@
-import { Platform, StyleSheet, Text, type TextProps } from 'react-native';
+import { StyleSheet, Text, type TextProps } from 'react-native';
 
 import { Fonts, ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -59,82 +59,80 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
 const styles = StyleSheet.create({
   /** Screen title. Sized so screens no longer override fontSize inline. */
   display: {
+    fontFamily: Fonts.sansBold,
     fontSize: 34,
     lineHeight: 40,
-    fontWeight: 700,
     letterSpacing: -0.5,
   },
   title: {
+    fontFamily: Fonts.sansBold,
     fontSize: 48,
     lineHeight: 52,
-    fontWeight: 600,
     letterSpacing: -0.8,
   },
   subtitle: {
+    fontFamily: Fonts.sansSemibold,
     fontSize: 28,
     lineHeight: 34,
-    fontWeight: 600,
     letterSpacing: -0.4,
   },
   /** Card and section titles — the missing step between subtitle and body. */
   heading: {
+    fontFamily: Fonts.sansSemibold,
     fontSize: 19,
     lineHeight: 25,
-    fontWeight: 700,
     letterSpacing: -0.2,
   },
   default: {
+    fontFamily: Fonts.sans,
     fontSize: 16,
     lineHeight: 24,
-    fontWeight: 500,
   },
   small: {
+    fontFamily: Fonts.sans,
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: 500,
   },
   smallBold: {
+    fontFamily: Fonts.sansSemibold,
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: 700,
   },
   /** Field labels above or beside a value. */
   label: {
+    fontFamily: Fonts.sansMedium,
     fontSize: 13,
     lineHeight: 18,
-    fontWeight: 600,
   },
   /** Timestamps, units, hints — the quietest tier. */
   meta: {
+    fontFamily: Fonts.sansMedium,
     fontSize: 12,
     lineHeight: 16,
-    fontWeight: 500,
   },
   /**
    * Figures a coach reads at a glance — client counts, weights, durations.
    * Tabular so columns of numbers line up instead of jittering.
    */
   numeric: {
-    fontFamily: Fonts.mono,
+    fontFamily: Fonts.sansSemibold,
     fontSize: 22,
     lineHeight: 26,
-    fontWeight: 600,
     fontVariant: ['tabular-nums'],
     letterSpacing: -0.5,
   },
   link: {
+    fontFamily: Fonts.sansMedium,
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: 600,
   },
   linkPrimary: {
+    fontFamily: Fonts.sansSemibold,
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: 600,
   },
   code: {
     fontFamily: Fonts.mono,
-    fontWeight: Platform.select({ android: 700 }) ?? 500,
     fontSize: 12,
   },
 });

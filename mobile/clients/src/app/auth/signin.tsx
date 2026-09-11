@@ -50,7 +50,7 @@ export default function SignInScreen() {
         </Pressable>
 
         <View style={styles.header}>
-          <ThemedText type="meta" themeColor="accent">COACH OS · CLIENT APP</ThemedText>
+          <ThemedText type="meta">COACH OS · CLIENT APP</ThemedText>
           <ThemedText type="display">Sign in</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
             Welcome back.

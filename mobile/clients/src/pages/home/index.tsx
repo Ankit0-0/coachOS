@@ -11,7 +11,7 @@ import { PlanCard } from '@/components/plan-card';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Radii, Spacing } from '@/constants/theme';
 import { useOnboardingStatus } from '@/hooks/use-onboarding-status';
 import { useTheme } from '@/hooks/use-theme';
 import { trackingApi } from '@/lib/api';
@@ -116,7 +116,7 @@ export function HomeScreen() {
           <Pressable
             onPress={pickPhysiquePhoto}
             style={[styles.uploadButton, { borderColor: theme.border }]}>
-            <ThemedText type="smallBold" style={styles.uploadButtonText}>
+            <ThemedText type="meta">
               {physiqueImage ? 'Change image' : 'Upload'}
             </ThemedText>
           </Pressable>
@@ -215,14 +215,10 @@ const styles = StyleSheet.create({
   },
   uploadButton: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    borderRadius: Radii.sm,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.two,
     backgroundColor: 'rgba(58, 123, 255, 0.08)',
-  },
-  uploadButtonText: {
-    color: '#3A7BFF',
-    fontSize: 11,
   },
   previewImage: {
     width: '100%',

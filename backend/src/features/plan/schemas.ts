@@ -5,6 +5,14 @@ export const exerciseSchema = z.object({
   name: z.string().min(1).max(200),
   note: z.string().max(500).default(""),
   sets: z.number().int().min(1).max(20),
+  /**
+   * Free text rather than numbers: a coach writes "8-10", "AMRAP" or
+   * "30s each side" as readily as a single figure, and `content` is Json so
+   * there is nothing to migrate. Optional, so plans written before these
+   * existed — including the seeded defaults — still validate.
+   */
+  reps: z.string().max(50).optional(),
+  rest: z.string().max(50).optional(),
 });
 
 export const workoutContentSchema = z.object({

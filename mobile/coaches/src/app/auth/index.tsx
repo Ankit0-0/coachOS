@@ -13,7 +13,7 @@ export default function AuthScreen() {
   return (
     <ThemedView style={styles.container}>
       <View style={styles.header}>
-        <Pill label="Coach app" tone="accent" />
+        <Pill label="Coach app" />
         <ThemedText type="title" style={styles.headline}>
           Coach OS
         </ThemedText>

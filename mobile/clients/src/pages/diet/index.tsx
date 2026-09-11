@@ -6,7 +6,7 @@ import { LockedState } from '@/components/locked-state';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Fonts, Radii, Spacing } from '@/constants/theme';
 import { useOnboardingStatus } from '@/hooks/use-onboarding-status';
 import { useTheme } from '@/hooks/use-theme';
 import { useTrackingAssignments } from '@/hooks/use-assignments';
@@ -158,7 +158,11 @@ export function DietDetailsScreen() {
               accessibilityState={{ checked: meal.checked }}
               onPress={() => handleToggleMeal(meal.id)}
               style={[styles.checkbox, meal.checked && styles.checkboxChecked]}>
-              {meal.checked ? <ThemedText style={styles.checkText}>✓</ThemedText> : null}
+              {meal.checked ? (
+                <ThemedText themeColor="onAccent" style={styles.checkText}>
+                  ✓
+                </ThemedText>
+              ) : null}
             </Pressable>
 
             <View style={styles.mealContent}>
@@ -210,7 +214,7 @@ export function DietDetailsScreen() {
             styles.saveLogButton,
             { backgroundColor: theme.accent, opacity: isSavingLog ? 0.6 : pressed ? 0.8 : 1 },
           ]}>
-          <ThemedText type="smallBold" style={styles.saveLogButtonText}>
+          <ThemedText type="smallBold" themeColor="onAccent">
             {isSavingLog ? 'Saving…' : 'Save diet log'}
           </ThemedText>
         </Pressable>
@@ -252,9 +256,8 @@ const styles = StyleSheet.create({
     borderColor: '#3A7BFF',
   },
   checkText: {
-    color: '#FFFFFF',
+    fontFamily: Fonts.sansBold,
     fontSize: 12,
-    fontWeight: '700',
   },
   mealContent: {
     flex: 1,
@@ -310,11 +313,8 @@ const styles = StyleSheet.create({
   },
   saveLogButton: {
     paddingVertical: Spacing.three,
-    borderRadius: Spacing.two,
+    borderRadius: Radii.sm,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  saveLogButtonText: {
-    color: '#FFFFFF',
   },
 });

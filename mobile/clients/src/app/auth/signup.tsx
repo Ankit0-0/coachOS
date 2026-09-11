@@ -62,7 +62,7 @@ export default function SignUpScreen() {
         </Pressable>
 
         <View style={styles.header}>
-          <ThemedText type="meta" themeColor="accent">COACH OS · CLIENT APP</ThemedText>
+          <ThemedText type="meta">COACH OS · CLIENT APP</ThemedText>
           <ThemedText type="display">Create account</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
             Track your plans and check in with your coach.

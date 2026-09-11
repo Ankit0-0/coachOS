@@ -34,7 +34,7 @@ export function Section({ title, actionLabel, onActionPress, children }: Section
 
 const styles = StyleSheet.create({
   section: {
-    gap: Spacing.two,
+    gap: Spacing.three,
   },
   header: {
     flexDirection: 'row',

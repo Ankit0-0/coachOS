@@ -11,18 +11,18 @@ export const Colors = {
   light: {
     text: '#000000',
     background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
+    backgroundElement: '#FFFFFF',
+    backgroundSelected: '#F1F1EF',
     textSecondary: '#60646C',
-    border: '#E6E6EB',
+    border: '#E9E9E7',
     accent: '#0F8B8D',
     accentSoft: '#E4F5F4',
     success: '#2F8F46',
     warning: '#D97904',
     /** Raised card sitting on `background`. */
-    surface: '#F2F4F7',
+    surface: '#FFFFFF',
     /** Inset row nested inside a `surface` card. */
-    surfaceSunken: '#E4E8EE',
+    surfaceSunken: '#FAFAFA',
     /** Text/icons placed on an `accent` fill. */
     onAccent: '#FFFFFF',
     /** Quietest tier of text — timestamps, units, hints. */
@@ -41,16 +41,16 @@ export const Colors = {
   dark: {
     text: '#ffffff',
     background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
+    backgroundElement: '#131416',
+    backgroundSelected: '#26282C',
     textSecondary: '#B0B4BA',
-    border: '#33363B',
+    border: '#2A2D31',
     accent: '#6AD4D6',
     accentSoft: '#123133',
     success: '#7CD992',
     warning: '#F5B04C',
-    surface: '#17181C',
-    surfaceSunken: '#212328',
+    surface: '#131416',
+    surfaceSunken: '#1B1D21',
     onAccent: '#04211F',
     textMuted: '#787E87',
     danger: '#FF7A6E',
@@ -65,30 +65,23 @@ export const Colors = {
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: 'var(--font-display)',
-    serif: 'var(--font-serif)',
-    rounded: 'var(--font-rounded)',
-    mono: 'var(--font-mono)',
-  },
-});
+/**
+ * Inter is the only typeface either app uses. Weight comes from the family
+ * name rather than `fontWeight`: with a family loaded at runtime, a numeric
+ * weight makes some platforms synthesise a bold on top of an already-bold
+ * face, which is why every text style below sets a family and no weight.
+ */
+export const Fonts = {
+  sans: 'Inter_400Regular',
+  sansMedium: 'Inter_500Medium',
+  sansSemibold: 'Inter_600SemiBold',
+  sansBold: 'Inter_700Bold',
+  /**
+   * The one place a fixed-width face still earns its keep: the dev build
+   * badge, where a version string shouldn't reflow as digits change.
+   */
+  mono: Platform.select({ ios: 'ui-monospace', default: 'monospace' }) ?? 'monospace',
+} as const;
 
 export const Spacing = {
   half: 2,
@@ -107,9 +100,9 @@ export const Spacing = {
  * forced through the same value.
  */
 export const Radii = {
-  sm: 8,
-  md: 14,
-  lg: 22,
+  sm: 6,
+  md: 10,
+  lg: 14,
   pill: 999,
 } as const;
 

@@ -62,7 +62,7 @@ export default function SignUpScreen() {
         </Pressable>
 
         <View style={styles.header}>
-          <ThemedText type="meta" themeColor="accent">COACH OS · COACH APP</ThemedText>
+          <ThemedText type="meta">COACH OS · COACH APP</ThemedText>
           <ThemedText type="display">Create account</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
             Set up your coach profile — you can invite clients right after.

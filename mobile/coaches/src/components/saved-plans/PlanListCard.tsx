@@ -1,19 +1,15 @@
 import { useRouter, type Href } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { PlanRow, type PlanListEntry } from '@/components/saved-plans/PlanRow';
 import { Card } from '@/components/ui/card';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-export type PlanListEntry = {
-  id: string;
-  title: string;
-  /** Short figure, e.g. "5 exercises". */
-  primaryStat: string;
-  /** Supporting figure, e.g. "45 min". */
-  secondaryStat: string;
-};
+// Re-exported so the several screens already importing the type from here
+// keep working; it is defined alongside the row that consumes it.
+export type { PlanListEntry };
 
 type PlanListCardProps = {
   items: PlanListEntry[];
@@ -38,25 +34,7 @@ export function PlanListCard({ items, showAllHref, emptyLabel }: PlanListCardPro
   return (
     <Card padded={false}>
       {items.map((item, index) => (
-        <View
-          key={item.id}
-          style={[
-            styles.row,
-            index < items.length - 1 && {
-              borderBottomWidth: StyleSheet.hairlineWidth,
-              borderBottomColor: theme.border,
-            },
-          ]}>
-          <ThemedText type="smallBold" style={styles.title} numberOfLines={1}>
-            {item.title}
-          </ThemedText>
-          <View style={styles.stats}>
-            <ThemedText type="meta" themeColor="textSecondary">
-              {item.primaryStat}
-            </ThemedText>
-            <ThemedText type="meta">{item.secondaryStat}</ThemedText>
-          </View>
-        </View>
+        <PlanRow key={item.id} item={item} divider={index < items.length - 1} titleLines={1} />
       ))}
 
       <Pressable
@@ -74,21 +52,6 @@ export function PlanListCard({ items, showAllHref, emptyLabel }: PlanListCardPro
 }
 
 const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.three,
-    paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.three,
-  },
-  title: {
-    flex: 1,
-  },
-  stats: {
-    alignItems: 'flex-end',
-    gap: Spacing.half,
-  },
   showAll: {
     alignItems: 'center',
     paddingVertical: Spacing.three,
