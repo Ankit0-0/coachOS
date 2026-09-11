@@ -1,11 +1,13 @@
 {
   "name": "coachos",
   "private": true,
+  "packageManager": "pnpm@11.13.0",
   "scripts": {
     "dev": "turbo dev",
     "dev:client": "turbo dev --filter=clients",
     "dev:coach": "turbo dev --filter=coaches",
     "dev:backend": "turbo dev --filter=backend",
+    "dev:admin": "turbo dev --filter=admin-website",
     "build": "turbo build",
     "lint": "turbo lint"
   },

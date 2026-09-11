@@ -144,3 +144,6 @@ vite.config.ts.timestamp-*
 
 # admin-website build output
 admin-website/dist
+
+# turbo task cache and logs
+.turbo/
