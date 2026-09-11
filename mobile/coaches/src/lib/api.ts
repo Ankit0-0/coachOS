@@ -234,6 +234,10 @@ export interface ExerciseContent {
   name: string;
   note: string;
   sets: number;
+  /** Free text, e.g. "8-10" or "AMRAP". Absent on plans written before these fields existed. */
+  reps?: string;
+  /** Free text, e.g. "90s". Absent on older plans. */
+  rest?: string;
 }
 
 export interface WorkoutContent {
