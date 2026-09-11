@@ -2,6 +2,7 @@ import type { Plan, PlanAssignment, PlanType, Prisma } from "@prisma/client";
 
 import { logger } from "../../config/logger.js";
 import { prisma } from "../../config/prisma.config.js";
+import { assertCoachApproved } from "../../utils/coach-approval.js";
 import { findAcceptedInvite } from "../../utils/coach-access.js";
 
 const PLAN_LIMIT_PER_TYPE = 10;
@@ -54,6 +55,8 @@ export async function createPlan(
   coachId: string,
   input: { type: PlanType; title: string; description?: string | undefined; content: Prisma.InputJsonValue },
 ) {
+  await assertCoachApproved(coachId);
+
   const count = await prisma.plan.count({ where: { createdById: coachId, type: input.type, isDefault: false } });
   if (count >= PLAN_LIMIT_PER_TYPE) {
     logger.debug({ coachId, type: input.type, count, limit: PLAN_LIMIT_PER_TYPE }, "createPlan: rejected — plan limit reached");
@@ -159,6 +162,8 @@ export async function deletePlan(coachId: string, planId: string) {
 }
 
 export async function createAssignment(coachId: string, input: { clientId: string; planId: string }) {
+  await assertCoachApproved(coachId);
+
   const invite = await findAcceptedInvite(coachId, input.clientId);
   if (!invite) {
     logger.debug(

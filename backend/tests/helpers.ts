@@ -2,6 +2,7 @@ import request from "supertest";
 
 import { app } from "../src/app.js";
 import { prisma } from "../src/config/prisma.config.js";
+import { hashPassword } from "../src/utils/password.js";
 
 export const api = request(app);
 
@@ -21,7 +22,7 @@ function uniqueEmail(prefix: string): string {
 
 export type TestUser = { id: string; email: string; token: string };
 
-export async function registerUser(role: "COACH" | "CLIENT", prefix: string): Promise<TestUser> {
+async function registerRaw(role: "COACH" | "CLIENT", prefix: string): Promise<TestUser> {
   const email = uniqueEmail(prefix);
   const res = await api.post("/v1/auth/register").send({
     email,
@@ -33,6 +34,41 @@ export async function registerUser(role: "COACH" | "CLIENT", prefix: string): Pr
     throw new Error(`Failed to register ${prefix}: ${res.status} ${JSON.stringify(res.body)}`);
   }
   return { id: res.body.user.id as string, email, token: res.body.accessToken as string };
+}
+
+/**
+ * Registers a user ready to be used.
+ *
+ * Coaches now register as PENDING and an admin has to approve them before
+ * they can invite, plan or assign, so this approves them straight away —
+ * otherwise every test about coach *functionality* would really be
+ * re-testing the approval gate. Tests about the gate itself want
+ * `registerPendingCoach`.
+ */
+export async function registerUser(role: "COACH" | "CLIENT", prefix: string): Promise<TestUser> {
+  const user = await registerRaw(role, prefix);
+  if (role === "COACH") {
+    await prisma.user.update({ where: { id: user.id }, data: { coachApprovalStatus: "APPROVED" } });
+  }
+  return user;
+}
+
+/** A coach left exactly as registration creates them: awaiting approval. */
+export async function registerPendingCoach(prefix: string): Promise<TestUser> {
+  return registerRaw("COACH", prefix);
+}
+
+/** An admin, which has no registration route by design — see scripts/create-admin.ts. */
+export async function createAdmin(prefix: string): Promise<TestUser> {
+  const email = uniqueEmail(prefix);
+  const user = await prisma.user.create({
+    data: { email, name: `${prefix} Admin`, role: "ADMIN", password: await hashPassword("password123") },
+  });
+  const res = await api.post("/v1/auth/login").send({ email, password: "password123" });
+  if (res.status !== 200) {
+    throw new Error(`Failed to log in admin ${prefix}: ${res.status}`);
+  }
+  return { id: user.id, email, token: res.body.accessToken as string };
 }
 
 /** Coach invites the client and the client accepts. Returns the invite id. */

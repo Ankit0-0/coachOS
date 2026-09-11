@@ -1,3 +1,10 @@
+import { RequireApproval } from '@/components/require-approval';
 import { CreatePlanScreen } from '@/pages/create-plan';
 
-export default CreatePlanScreen;
+export default function CreatePlanScreenRoute() {
+  return (
+    <RequireApproval>
+      <CreatePlanScreen />
+    </RequireApproval>
+  );
+}

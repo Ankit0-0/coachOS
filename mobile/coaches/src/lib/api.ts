@@ -190,12 +190,16 @@ export const coachInviteApi = {
 // Coach profile
 // ---------------------------------------------------------------------------
 
+export type CoachApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
 export interface CoachProfile {
   id: string;
   name: string;
   email: string;
   role: Role;
   memberSince: string;
+  /** Null only on accounts that predate the approval workflow. */
+  approvalStatus: CoachApprovalStatus | null;
   bio: string | null;
   specialties: string[];
   yearsExperience: number | null;

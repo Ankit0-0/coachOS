@@ -3,6 +3,7 @@ import { Router, type Request, type Response } from "express";
 import { logger } from "../../config/logger.js";
 import { requireAuth } from "../../middleware/auth.js";
 import { requireRole } from "../../middleware/role.js";
+import { COACH_NOT_APPROVED_STATUS } from "../../utils/coach-approval.js";
 import { sendError } from "../../utils/http-error.js";
 import {
   createAssignmentSchema,
@@ -29,7 +30,9 @@ coachAssignmentRouter.use(requireAuth);
 
 function respondToPlanError(response: Response, request: Request, error: unknown, logMessage: string) {
   const code = error instanceof Error ? error.message : "INTERNAL_ERROR";
-  if (code === "PLAN_NOT_FOUND") {
+  if (code === "COACH_NOT_APPROVED") {
+    sendError(response, COACH_NOT_APPROVED_STATUS);
+  } else if (code === "PLAN_NOT_FOUND") {
     sendError(response, 404);
   } else if (code === "FORBIDDEN") {
     sendError(response, 403);
@@ -45,7 +48,9 @@ function respondToPlanError(response: Response, request: Request, error: unknown
 
 function respondToAssignmentError(response: Response, request: Request, error: unknown) {
   const code = error instanceof Error ? error.message : "INTERNAL_ERROR";
-  if (code === "NOT_YOUR_CLIENT") {
+  if (code === "COACH_NOT_APPROVED") {
+    sendError(response, COACH_NOT_APPROVED_STATUS);
+  } else if (code === "NOT_YOUR_CLIENT") {
     sendError(response, 403);
   } else if (code === "PLAN_NOT_FOUND") {
     sendError(response, 404);

@@ -30,7 +30,20 @@ function result(user: User) {
   };
 }
 
-export async function register(input: { email: string; password: string; name: string; role: Role }) {
+/**
+ * Deliberately narrower than Prisma's `Role`. Admins exist only as the result
+ * of running scripts/create-admin.ts by hand; there is no code path from a
+ * request body to an ADMIN account, and this type is what keeps it that way
+ * even if the route schema is ever loosened by accident.
+ */
+export type RegisterableRole = Extract<Role, "COACH" | "CLIENT">;
+
+export async function register(input: {
+  email: string;
+  password: string;
+  name: string;
+  role: RegisterableRole;
+}) {
   const email = normalizeEmail(input.email);
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
@@ -39,7 +52,15 @@ export async function register(input: { email: string; password: string; name: s
   }
 
   const user = await prisma.user.create({
-    data: { email, password: await hashPassword(input.password), name: input.name.trim(), role: input.role },
+    data: {
+      email,
+      password: await hashPassword(input.password),
+      name: input.name.trim(),
+      role: input.role,
+      // Coaches wait for an admin; clients have nothing to be approved for,
+      // so the column stays null rather than carrying a meaningless value.
+      ...(input.role === "COACH" ? { coachApprovalStatus: "PENDING" as const } : {}),
+    },
   });
   logger.debug({ userId: user.id, email, role: user.role }, "register: new user created");
   return result(user);

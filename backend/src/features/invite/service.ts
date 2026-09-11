@@ -2,6 +2,7 @@ import type { CoachClientInvite, InviteStatus } from "@prisma/client";
 
 import { logger } from "../../config/logger.js";
 import { prisma } from "../../config/prisma.config.js";
+import { assertCoachApproved } from "../../utils/coach-approval.js";
 import { normalizeEmail } from "../../utils/email.js";
 
 type PersonSummary = { id: string; name: string; email: string };
@@ -26,6 +27,8 @@ function serializeInvite(row: InviteRow) {
 }
 
 export async function createInvite(coachId: string, clientEmailInput: string) {
+  await assertCoachApproved(coachId);
+
   const clientEmail = normalizeEmail(clientEmailInput);
 
   const existing = await prisma.coachClientInvite.findFirst({
