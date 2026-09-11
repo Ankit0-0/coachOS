@@ -6,6 +6,14 @@ import { prisma } from "../src/config/prisma.config.js";
 export const api = request(app);
 
 let counter = 0;
+
+/**
+ * A fresh address for every registration. The timestamp keeps one run from
+ * colliding with the last (these tests hit a real database that is never
+ * reset between runs), and the counter separates registrations made inside
+ * the same millisecond. `.local` is reserved, so a stray address can never
+ * reach a real inbox.
+ */
 function uniqueEmail(prefix: string): string {
   counter += 1;
   return `${prefix}-${Date.now()}-${counter}@vitest.local`;
