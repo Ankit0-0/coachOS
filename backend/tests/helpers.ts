@@ -55,6 +55,13 @@ export const VALID_WORKOUT_CONTENT = {
   exercises: [{ id: "push-up", name: "Push Up", note: "Go slow", sets: 3 }],
 };
 
+export const VALID_DIET_CONTENT = {
+  calories: "2,000 kcal",
+  focus: "Balanced macros",
+  summary: "An everyday maintenance split.",
+  meals: [{ id: "breakfast", label: "Breakfast: eggs, toast, fruit" }],
+};
+
 /** Deletes a test user and everything that references it, in FK-safe order. */
 export async function cleanupUser(userId: string): Promise<void> {
   const assignments = await prisma.planAssignment.findMany({
