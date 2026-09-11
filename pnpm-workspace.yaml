@@ -1,9 +1,12 @@
 packages:
   - "mobile/*"
   - "backend"
+  - "admin-website"
   - "packages/*"
 allowBuilds:
   '@prisma/engines': true
   esbuild: true
   prisma: true
   unrs-resolver: set this to true or false
+minimumReleaseAgeExclude:
+  - vite@8.3.0

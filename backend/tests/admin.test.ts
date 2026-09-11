@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { prisma } from "../src/config/prisma.config.js";
 import {
   api,
   cleanupUser,
@@ -28,8 +29,15 @@ describe("admin endpoints", () => {
   });
 
   afterAll(async () => {
+    // Straight through Prisma rather than the admin route: a library plan with
+    // an active assignment answers 409 by design, and `cleanupUser` only
+    // reclaims plans with an owner — defaults have none — so going through the
+    // API here would leave rows behind in the dev database.
     for (const id of createdPlanIds) {
-      await api.delete(`/v1/admin/plans/${id}`).set("Authorization", `Bearer ${admin.token}`);
+      const assignments = await prisma.planAssignment.findMany({ where: { planId: id }, select: { id: true } });
+      await prisma.checkIn.deleteMany({ where: { assignmentId: { in: assignments.map((a) => a.id) } } });
+      await prisma.planAssignment.deleteMany({ where: { planId: id } });
+      await prisma.plan.deleteMany({ where: { id } });
     }
     await cleanupUser(admin.id);
     await cleanupUser(coach.id);

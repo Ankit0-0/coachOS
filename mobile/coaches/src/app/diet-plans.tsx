@@ -1,3 +1,10 @@
+import { RequireApproval } from '@/components/require-approval';
 import { DietPlansScreen } from '@/pages/diet-plans';
 
-export default DietPlansScreen;
+export default function DietPlansScreenRoute() {
+  return (
+    <RequireApproval>
+      <DietPlansScreen />
+    </RequireApproval>
+  );
+}
