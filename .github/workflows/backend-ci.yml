@@ -1,0 +1,65 @@
+name: Backend CI
+
+on:
+  pull_request:
+    paths:
+      - 'backend/**'
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: coachos
+          POSTGRES_PASSWORD: coachos
+          POSTGRES_DB: coachos_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      # The only two variables src/config/env.ts actually requires.
+      DATABASE_URL: postgresql://coachos:coachos@localhost:5432/coachos_test
+      JWT_SECRET: ci-test-secret-not-used-in-production
+    steps:
+      - uses: actions/checkout@v4
+
+      # action-setup v4 takes no default version: it needs either this input or
+      # a `packageManager` field in package.json, and this repo has neither.
+      # Without it the job fails before installing anything.
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      # Installed from the workspace root, not backend/. This is a pnpm
+      # workspace, so `pnpm install` inside backend/ resolves to the root and
+      # pulls all four projects — including both Expo apps — for a job that
+      # only needs the backend. `backend...` narrows it to backend plus its
+      # workspace dependencies.
+      - name: Install backend dependencies
+        run: pnpm install --frozen-lockfile --filter backend...
+        working-directory: .
+
+      - run: pnpm db:generate
+      - run: pnpm exec prisma migrate deploy
+      # No seeding: every test creates the rows it needs, including the
+      # shared-library default plan in plan-crud.test.ts.
+      - run: pnpm test
+      - run: pnpm typecheck
