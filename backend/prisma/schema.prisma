@@ -9,6 +9,14 @@ datasource db {
 enum Role {
   COACH
   CLIENT
+  ADMIN
+}
+
+/// Only meaningful for COACH users; null on CLIENT and ADMIN.
+enum CoachApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum PlanType {
@@ -36,6 +44,10 @@ model User {
   name      String
   role      Role
   createdAt DateTime @default(now())
+
+  /// Set to PENDING when a coach registers, and left null for CLIENT and
+  /// ADMIN, for whom approval is meaningless rather than merely unset.
+  coachApprovalStatus CoachApprovalStatus?
 
   accounts Account[]
 

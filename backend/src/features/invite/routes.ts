@@ -3,6 +3,7 @@ import { Router, type Request, type Response } from "express";
 import { logger } from "../../config/logger.js";
 import { requireAuth } from "../../middleware/auth.js";
 import { requireRole } from "../../middleware/role.js";
+import { COACH_NOT_APPROVED_STATUS } from "../../utils/coach-approval.js";
 import { sendError } from "../../utils/http-error.js";
 import { createInviteSchema, listInvitesQuerySchema } from "./schemas.js";
 import {
@@ -51,7 +52,9 @@ coachInviteRouter.post("/", async (request, response) => {
     });
   } catch (error) {
     const code = error instanceof Error ? error.message : "INTERNAL_ERROR";
-    if (code === "INVITE_ALREADY_EXISTS") {
+    if (code === "COACH_NOT_APPROVED") {
+      sendError(response, COACH_NOT_APPROVED_STATUS);
+    } else if (code === "INVITE_ALREADY_EXISTS") {
       sendError(response, 409);
     } else {
       logger.error({ err: error, url: request.originalUrl }, "invite: unexpected error");

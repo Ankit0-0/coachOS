@@ -10,6 +10,8 @@ function serializeCoachProfile(user: User, profile: CoachProfile | null) {
     email: user.email,
     role: user.role,
     memberSince: user.createdAt,
+    /** Drives the pending-approval screen in the coach app. */
+    approvalStatus: user.coachApprovalStatus,
     bio: profile?.bio ?? null,
     specialties: profile?.specialties ?? [],
     yearsExperience: profile?.yearsExperience ?? null,
