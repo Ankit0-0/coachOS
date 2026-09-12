@@ -30,6 +30,12 @@ enum AssignmentStatus {
   PAUSED
 }
 
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
 enum InviteStatus {
   PENDING
   ACCEPTED
@@ -62,6 +68,9 @@ model User {
   sentInvites     CoachClientInvite[] @relation("SentInvites")
   receivedInvites CoachClientInvite[] @relation("ReceivedInvites")
 
+  coachSubscriptions  Subscription[] @relation("CoachSubscriptions")
+  clientSubscriptions Subscription[] @relation("ClientSubscriptions")
+
   passwordResetTokens PasswordResetToken[]
 }
 
@@ -90,12 +99,44 @@ model CoachClientInvite {
 
   status      InviteStatus @default(PENDING)
   token       String       @unique @default(cuid())
+
+  /// Chosen by the coach when inviting. Used once, on acceptance, to compute
+  /// the first subscription's endDate. Null means an open-ended relationship
+  /// with no subscription record at all.
+  durationMonths Int?
+
   createdAt   DateTime     @default(now())
   respondedAt DateTime?
 
   @@index([coachId])
   @@index([clientEmail])
   @@index([clientId])
+}
+
+/// A commercial record of a paid period, layered on top of the coach-client
+/// relationship rather than governing it. Access is still decided solely by an
+/// ACCEPTED CoachClientInvite: an expired subscription is shown in the UI, it
+/// does not revoke anything.
+model Subscription {
+  id String @id @default(cuid())
+
+  coachId String
+  coach   User   @relation("CoachSubscriptions", fields: [coachId], references: [id], onDelete: Cascade)
+
+  clientId String
+  client   User   @relation("ClientSubscriptions", fields: [clientId], references: [id], onDelete: Cascade)
+
+  startDate DateTime           @db.Date
+  endDate   DateTime           @db.Date
+  status    SubscriptionStatus @default(ACTIVE)
+  notes     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([coachId])
+  @@index([clientId])
+  @@index([status])
 }
 
 model Account {

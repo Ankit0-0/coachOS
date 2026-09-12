@@ -3,6 +3,7 @@ import type { CoachClientInvite, InviteStatus } from "@prisma/client";
 import { logger } from "../../config/logger.js";
 import { prisma } from "../../config/prisma.config.js";
 import { assertCoachApproved } from "../../utils/coach-approval.js";
+import { createSubscriptionFromInvite, effectiveStatus } from "../subscription/service.js";
 import { normalizeEmail } from "../../utils/email.js";
 
 type PersonSummary = { id: string; name: string; email: string };
@@ -21,12 +22,17 @@ function serializeInvite(row: InviteRow) {
     clientId: row.clientId,
     client: row.client ?? undefined,
     status: row.status,
+    durationMonths: row.durationMonths,
     createdAt: row.createdAt,
     respondedAt: row.respondedAt,
   };
 }
 
-export async function createInvite(coachId: string, clientEmailInput: string) {
+export async function createInvite(
+  coachId: string,
+  clientEmailInput: string,
+  durationMonths?: number | undefined,
+) {
   await assertCoachApproved(coachId);
 
   const clientEmail = normalizeEmail(clientEmailInput);
@@ -43,7 +49,7 @@ export async function createInvite(coachId: string, clientEmailInput: string) {
   const clientId = matchedClient && matchedClient.role === "CLIENT" ? matchedClient.id : null;
 
   const invite = await prisma.coachClientInvite.create({
-    data: { coachId, clientEmail, clientId },
+    data: { coachId, clientEmail, clientId, durationMonths: durationMonths ?? null },
     include: { client: { select: { id: true, name: true, email: true } } },
   });
   logger.debug({ coachId, clientEmail, inviteId: invite.id, autoMatchedClientId: clientId }, "createInvite: invite created");
@@ -56,7 +62,30 @@ export async function listCoachInvites(coachId: string, status?: InviteStatus) {
     include: { client: { select: { id: true, name: true, email: true } } },
     orderBy: { createdAt: "desc" },
   });
-  return rows.map(serializeInvite);
+
+  // The roster screen needs a lapsed marker per row. Fetching it here in one
+  // query beats one request per client from the app, and this route is
+  // coach-only so the extra field is never exposed to a client.
+  const subscriptions = await prisma.subscription.findMany({
+    where: { coachId, clientId: { in: rows.map((row) => row.clientId).filter((id): id is string => Boolean(id)) } },
+    orderBy: { startDate: "desc" },
+  });
+
+  const latestByClient = new Map<string, (typeof subscriptions)[number]>();
+  for (const subscription of subscriptions) {
+    // Ordered newest first, so the first one seen for a client is the current one.
+    if (!latestByClient.has(subscription.clientId)) latestByClient.set(subscription.clientId, subscription);
+  }
+
+  return rows.map((row) => {
+    const subscription = row.clientId ? latestByClient.get(row.clientId) : undefined;
+    return {
+      ...serializeInvite(row),
+      /** Null when this client has no subscription record — an open-ended relationship. */
+      subscriptionStatus: subscription ? effectiveStatus(subscription) : null,
+      subscriptionEndDate: subscription?.endDate ?? null,
+    };
+  });
 }
 
 export async function listClientInvites(clientId: string, email: string, status: InviteStatus = "PENDING") {
@@ -100,6 +129,14 @@ async function respondToInvite(inviteId: string, userId: string, email: string, 
     include: { coach: { select: { id: true, name: true, email: true } } },
   });
   logger.debug({ inviteId, userId, status }, "respondToInvite: invite updated");
+
+  // The relationship itself is already formed by the ACCEPTED invite above.
+  // A subscription is the commercial record on top of it, and only exists
+  // when the coach picked a duration when inviting.
+  if (status === "ACCEPTED" && invite.durationMonths) {
+    await createSubscriptionFromInvite(invite.coachId, userId, invite.durationMonths);
+  }
+
   return serializeInvite(updated);
 }
 

@@ -109,6 +109,7 @@ export async function cleanupUser(userId: string): Promise<void> {
     await prisma.checkIn.deleteMany({ where: { assignmentId: { in: assignmentIds } } });
     await prisma.planAssignment.deleteMany({ where: { id: { in: assignmentIds } } });
   }
+  await prisma.subscription.deleteMany({ where: { OR: [{ coachId: userId }, { clientId: userId }] } });
   await prisma.weightEntry.deleteMany({ where: { clientId: userId } });
   await prisma.plan.deleteMany({ where: { createdById: userId } });
   await prisma.coachClientInvite.deleteMany({ where: { OR: [{ coachId: userId }, { clientId: userId }] } });

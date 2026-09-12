@@ -7,7 +7,14 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { clientInviteApi, type ClientInvite, type InvitePerson } from '@/lib/api';
+import { longDateLabel } from '@/lib/dates';
+import {
+  clientInviteApi,
+  clientSubscriptionApi,
+  type ClientInvite,
+  type ClientSubscription,
+  type InvitePerson,
+} from '@/lib/api';
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Something went wrong. Please try again.';
@@ -22,17 +29,22 @@ export function MyCoachScreen() {
   const router = useRouter();
   const [coach, setCoach] = useState<InvitePerson | null>(null);
   const [pendingInvites, setPendingInvites] = useState<ClientInvite[]>([]);
+  const [subscription, setSubscription] = useState<ClientSubscription | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [actioningId, setActioningId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     try {
-      const [accepted, pending] = await Promise.all([
+      const [accepted, pending, currentSubscription] = await Promise.all([
         clientInviteApi.list('ACCEPTED'),
         clientInviteApi.list('PENDING'),
+        // Null for an open-ended relationship, and a failure here shouldn't
+        // take the whole screen down over a secondary detail.
+        clientSubscriptionApi.get().catch(() => null),
       ]);
       setCoach(accepted[0]?.coach ?? null);
       setPendingInvites(pending);
+      setSubscription(currentSubscription);
     } catch (error) {
       Alert.alert('Could not load your coach', errorMessage(error));
     } finally {
@@ -94,6 +106,18 @@ export function MyCoachScreen() {
           <ThemedText type="small" themeColor="textSecondary">
             {coach.email}
           </ThemedText>
+
+          {/* Nothing renders when there is no record: an open-ended
+              relationship is normal, not a missing value. */}
+          {subscription ? (
+            <ThemedText type="small" themeColor={subscription.status === 'ACTIVE' ? 'textSecondary' : 'warning'}>
+              {subscription.status === 'ACTIVE'
+                ? `Active until ${longDateLabel(subscription.endDate)}`
+                : subscription.status === 'CANCELLED'
+                  ? `Cancelled on ${longDateLabel(subscription.endDate)}`
+                  : `Expired on ${longDateLabel(subscription.endDate)}`}
+            </ThemedText>
+          ) : null}
 
           <View style={styles.actionRow}>
             <Pressable
