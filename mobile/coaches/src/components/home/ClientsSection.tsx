@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { ClientListItem } from '@/components/clients/ClientListItem';
 import { ThemedText } from '@/components/themed-text';
@@ -25,7 +25,12 @@ export function ClientsSection() {
   const [pending, setPending] = useState<CoachInvite[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [email, setEmail] = useState('');
+  /** Null means an open-ended relationship: no subscription record is created. */
+  const [durationMonths, setDurationMonths] = useState<number | null>(null);
   const [isSending, setIsSending] = useState(false);
+  // Inline rather than Alert, which is a no-op on React Native Web — routed
+  // through Alert, none of these messages appeared in a browser at all.
+  const [formError, setFormError] = useState<string | null>(null);
 
   const loadInvites = useCallback(() => {
     Promise.all([coachInviteApi.list('ACCEPTED'), coachInviteApi.list('PENDING')])
@@ -46,17 +51,19 @@ export function ClientsSection() {
   const handleInvite = async () => {
     const trimmed = email.trim();
     if (!trimmed) {
-      Alert.alert('Enter an email', 'Add the email address your client signs in with.');
+      setFormError('Add the email address your client signs in with.');
       return;
     }
 
     try {
       setIsSending(true);
-      await coachInviteApi.create(trimmed);
+      setFormError(null);
+      await coachInviteApi.create(trimmed, durationMonths ?? undefined);
       setEmail('');
+      setDurationMonths(null);
       loadInvites();
     } catch (error) {
-      Alert.alert('Could not send invite', errorMessage(error));
+      setFormError(errorMessage(error));
     } finally {
       setIsSending(false);
     }
@@ -87,6 +94,7 @@ export function ClientsSection() {
                 clientId={invite.clientId ?? invite.client?.id ?? ''}
                 name={invite.client?.name ?? invite.clientEmail}
                 email={invite.client?.email ?? invite.clientEmail}
+                subscriptionStatus={invite.subscriptionStatus}
                 divider={index < preview.length - 1}
               />
             ))}
@@ -111,6 +119,41 @@ export function ClientsSection() {
             <Button label="Send" onPress={handleInvite} loading={isSending} />
           </View>
 
+          <View style={styles.durationBlock}>
+            <ThemedText type="label" themeColor="textSecondary">
+              Subscription length
+            </ThemedText>
+            <View style={styles.durationRow}>
+              {DURATION_OPTIONS.map((option) => {
+                const isSelected = durationMonths === option.value;
+                return (
+                  <Pressable
+                    key={option.label}
+                    accessibilityRole="button"
+                    onPress={() => setDurationMonths(option.value)}
+                    disabled={isSending}
+                    style={[
+                      styles.durationChip,
+                      { borderColor: isSelected ? theme.accent : theme.border },
+                      isSelected && { backgroundColor: theme.accentSoft },
+                    ]}>
+                    <ThemedText type="meta" themeColor={isSelected ? 'accent' : 'textSecondary'}>
+                      {option.label}
+                    </ThemedText>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
+          {formError ? (
+            <View style={[styles.errorBanner, { backgroundColor: theme.dangerSoft }]}>
+              <ThemedText type="small" themeColor="danger">
+                {formError}
+              </ThemedText>
+            </View>
+          ) : null}
+
           {pending.length > 0 ? (
             <View style={styles.pendingList}>
               {pending.map((invite) => (
@@ -129,7 +172,36 @@ export function ClientsSection() {
   );
 }
 
+/** A selected chip is a genuine active state, which is what the accent is for. */
+const DURATION_OPTIONS: { label: string; value: number | null }[] = [
+  { label: '1 month', value: 1 },
+  { label: '3 months', value: 3 },
+  { label: '6 months', value: 6 },
+  { label: '12 months', value: 12 },
+  { label: 'No fixed period', value: null },
+];
+
 const styles = StyleSheet.create({
+  durationBlock: {
+    gap: Spacing.two,
+    marginTop: Spacing.three,
+  },
+  durationRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+  },
+  durationChip: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Radii.sm,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.one,
+  },
+  errorBanner: {
+    borderRadius: Radii.sm,
+    padding: Spacing.three,
+    marginTop: Spacing.three,
+  },
   container: {
     gap: Spacing.four,
   },

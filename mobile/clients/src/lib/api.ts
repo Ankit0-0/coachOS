@@ -301,3 +301,31 @@ export const trackingApi = {
     );
   },
 };
+
+// ---------------------------------------------------------------------------
+// Subscription
+// ---------------------------------------------------------------------------
+
+export type SubscriptionStatus = 'ACTIVE' | 'EXPIRED' | 'CANCELLED';
+
+export interface ClientSubscription {
+  id: string;
+  coachId: string;
+  clientId: string;
+  startDate: string;
+  endDate: string;
+  status: SubscriptionStatus;
+  storedStatus: SubscriptionStatus;
+  daysRemaining: number;
+  notes: string | null;
+  coach: { id: string; name: string; email: string };
+}
+
+export const clientSubscriptionApi = {
+  /** Null when the relationship is open-ended — a normal state, not an error. */
+  get(): Promise<ClientSubscription | null> {
+    return apiRequest<{ subscription: ClientSubscription | null }>('/client/subscription').then(
+      (data) => data.subscription,
+    );
+  },
+};

@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Avatar } from '@/components/ui/avatar';
+import { Pill } from '@/components/ui/pill';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -10,11 +11,22 @@ type ClientListItemProps = {
   clientId: string;
   name: string;
   email: string;
+  /**
+   * Null for an open-ended relationship, which is not a lapse and shows
+   * nothing. A marker appears only once a period has actually run out.
+   */
+  subscriptionStatus?: 'ACTIVE' | 'EXPIRED' | 'CANCELLED' | null;
   /** Rows sit inside one shared card, so all but the last carry a divider. */
   divider?: boolean;
 };
 
-export function ClientListItem({ clientId, name, email, divider = false }: ClientListItemProps) {
+export function ClientListItem({
+  clientId,
+  name,
+  email,
+  subscriptionStatus = null,
+  divider = false,
+}: ClientListItemProps) {
   const theme = useTheme();
   const router = useRouter();
 
@@ -37,6 +49,9 @@ export function ClientListItem({ clientId, name, email, divider = false }: Clien
           {email}
         </ThemedText>
       </View>
+      {subscriptionStatus === 'EXPIRED' || subscriptionStatus === 'CANCELLED' ? (
+        <Pill label={subscriptionStatus === 'CANCELLED' ? 'Cancelled' : 'Expired'} />
+      ) : null}
       <ThemedText type="small" themeColor="textMuted">
         ›
       </ThemedText>

@@ -166,6 +166,10 @@ export interface CoachInvite {
   clientId: string | null;
   client?: InvitePerson;
   status: InviteStatus;
+  durationMonths: number | null;
+  /** Null when this client has no subscription record — an open-ended relationship. */
+  subscriptionStatus: 'ACTIVE' | 'EXPIRED' | 'CANCELLED' | null;
+  subscriptionEndDate: string | null;
   createdAt: string;
   respondedAt: string | null;
 }
@@ -178,10 +182,12 @@ export const coachInviteApi = {
     );
   },
 
-  create(clientEmail: string): Promise<CoachInvite> {
+  create(clientEmail: string, durationMonths?: number): Promise<CoachInvite> {
     return apiRequest<{ invite: CoachInvite }>('/coach/invites', {
       method: 'POST',
-      body: { clientEmail },
+      // Omitted entirely when not chosen, which the backend reads as an
+      // open-ended relationship with no subscription record.
+      body: { clientEmail, ...(durationMonths ? { durationMonths } : {}) },
     }).then((data) => data.invite);
   },
 };
@@ -397,5 +403,56 @@ export const coachClientApi = {
     return apiRequest<{ profile: ClientProfile }>(
       `/coach/clients/${encodeURIComponent(clientId)}/profile`,
     ).then((data) => data.profile);
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Subscriptions
+// ---------------------------------------------------------------------------
+
+export type SubscriptionStatus = 'ACTIVE' | 'EXPIRED' | 'CANCELLED';
+
+export interface Subscription {
+  id: string;
+  coachId: string;
+  clientId: string;
+  startDate: string;
+  endDate: string;
+  /** Computed at read time, so a lapsed period reports EXPIRED on its own. */
+  status: SubscriptionStatus;
+  /** What the row literally stores, which can lag behind `status`. */
+  storedStatus: SubscriptionStatus;
+  daysRemaining: number;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const subscriptionApi = {
+  list(clientId: string): Promise<Subscription[]> {
+    return apiRequest<{ subscriptions: Subscription[] }>(
+      `/coach/clients/${encodeURIComponent(clientId)}/subscriptions`,
+    ).then((data) => data.subscriptions);
+  },
+
+  create(
+    clientId: string,
+    input: { startDate: string; endDate: string; notes?: string },
+  ): Promise<Subscription> {
+    return apiRequest<{ subscription: Subscription }>(
+      `/coach/clients/${encodeURIComponent(clientId)}/subscriptions`,
+      { method: 'POST', body: input },
+    ).then((data) => data.subscription);
+  },
+
+  update(
+    clientId: string,
+    subscriptionId: string,
+    input: { startDate?: string; endDate?: string; status?: SubscriptionStatus; notes?: string },
+  ): Promise<Subscription> {
+    return apiRequest<{ subscription: Subscription }>(
+      `/coach/clients/${encodeURIComponent(clientId)}/subscriptions/${encodeURIComponent(subscriptionId)}`,
+      { method: 'PATCH', body: input },
+    ).then((data) => data.subscription);
   },
 };

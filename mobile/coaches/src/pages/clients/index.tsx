@@ -57,6 +57,7 @@ export function ClientsScreen() {
               clientId={invite.clientId ?? invite.client?.id ?? ''}
               name={invite.client?.name ?? invite.clientEmail}
               email={invite.client?.email ?? invite.clientEmail}
+              subscriptionStatus={invite.subscriptionStatus}
               divider={index < clients.length - 1}
             />
           ))}

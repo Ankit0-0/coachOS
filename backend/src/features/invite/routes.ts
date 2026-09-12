@@ -48,7 +48,7 @@ coachInviteRouter.post("/", async (request, response) => {
   try {
     response.status(201).json({
       message: "Invite sent successfully.",
-      invite: await createInvite(user.id, parsed.data.clientEmail),
+      invite: await createInvite(user.id, parsed.data.clientEmail, parsed.data.durationMonths),
     });
   } catch (error) {
     const code = error instanceof Error ? error.message : "INTERNAL_ERROR";

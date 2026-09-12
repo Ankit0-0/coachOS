@@ -16,6 +16,12 @@ export type DailyActivity = {
 type MonthlyActivityCalendarProps = {
   entries: DailyActivity[];
   daysInMonth?: number;
+  /**
+   * Weekday the 1st of the month falls on, 0 = Sunday. Without it the grid
+   * puts day 1 in the Sunday column whatever month it is, so every date sits
+   * under the wrong weekday.
+   */
+  firstWeekday?: number;
 };
 
 const weekDays = [
@@ -29,7 +35,11 @@ const weekDays = [
 ];
 
 /** Read-only ring tracker of a client's daily workout/diet completion. */
-export function MonthlyActivityCalendar({ entries, daysInMonth = 30 }: MonthlyActivityCalendarProps) {
+export function MonthlyActivityCalendar({
+  entries,
+  daysInMonth = 30,
+  firstWeekday = 0,
+}: MonthlyActivityCalendarProps) {
   const theme = useTheme();
 
   return (
@@ -45,6 +55,11 @@ export function MonthlyActivityCalendar({ entries, daysInMonth = 30 }: MonthlyAc
       </View>
 
       <View style={styles.calendarGrid}>
+        {/* Blanks so the 1st lands under its real weekday. */}
+        {Array.from({ length: firstWeekday }, (_, index) => (
+          <View key={`lead-${index}`} style={styles.dayCell} />
+        ))}
+
         {Array.from({ length: daysInMonth }, (_, index) => index + 1).map((dayNumber) => {
           const entry = entries.find((item) => item.date === dayNumber);
           const workoutPct = entry ? entry.workoutCompleted / Math.max(entry.workoutTotal, 1) : 0;
@@ -116,7 +131,10 @@ const styles = StyleSheet.create({
   calendarGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    // Not space-between: a partial last row would be pushed out to both
+    // edges, stranding the 31st under Saturday instead of beside the 30th.
+    // Seven 14.28% cells fill the row exactly, so packing left is correct.
+    justifyContent: 'flex-start',
     rowGap: Spacing.two,
   },
   dayCell: {

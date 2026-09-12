@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
+import { MonthNavigator } from '@/components/history/MonthNavigator';
 import { MonthlyActivityCalendar, type DailyActivity } from '@/components/history/MonthlyActivityCalendar';
 import { WeightChart, type WeightPoint } from '@/components/history/WeightChart';
 import { LockedState } from '@/components/locked-state';
@@ -12,7 +13,7 @@ import { useOnboardingStatus } from '@/hooks/use-onboarding-status';
 import { useTheme } from '@/hooks/use-theme';
 import { useTrackingAssignments } from '@/hooks/use-assignments';
 import { trackingApi, type CheckIn, type TrackingAssignment, type WeightEntry } from '@/lib/api';
-import { currentMonthRange, dayOfMonth, lastNDaysRange, todayKey, weekdayLabel } from '@/lib/dates';
+import { dayOfMonth, lastNDaysRange, monthRange, todayKey, weekdayLabel } from '@/lib/dates';
 
 type WorkoutPlanContent = { exercises: { id: string; sets: number }[] };
 type DietPlanContent = { meals: { id: string }[] };
@@ -47,6 +48,19 @@ export function HistoryScreen() {
   const [dietCheckIns, setDietCheckIns] = useState<CheckIn[]>([]);
   const [weights, setWeights] = useState<WeightEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const now = new Date();
+  const [viewedMonth, setViewedMonth] = useState({ year: now.getFullYear(), month: now.getMonth() });
+  const month = monthRange(viewedMonth.year, viewedMonth.month);
+  const isAtCurrentMonth =
+    viewedMonth.year === now.getFullYear() && viewedMonth.month === now.getMonth();
+
+  const stepMonth = (delta: number) =>
+    setViewedMonth((current) => {
+      // Date normalises an out-of-range month into the next/previous year.
+      const shifted = new Date(current.year, current.month + delta, 1);
+      return { year: shifted.getFullYear(), month: shifted.getMonth() };
+    });
+
   const [weightInput, setWeightInput] = useState('');
   const [isLoggingWeight, setIsLoggingWeight] = useState(false);
   const [weightMessage, setWeightMessage] = useState<string | null>(null);
@@ -55,7 +69,6 @@ export function HistoryScreen() {
     let active = true;
 
     async function load() {
-      const month = currentMonthRange();
       const week = lastNDaysRange(7);
       try {
         const [workoutRows, dietRows, weightRows] = await Promise.all([
@@ -90,9 +103,9 @@ export function HistoryScreen() {
     return () => {
       active = false;
     };
-  }, [workoutAssignment, dietAssignment]);
+    // month.from/to rather than the object, which is rebuilt every render.
+  }, [workoutAssignment, dietAssignment, month.from, month.to]);
 
-  const month = currentMonthRange();
   const workoutIds = workoutItemIds(workoutAssignment);
   const dietIds = dietItemIds(dietAssignment);
 
@@ -220,9 +233,12 @@ export function HistoryScreen() {
 
       <ThemedView type="backgroundElement" style={[styles.activityCard, { borderColor: theme.border }]}>
         <View style={styles.activityHeader}>
-          <ThemedText type="smallBold" themeColor="textSecondary">
-            {month.label}
-          </ThemedText>
+          <MonthNavigator
+            label={month.monthYearLabel}
+            onPrevious={() => stepMonth(-1)}
+            onNext={() => stepMonth(1)}
+            isAtCurrentMonth={isAtCurrentMonth}
+          />
         </View>
 
         <ThemedText type="small" themeColor="textSecondary" style={styles.summaryText}>
@@ -240,7 +256,11 @@ export function HistoryScreen() {
           </View>
         </View>
 
-        <MonthlyActivityCalendar entries={dailyActivity} daysInMonth={month.daysInMonth} />
+        <MonthlyActivityCalendar
+          entries={dailyActivity}
+          daysInMonth={month.daysInMonth}
+          firstWeekday={month.firstWeekday}
+        />
       </ThemedView>
     </ScreenScaffold>
   );

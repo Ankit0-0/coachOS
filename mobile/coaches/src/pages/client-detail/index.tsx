@@ -2,6 +2,8 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
 
+import { MonthNavigator } from '@/components/client-detail/MonthNavigator';
+import { SubscriptionSection } from '@/components/client-detail/SubscriptionSection';
 import { MonthlyActivityCalendar, type DailyActivity } from '@/components/client-detail/MonthlyActivityCalendar';
 import { WeightChart, type WeightPoint } from '@/components/client-detail/WeightChart';
 import { DetailHeader } from '@/components/detail-header';
@@ -27,7 +29,7 @@ import {
   type WeightEntry,
   type WorkoutContent,
 } from '@/lib/api';
-import { currentMonthRange, dayOfMonth, lastNDaysRange, longDateLabel, weekdayLabel } from '@/lib/dates';
+import { dayOfMonth, lastNDaysRange, longDateLabel, monthRange, weekdayLabel } from '@/lib/dates';
 import { planStats } from '@/lib/plan-format';
 
 const WEIGHT_LOOKBACK_DAYS = 30;
@@ -85,7 +87,18 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
   const [pickerPlans, setPickerPlans] = useState<{ own: Plan[]; defaults: Plan[] } | null>(null);
   const [isAssigning, setIsAssigning] = useState(false);
 
-  const month = currentMonthRange();
+  const now = new Date();
+  const [viewedMonth, setViewedMonth] = useState({ year: now.getFullYear(), month: now.getMonth() });
+  const month = monthRange(viewedMonth.year, viewedMonth.month);
+  const isAtCurrentMonth =
+    viewedMonth.year === now.getFullYear() && viewedMonth.month === now.getMonth();
+
+  const stepMonth = (delta: number) =>
+    setViewedMonth((current) => {
+      // Date normalises an out-of-range month into the next/previous year.
+      const shifted = new Date(current.year, current.month + delta, 1);
+      return { year: shifted.getFullYear(), month: shifted.getMonth() };
+    });
 
   const loadAll = useCallback(async () => {
     const weightRange = lastNDaysRange(WEIGHT_LOOKBACK_DAYS);
@@ -326,12 +339,15 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
             </Card>
 
             <Card>
-              <View style={styles.cardHeader}>
-                <ThemedText type="smallBold">{month.label}</ThemedText>
-                <ThemedText type="meta">
-                  {completedDays} of {month.daysInMonth} days logged
-                </ThemedText>
-              </View>
+              <MonthNavigator
+                label={month.monthYearLabel}
+                onPrevious={() => stepMonth(-1)}
+                onNext={() => stepMonth(1)}
+                isAtCurrentMonth={isAtCurrentMonth}
+              />
+              <ThemedText type="meta" style={styles.monthSummary}>
+                {completedDays} of {month.daysInMonth} days logged
+              </ThemedText>
               <View style={styles.legendRow}>
                 <View style={styles.legendItem}>
                   <View style={[styles.legendDot, { backgroundColor: theme.chartWorkout }]} />
@@ -346,7 +362,11 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
                   </ThemedText>
                 </View>
               </View>
-              <MonthlyActivityCalendar entries={dailyActivity} daysInMonth={month.daysInMonth} />
+              <MonthlyActivityCalendar
+                entries={dailyActivity}
+                daysInMonth={month.daysInMonth}
+                firstWeekday={month.firstWeekday}
+              />
             </Card>
           </Section>
 
@@ -377,11 +397,13 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
             )}
           </Section>
 
+          <SubscriptionSection clientId={clientId} />
+
           <Section title="Payment">
             <Card>
               <ThemedText type="smallBold">Billing isn&apos;t connected yet</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
-                Invoices and subscription status for this client will appear here.
+                Invoices and receipts will appear here. Subscription periods are tracked above.
               </ThemedText>
             </Card>
           </Section>
@@ -392,6 +414,9 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
 }
 
 const styles = StyleSheet.create({
+  monthSummary: {
+    marginTop: Spacing.two,
+  },
   identity: {
     flexDirection: 'row',
     alignItems: 'center',
