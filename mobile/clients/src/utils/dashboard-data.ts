@@ -99,7 +99,10 @@ export type DietMealStatus = {
   id: string;
   meal: string;
   checked: boolean;
+  /** What the thumbnail renders: a signed URL from the API, or a local file while uploading. */
   imageUri?: string;
+  /** The S3 key behind `imageUri`. This is what gets saved with the check-in. */
+  photoKey?: string;
   comment: string;
 };
 
@@ -118,6 +121,7 @@ export function getDietMealStatusItems(): DietMealStatus[] {
       meal: meal.label,
       checked: false,
       imageUri: undefined,
+      photoKey: undefined,
       comment: '',
     }));
   }

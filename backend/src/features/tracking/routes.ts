@@ -29,6 +29,9 @@ function respondToTrackingError(response: Response, request: Request, error: unk
   if (code === "ASSIGNMENT_NOT_FOUND") {
     logger.debug({ url: request.originalUrl }, `tracking: rejected — ${notFoundMessage}`);
     sendError(response, 404);
+  } else if (code === "FORBIDDEN_KEY") {
+    logger.debug({ url: request.originalUrl, userId: request.user?.id }, "tracking: rejected — photo key is not namespaced to the caller");
+    sendError(response, 403);
   } else if (code === "FORBIDDEN") {
     logger.debug({ url: request.originalUrl, userId: request.user?.id }, `tracking: rejected — ${forbiddenMessage}`);
     sendError(response, 403);
@@ -107,8 +110,7 @@ trackingRouter.post("/weight", async (request, response) => {
       weightEntry: await upsertWeight(parsed.data, userId),
     });
   } catch (error) {
-    logger.error({ err: error, url: request.originalUrl }, "tracking: unexpected error");
-    sendError(response, 500);
+    respondToTrackingError(response, request, error, "weight entry not found", "photo key does not belong to this client");
   }
 });
 

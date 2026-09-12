@@ -1,6 +1,5 @@
 import { Image, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { useState } from 'react';
-import * as ImagePicker from 'expo-image-picker';
 
 import { useRouter } from 'expo-router';
 
@@ -16,31 +15,43 @@ import { useOnboardingStatus } from '@/hooks/use-onboarding-status';
 import { useTheme } from '@/hooks/use-theme';
 import { trackingApi } from '@/lib/api';
 import { todayKey } from '@/lib/dates';
+import { pickAndUploadImage } from '@/lib/image-upload';
 import { todaysPlanCards } from '@/utils/dashboard-data';
 
 export function HomeScreen() {
   const theme = useTheme();
   const router = useRouter();
   const { hasCoach, isLoading: isCheckingOnboarding } = useOnboardingStatus();
+  /** The local file, shown as a preview until the entry is saved. */
   const [physiqueImage, setPhysiqueImage] = useState<string | null>(null);
+  /** The S3 key behind it — this is what the weight entry actually stores. */
+  const [physiqueKey, setPhysiqueKey] = useState<string | null>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [weightValue, setWeightValue] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
 
   const pickPhysiquePhoto = async () => {
+    if (isUploadingPhoto) return;
+
+    setSavedMessage(null);
+    setIsUploadingPhoto(true);
+    let result;
     try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        quality: 0.7,
-        allowsEditing: true,
-      });
-      if (!result.canceled && result.assets[0]?.uri) {
-        setPhysiqueImage(result.assets[0].uri);
-        setSavedMessage(null);
-      }
-    } catch {
-      // Image picking is not available in this environment.
+      result = await pickAndUploadImage('weight');
+    } finally {
+      setIsUploadingPhoto(false);
     }
+
+    // Cancelling leaves any photo already attached in place.
+    if (result.status === 'cancelled') return;
+    if (result.status === 'error') {
+      setSavedMessage(result.message);
+      return;
+    }
+
+    setPhysiqueImage(result.uri);
+    setPhysiqueKey(result.key);
   };
 
   const handleSaveUpdate = async () => {
@@ -51,12 +62,16 @@ export function HomeScreen() {
     }
     try {
       setIsSaving(true);
-      await trackingApi.saveWeight({
+      const entry = await trackingApi.saveWeight({
         date: todayKey(),
         weightKg: kg,
-        photoUrl: physiqueImage ?? undefined,
+        // Only sent when a photo was picked, so saving a weight on its own
+        // never clears a photo added earlier in the day.
+        ...(physiqueKey ? { photoKey: physiqueKey } : {}),
       });
       setWeightValue('');
+      // Swap the local file for the signed URL the API hands back.
+      if (entry.photoUrl) setPhysiqueImage(entry.photoUrl);
       setSavedMessage('Saved to today\u2019s update.');
     } catch (error) {
       setSavedMessage(
@@ -114,16 +129,25 @@ export function HomeScreen() {
           </ThemedText>
 
           <Pressable
-            onPress={pickPhysiquePhoto}
+            accessibilityRole="button"
+            accessibilityLabel={physiqueImage ? 'Change physique photo' : 'Upload physique photo'}
+            onPress={() => void pickPhysiquePhoto()}
+            disabled={isUploadingPhoto}
             style={[styles.uploadButton, { borderColor: theme.border }]}>
-            <ThemedText type="meta">
-              {physiqueImage ? 'Change image' : 'Upload'}
-            </ThemedText>
+            {isUploadingPhoto ? (
+              <ActivityIndicator size="small" color={theme.textSecondary} />
+            ) : (
+              <ThemedText type="meta">{physiqueImage ? 'Change image' : 'Upload'}</ThemedText>
+            )}
           </Pressable>
         </View>
 
         {physiqueImage ? (
-          <Image source={{ uri: physiqueImage }} style={styles.previewImage} />
+          <Image
+            source={{ uri: physiqueImage }}
+            accessibilityLabel="Physique photo for today"
+            style={[styles.previewImage, { backgroundColor: theme.surfaceSunken }]}
+          />
         ) : null}
 
         <View style={styles.updateRow}>
@@ -218,14 +242,15 @@ const styles = StyleSheet.create({
     borderRadius: Radii.sm,
     paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.two,
-    backgroundColor: 'rgba(58, 123, 255, 0.08)',
+    minWidth: 72,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   previewImage: {
     width: '100%',
     height: 110,
     borderRadius: Spacing.two,
     marginTop: -Spacing.half,
-    backgroundColor: '#E5E7EB',
   },
   input: {
     minWidth: 110,

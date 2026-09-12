@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { MonthNavigator } from '@/components/history/MonthNavigator';
 import { MonthlyActivityCalendar, type DailyActivity } from '@/components/history/MonthlyActivityCalendar';
@@ -14,6 +14,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useTrackingAssignments } from '@/hooks/use-assignments';
 import { trackingApi, type CheckIn, type TrackingAssignment, type WeightEntry } from '@/lib/api';
 import { dayOfMonth, lastNDaysRange, monthRange, todayKey, weekdayLabel } from '@/lib/dates';
+import { pickAndUploadImage } from '@/lib/image-upload';
 
 type WorkoutPlanContent = { exercises: { id: string; sets: number }[] };
 type DietPlanContent = { meals: { id: string }[] };
@@ -64,6 +65,10 @@ export function HistoryScreen() {
   const [weightInput, setWeightInput] = useState('');
   const [isLoggingWeight, setIsLoggingWeight] = useState(false);
   const [weightMessage, setWeightMessage] = useState<string | null>(null);
+  /** An optional progress photo for today's weigh-in. */
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [photoKey, setPhotoKey] = useState<string | null>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -137,6 +142,36 @@ export function HistoryScreen() {
       ? weightPoints.reduce((sum, point) => sum + point.value, 0) / weightPoints.length
       : null;
 
+  /**
+   * The local file while one is pending, otherwise whatever today's saved entry
+   * already has — so a photo logged earlier in the day is still visible.
+   */
+  const photoDisplayUri =
+    photoUri ?? weights.find((entry) => entry.date === todayKey())?.photoUrl ?? null;
+
+  const handlePickPhoto = async () => {
+    if (isUploadingPhoto) return;
+
+    setWeightMessage(null);
+    setIsUploadingPhoto(true);
+    let result;
+    try {
+      result = await pickAndUploadImage('weight');
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+
+    // Cancelling keeps whatever photo was already attached.
+    if (result.status === 'cancelled') return;
+    if (result.status === 'error') {
+      setWeightMessage(result.message);
+      return;
+    }
+
+    setPhotoUri(result.uri);
+    setPhotoKey(result.key);
+  };
+
   const handleLogWeight = async () => {
     const kg = Number.parseFloat(weightInput);
     if (!Number.isFinite(kg) || kg <= 0) {
@@ -146,8 +181,17 @@ export function HistoryScreen() {
     try {
       setIsLoggingWeight(true);
       setWeightMessage(null);
-      await trackingApi.saveWeight({ date: todayKey(), weightKg: kg });
+      const entry = await trackingApi.saveWeight({
+        date: todayKey(),
+        weightKg: kg,
+        // Only sent when a photo was picked this session, so logging a weight
+        // on its own never clears a photo added earlier.
+        ...(photoKey ? { photoKey } : {}),
+      });
       setWeightInput('');
+      // Swap the local file for the signed URL the API hands back.
+      if (entry.photoUrl) setPhotoUri(entry.photoUrl);
+      setPhotoKey(null);
       const week = lastNDaysRange(7);
       const updated = await trackingApi.listWeights(week);
       setWeights(updated);
@@ -221,6 +265,32 @@ export function HistoryScreen() {
             </ThemedText>
           </Pressable>
         </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={photoDisplayUri ? 'Change progress photo' : 'Add progress photo'}
+          onPress={() => void handlePickPhoto()}
+          disabled={isUploadingPhoto || isLoggingWeight}
+          style={({ pressed }) => [
+            styles.photoButton,
+            { borderColor: theme.border, opacity: isUploadingPhoto ? 0.6 : pressed ? 0.8 : 1 },
+          ]}>
+          {isUploadingPhoto ? (
+            <ActivityIndicator size="small" color={theme.accent} />
+          ) : (
+            <ThemedText type="small" themeColor="textSecondary">
+              {photoDisplayUri ? 'Change progress photo' : 'Add a progress photo (optional)'}
+            </ThemedText>
+          )}
+        </Pressable>
+
+        {photoDisplayUri ? (
+          <Image
+            source={{ uri: photoDisplayUri }}
+            accessibilityLabel="Progress photo for today"
+            style={[styles.photoPreview, { backgroundColor: theme.surfaceSunken }]}
+          />
+        ) : null}
+
         {weightMessage ? (
           <ThemedText
             type="small"
@@ -284,6 +354,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
+  },
+  photoButton: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Spacing.two,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.two,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 40,
+  },
+  photoPreview: {
+    width: '100%',
+    height: 140,
+    borderRadius: Spacing.two,
   },
   weightInput: {
     flex: 1,

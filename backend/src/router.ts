@@ -8,6 +8,7 @@ import { clientSubscriptionRouter, coachSubscriptionRouter } from "./features/su
 import { coachAssignmentRouter, coachPlanRouter } from "./features/plan/routes.js";
 import { clientProfileRouter, coachProfileRouter } from "./features/profile/routes.js";
 import { trackingRouter } from "./features/tracking/routes.js";
+import { uploadRouter } from "./features/upload/routes.js";
 import { requireAuth } from "./middleware/auth.js";
 
 const router: ReturnType<typeof Router> = Router();
@@ -16,6 +17,7 @@ router.use("/auth", authRouter);
 router.use("/admin/coaches", adminCoachRouter);
 router.use("/admin/plans", adminPlanRouter);
 router.use("/tracking", trackingRouter);
+router.use("/uploads", uploadRouter);
 router.use("/coach/invites", coachInviteRouter);
 router.use("/client/invites", clientInviteRouter);
 router.use("/coach/plans", coachPlanRouter);

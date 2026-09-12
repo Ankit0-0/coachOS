@@ -2,8 +2,18 @@ import type { ClientProfile, CoachProfile, User } from "@prisma/client";
 
 import { logger } from "../../config/logger.js";
 import { prisma } from "../../config/prisma.config.js";
+import { getSignedReadUrl, isOwnedKey } from "../upload/service.js";
 
-function serializeCoachProfile(user: User, profile: CoachProfile | null) {
+/**
+ * Keys reach the server by way of the app, so the caller's own prefix is
+ * re-checked before one is stored against their profile.
+ */
+function assertOwnedKey(key: string | null | undefined, userId: string) {
+  if (key && !isOwnedKey(key, userId)) throw new Error("FORBIDDEN_KEY");
+}
+
+/** Async because `avatarKey` is resolved to a freshly signed URL on the way out. */
+async function serializeCoachProfile(user: User, profile: CoachProfile | null) {
   return {
     id: user.id,
     name: user.name,
@@ -12,6 +22,7 @@ function serializeCoachProfile(user: User, profile: CoachProfile | null) {
     memberSince: user.createdAt,
     /** Drives the pending-approval screen in the coach app. */
     approvalStatus: user.coachApprovalStatus,
+    avatarUrl: await getSignedReadUrl(profile?.avatarKey ?? null),
     bio: profile?.bio ?? null,
     specialties: profile?.specialties ?? [],
     yearsExperience: profile?.yearsExperience ?? null,
@@ -39,9 +50,11 @@ export async function updateCoachProfile(
     specialties?: string[] | undefined;
     yearsExperience?: number | null | undefined;
     phone?: string | undefined;
+    avatarKey?: string | null | undefined;
   },
 ) {
   const { name, ...profileFields } = input;
+  assertOwnedKey(profileFields.avatarKey, coachId);
 
   // The User row holds the name; everything else lives on CoachProfile, which
   // may not exist yet for coaches who have never opened this screen.
@@ -63,6 +76,7 @@ export async function updateCoachProfile(
           ...(profileFields.specialties !== undefined ? { specialties: profileFields.specialties } : {}),
           ...(profileFields.yearsExperience !== undefined ? { yearsExperience: profileFields.yearsExperience } : {}),
           ...(profileFields.phone !== undefined ? { phone: profileFields.phone } : {}),
+          ...(profileFields.avatarKey !== undefined ? { avatarKey: profileFields.avatarKey } : {}),
         },
         create: {
           userId: coachId,
@@ -70,6 +84,7 @@ export async function updateCoachProfile(
           specialties: profileFields.specialties ?? [],
           yearsExperience: profileFields.yearsExperience ?? null,
           phone: profileFields.phone ?? null,
+          avatarKey: profileFields.avatarKey ?? null,
         },
       })
     : await prisma.coachProfile.findUnique({ where: { userId: coachId } });
@@ -78,13 +93,15 @@ export async function updateCoachProfile(
   return serializeCoachProfile(user, profile);
 }
 
-function serializeClientProfile(user: User, profile: ClientProfile | null) {
+/** Async because `avatarKey` is resolved to a freshly signed URL on the way out. */
+async function serializeClientProfile(user: User, profile: ClientProfile | null) {
   return {
     id: user.id,
     name: user.name,
     email: user.email,
     role: user.role,
     memberSince: user.createdAt,
+    avatarUrl: await getSignedReadUrl(profile?.avatarKey ?? null),
     heightCm: profile?.heightCm ?? null,
     weightKg: profile?.weightKg ?? null,
     goals: profile?.goals ?? null,
@@ -110,9 +127,11 @@ export async function updateClientProfile(
     heightCm?: number | null | undefined;
     weightKg?: number | null | undefined;
     goals?: string | undefined;
+    avatarKey?: string | null | undefined;
   },
 ) {
   const { name, ...profileFields } = input;
+  assertOwnedKey(profileFields.avatarKey, clientId);
 
   // The User row holds the name; the rest lives on ClientProfile, which may not
   // exist yet for clients who have never opened this screen.
@@ -133,12 +152,14 @@ export async function updateClientProfile(
           ...(profileFields.heightCm !== undefined ? { heightCm: profileFields.heightCm } : {}),
           ...(profileFields.weightKg !== undefined ? { weightKg: profileFields.weightKg } : {}),
           ...(profileFields.goals !== undefined ? { goals: profileFields.goals } : {}),
+          ...(profileFields.avatarKey !== undefined ? { avatarKey: profileFields.avatarKey } : {}),
         },
         create: {
           userId: clientId,
           heightCm: profileFields.heightCm ?? null,
           weightKg: profileFields.weightKg ?? null,
           goals: profileFields.goals ?? null,
+          avatarKey: profileFields.avatarKey ?? null,
         },
       })
     : await prisma.clientProfile.findUnique({ where: { userId: clientId } });

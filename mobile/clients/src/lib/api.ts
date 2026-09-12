@@ -148,6 +148,30 @@ export async function fetchCurrentUser(): Promise<AuthUser> {
 }
 
 // ---------------------------------------------------------------------------
+// Image uploads
+// ---------------------------------------------------------------------------
+
+/** Must match the backend allowlist in features/upload/schemas.ts. */
+export type UploadContentType = 'image/jpeg' | 'image/png' | 'image/webp';
+
+export type UploadPurpose = 'weight' | 'diet' | 'avatar';
+
+export interface PresignedUpload {
+  /** Valid for five minutes, and only for this one object and content type. */
+  uploadUrl: string;
+  /** What gets stored on the record. The API never returns raw keys on reads. */
+  key: string;
+}
+
+export const uploadApi = {
+  presign(input: { contentType: UploadContentType; purpose: UploadPurpose }): Promise<PresignedUpload> {
+    // No key is sent: the server builds it under the caller's own id, so one
+    // user can never aim an upload at another user's photo.
+    return apiRequest<PresignedUpload>('/uploads/presign', { method: 'POST', body: input });
+  },
+};
+
+// ---------------------------------------------------------------------------
 // Tracking
 // ---------------------------------------------------------------------------
 
@@ -167,6 +191,11 @@ export interface CheckIn {
   date: string;
   completedItemIds: string[];
   notes: string | null;
+  /**
+   * { [itemId]: signedUrl }, one per plan item that has a photo. Signed on
+   * every read and valid for about an hour — never store or cache these.
+   */
+  photoUrls: Record<string, string> | null;
 }
 
 export interface WeightEntry {
@@ -174,6 +203,7 @@ export interface WeightEntry {
   clientId: string;
   date: string;
   weightKg: number;
+  /** A freshly signed URL, not the stored key. Expires in about an hour. */
   photoUrl: string | null;
 }
 
@@ -216,6 +246,8 @@ export interface ClientProfile {
   email: string;
   role: Role;
   memberSince: string;
+  /** A freshly signed URL, not the stored key. Null when there is no avatar. */
+  avatarUrl: string | null;
   heightCm: number | null;
   /** Self-reported. Separate from WeightEntry, which is the tracked history. */
   weightKg: number | null;
@@ -227,6 +259,8 @@ export interface ClientProfileUpdate {
   heightCm?: number | null;
   weightKg?: number | null;
   goals?: string;
+  /** An S3 key from uploadApi.presign. Null removes the avatar. */
+  avatarKey?: string | null;
 }
 
 export const clientProfileApi = {
@@ -275,6 +309,8 @@ export const trackingApi = {
     date: string;
     completedItemIds: string[];
     notes?: string;
+    /** Sent whole and stored whole — omitting an item removes its photo. */
+    photoKeys?: Record<string, string> | null;
   }): Promise<CheckIn> {
     return apiRequest<{ checkIn: CheckIn }>('/tracking/checkin', {
       method: 'POST',
@@ -288,7 +324,7 @@ export const trackingApi = {
     );
   },
 
-  saveWeight(input: { date: string; weightKg: number; photoUrl?: string }): Promise<WeightEntry> {
+  saveWeight(input: { date: string; weightKg: number; photoKey?: string | null }): Promise<WeightEntry> {
     return apiRequest<{ weightEntry: WeightEntry }>('/tracking/weight', {
       method: 'POST',
       body: input,
