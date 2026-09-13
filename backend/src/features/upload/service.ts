@@ -103,7 +103,13 @@ export async function createPresignedUpload(
     ContentType: input.contentType,
   });
 
-  const uploadUrl = await getSignedUrl(s3Client(config), command, { expiresIn: UPLOAD_URL_TTL_SECONDS });
+  // signableHeaders is what actually does the pinning. By default the presigner
+  // signs only `host`, so without this S3 accepts a PUT with any Content-Type —
+  // setting ContentType on the command alone is not enough.
+  const uploadUrl = await getSignedUrl(s3Client(config), command, {
+    expiresIn: UPLOAD_URL_TTL_SECONDS,
+    signableHeaders: new Set(["content-type"]),
+  });
 
   logger.debug({ userId, purpose: input.purpose, key }, "createPresignedUpload: issued upload URL");
   return { uploadUrl, key };

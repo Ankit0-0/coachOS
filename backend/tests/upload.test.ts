@@ -130,6 +130,16 @@ describe("uploads", () => {
       expect(String(input.Key).endsWith(".webp")).toBe(true);
     });
 
+    it("asks the presigner to sign the content-type header, not just set it", async () => {
+      await presign(client, { contentType: "image/png", purpose: "avatar" });
+
+      // Setting ContentType on the command is not enough: by default only `host`
+      // is signed, and S3 then accepts a PUT with any Content-Type. Found by
+      // PUTting text/html against a real presigned URL and getting a 200.
+      const options = signedOptions() as { signableHeaders?: Set<string> };
+      expect(options.signableHeaders?.has("content-type")).toBe(true);
+    });
+
     it("gives the upload URL a short expiry", async () => {
       await presign(client, { contentType: "image/jpeg", purpose: "weight" });
       expect(signedOptions().expiresIn).toBe(5 * 60);
@@ -447,6 +457,25 @@ describe("uploads", () => {
 
       expect(res.status).toBe(200);
       expect(res.body.checkIn.photoUrls).toEqual({ breakfast: SIGNED_URL });
+    });
+
+    it("adds one item's photo without wiping the others", async () => {
+      await saveCheckIn({ photoKeys: { dinner: `users/${photoClient.id}/diet/dinner.jpg` } });
+
+      // The app only knows the key it just uploaded — it never sees stored keys —
+      // so a single-item patch must merge. Found in the real diet screen, where
+      // adding Lunch's photo erased Breakfast's.
+      const res = await saveCheckIn({ photoKeys: { lunch: `users/${photoClient.id}/diet/lunch.jpg` } });
+
+      expect(res.status).toBe(200);
+      expect(Object.keys(res.body.checkIn.photoUrls).sort()).toEqual(["breakfast", "dinner", "lunch"]);
+    });
+
+    it("removes just one item's photo when its value is null", async () => {
+      const res = await saveCheckIn({ photoKeys: { dinner: null } });
+
+      expect(res.status).toBe(200);
+      expect(Object.keys(res.body.checkIn.photoUrls).sort()).toEqual(["breakfast", "lunch"]);
     });
 
     it("returns null rather than an empty object when there are no photos", async () => {

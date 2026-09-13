@@ -11,10 +11,12 @@ export const checkInSchema = z.object({
   completedItemIds: z.array(z.string()),
   notes: z.string().max(2000).optional(),
   /**
-   * { [itemId]: key } — one photo per plan item. Sent whole and stored whole,
-   * so omitting an item removes its photo. Null clears every photo at once.
+   * { [itemId]: key } — merged into the stored map one item at a time, so an
+   * app can add a single meal's photo without knowing the keys of the others
+   * (it never sees them: reads only return signed URLs). A null value removes
+   * that one photo; a null map clears every photo at once.
    */
-  photoKeys: z.record(z.string().min(1), photoKeySchema).nullable().optional(),
+  photoKeys: z.record(z.string().min(1), photoKeySchema.nullable()).nullable().optional(),
 });
 
 export const weightSchema = z.object({

@@ -309,8 +309,11 @@ export const trackingApi = {
     date: string;
     completedItemIds: string[];
     notes?: string;
-    /** Sent whole and stored whole — omitting an item removes its photo. */
-    photoKeys?: Record<string, string> | null;
+    /**
+     * Merged into the stored map per item, so send only what changed. Omit it
+     * to leave photos alone; a null value removes that one item's photo.
+     */
+    photoKeys?: Record<string, string | null> | null;
   }): Promise<CheckIn> {
     return apiRequest<{ checkIn: CheckIn }>('/tracking/checkin', {
       method: 'POST',

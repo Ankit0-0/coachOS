@@ -22,18 +22,6 @@ import {
   updateDietMealStatus,
 } from '@/utils/dashboard-data';
 
-/**
- * The { [mealId]: key } map the check-in stores. Built from local state each
- * time because the column is replaced wholesale on every save.
- */
-function photoKeysOf(meals: DietMealStatus[]): Record<string, string> {
-  const keys: Record<string, string> = {};
-  for (const meal of meals) {
-    if (meal.photoKey) keys[meal.id] = meal.photoKey;
-  }
-  return keys;
-}
-
 export function DietDetailsScreen() {
   const theme = useTheme();
   const { hasCoach, isLoading: isCheckingOnboarding } = useOnboardingStatus();
@@ -68,8 +56,8 @@ export function DietDetailsScreen() {
           current.map((meal) => ({
             ...meal,
             checked: completed.has(meal.id),
-            // A signed URL comes back on every read; the key itself never does,
-            // so it stays in state only for photos added this session.
+            // Reads carry signed URLs only, never keys — which is fine, because
+            // adding a photo sends just that meal's key and the server merges.
             imageUri: photoUrls[meal.id] ?? meal.imageUri,
           })),
         );
@@ -102,9 +90,6 @@ export function DietDetailsScreen() {
           assignmentId: dietAssignment.id,
           date: todayKey(),
           completedItemIds: next.filter((meal) => meal.checked).map((meal) => meal.id),
-          // photoKeys is stored whole, so it has to be re-sent or ticking a
-          // meal would wipe the photos.
-          photoKeys: photoKeysOf(next),
         })
         .catch(() => {
           // Optimistic UI — keep the local toggle even if the sync fails.
@@ -113,11 +98,11 @@ export function DietDetailsScreen() {
   };
 
   /** Writes a photo onto one meal in both local state and the shared cache. */
-  const applyPhoto = (id: string, changes: { imageUri: string; photoKey: string }): DietMealStatus[] => {
+  const applyPhoto = (id: string, imageUri: string): DietMealStatus[] => {
     const next = getDietMealStatusItems().map((meal) =>
-      meal.id === id ? { ...meal, ...changes } : meal,
+      meal.id === id ? { ...meal, imageUri } : meal,
     );
-    updateDietMealStatus(id, changes);
+    updateDietMealStatus(id, { imageUri });
     setMeals(next);
     return next;
   };
@@ -145,7 +130,7 @@ export function DietDetailsScreen() {
 
     // Show the local file straight away, then swap in the signed URL the API
     // returns once the key is saved against today's check-in.
-    const withLocal = applyPhoto(id, { imageUri: result.uri, photoKey: result.key });
+    const withLocal = applyPhoto(id, result.uri);
 
     if (!dietAssignment) {
       setPhotoError('Photo uploaded, but there is no active diet plan to attach it to.');
@@ -157,10 +142,12 @@ export function DietDetailsScreen() {
         assignmentId: dietAssignment.id,
         date: todayKey(),
         completedItemIds: withLocal.filter((meal) => meal.checked).map((meal) => meal.id),
-        photoKeys: photoKeysOf(withLocal),
+        // Only this meal's key: the server merges it into the stored map, so
+        // photos on the other meals are left exactly as they were.
+        photoKeys: { [id]: result.key },
       });
       const signedUrl = checkIn.photoUrls?.[id];
-      if (signedUrl) applyPhoto(id, { imageUri: signedUrl, photoKey: result.key });
+      if (signedUrl) applyPhoto(id, signedUrl);
     } catch (error) {
       setPhotoError(
         error instanceof Error
@@ -187,7 +174,6 @@ export function DietDetailsScreen() {
         assignmentId: dietAssignment.id,
         date: todayKey(),
         completedItemIds,
-        photoKeys: photoKeysOf(meals),
       });
       setSaveMessage('Diet log saved to your history.');
     } catch (error) {
