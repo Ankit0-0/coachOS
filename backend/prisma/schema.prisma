@@ -97,15 +97,15 @@ model CoachClientInvite {
   clientId    String?
   client      User?   @relation("ReceivedInvites", fields: [clientId], references: [id], onDelete: SetNull)
 
-  status      InviteStatus @default(PENDING)
-  token       String       @unique @default(cuid())
+  status InviteStatus @default(PENDING)
+  token  String       @unique @default(cuid())
 
   /// Chosen by the coach when inviting. Used once, on acceptance, to compute
   /// the first subscription's endDate. Null means an open-ended relationship
   /// with no subscription record at all.
   durationMonths Int?
 
-  createdAt   DateTime     @default(now())
+  createdAt   DateTime  @default(now())
   respondedAt DateTime?
 
   @@index([coachId])
@@ -162,7 +162,7 @@ model Plan {
   updatedAt   DateTime @updatedAt
 
   createdById String?
-  createdBy   User?    @relation("PlanCreator", fields: [createdById], references: [id])
+  createdBy   User?   @relation("PlanCreator", fields: [createdById], references: [id])
 
   assignments PlanAssignment[]
 
@@ -202,6 +202,8 @@ model CoachProfile {
   specialties     String[]
   yearsExperience Int?
   phone           String?
+  /// S3 object key for the avatar; see WeightEntry.photoKey.
+  avatarKey       String?
 }
 
 model ClientProfile {
@@ -209,9 +211,11 @@ model ClientProfile {
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  heightCm Int?
-  weightKg Float?
-  goals    String?
+  heightCm  Int?
+  weightKg  Float?
+  goals     String?
+  /// S3 object key for the avatar; see WeightEntry.photoKey.
+  avatarKey String?
 }
 
 model CheckIn {
@@ -222,6 +226,9 @@ model CheckIn {
   date             DateTime @db.Date
   completedItemIds String[]
   notes            String?
+  /// { [itemId]: s3Key } so each meal in a diet plan can carry its own photo.
+  /// Null when the check-in has no photos at all.
+  photoKeys        Json?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -236,7 +243,9 @@ model WeightEntry {
 
   date      DateTime @db.Date
   weightKg  Float
-  photoUrl  String?
+  /// S3 object key, not a URL: the bucket is private and signed GET URLs
+  /// expire, so the URL is generated fresh on every read.
+  photoKey  String?
   createdAt DateTime @default(now())
 
   @@unique([clientId, date])

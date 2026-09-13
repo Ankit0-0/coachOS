@@ -12,8 +12,10 @@ import { useTheme } from '@/hooks/use-theme';
 import { useTrackingAssignments } from '@/hooks/use-assignments';
 import { trackingApi } from '@/lib/api';
 import { todayKey } from '@/lib/dates';
+import { pickAndUploadImage } from '@/lib/image-upload';
 import {
   dietDetails,
+  type DietMealStatus,
   getDietComment,
   getDietMealStatusItems,
   setDietComment,
@@ -28,6 +30,9 @@ export function DietDetailsScreen() {
   const [comment, setCommentState] = useState(() => getDietComment());
   const [isSavingLog, setIsSavingLog] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  /** Which meal is mid-upload, so only that row shows a spinner. */
+  const [uploadingMealId, setUploadingMealId] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
 
   // Restore today's already-checked meals so progress survives app restarts.
   const hasLoadedToday = useRef(false);
@@ -46,8 +51,15 @@ export function DietDetailsScreen() {
         if (!checkIn) return;
 
         const completed = new Set(checkIn.completedItemIds);
+        const photoUrls = checkIn.photoUrls ?? {};
         setMeals((current) =>
-          current.map((meal) => ({ ...meal, checked: completed.has(meal.id) })),
+          current.map((meal) => ({
+            ...meal,
+            checked: completed.has(meal.id),
+            // Reads carry signed URLs only, never keys — which is fine, because
+            // adding a photo sends just that meal's key and the server merges.
+            imageUri: photoUrls[meal.id] ?? meal.imageUri,
+          })),
         );
         // Keep the module-level cache in sync for other screens in this session.
         for (const meal of getDietMealStatusItems()) {
@@ -73,12 +85,11 @@ export function DietDetailsScreen() {
     }
 
     if (dietAssignment) {
-      const completedItemIds = next.filter((meal) => meal.checked).map((meal) => meal.id);
       trackingApi
         .saveCheckIn({
           assignmentId: dietAssignment.id,
           date: todayKey(),
-          completedItemIds,
+          completedItemIds: next.filter((meal) => meal.checked).map((meal) => meal.id),
         })
         .catch(() => {
           // Optimistic UI — keep the local toggle even if the sync fails.
@@ -86,17 +97,64 @@ export function DietDetailsScreen() {
     }
   };
 
-  const handlePhotoPick = (id: string) => {
-    const mockImageUri = 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=900&q=80';
+  /** Writes a photo onto one meal in both local state and the shared cache. */
+  const applyPhoto = (id: string, imageUri: string): DietMealStatus[] => {
+    const next = getDietMealStatusItems().map((meal) =>
+      meal.id === id ? { ...meal, imageUri } : meal,
+    );
+    updateDietMealStatus(id, { imageUri });
+    setMeals(next);
+    return next;
+  };
 
-    setMeals((current) => {
-      const next = current.map((meal) =>
-        meal.id === id ? { ...meal, imageUri: mockImageUri } : meal,
+  const handlePhotoPick = async (id: string) => {
+    if (uploadingMealId) return;
+
+    setPhotoError(null);
+    setSaveMessage(null);
+    setUploadingMealId(id);
+
+    let result;
+    try {
+      result = await pickAndUploadImage('diet');
+    } finally {
+      setUploadingMealId(null);
+    }
+
+    // Backing out of the picker is not a failure — leave the row untouched.
+    if (result.status === 'cancelled') return;
+    if (result.status === 'error') {
+      setPhotoError(result.message);
+      return;
+    }
+
+    // Show the local file straight away, then swap in the signed URL the API
+    // returns once the key is saved against today's check-in.
+    const withLocal = applyPhoto(id, result.uri);
+
+    if (!dietAssignment) {
+      setPhotoError('Photo uploaded, but there is no active diet plan to attach it to.');
+      return;
+    }
+
+    try {
+      const checkIn = await trackingApi.saveCheckIn({
+        assignmentId: dietAssignment.id,
+        date: todayKey(),
+        completedItemIds: withLocal.filter((meal) => meal.checked).map((meal) => meal.id),
+        // Only this meal's key: the server merges it into the stored map, so
+        // photos on the other meals are left exactly as they were.
+        photoKeys: { [id]: result.key },
+      });
+      const signedUrl = checkIn.photoUrls?.[id];
+      if (signedUrl) applyPhoto(id, signedUrl);
+    } catch (error) {
+      setPhotoError(
+        error instanceof Error
+          ? `Photo uploaded, but saving it to today's log failed: ${error.message}`
+          : "Photo uploaded, but saving it to today's log failed.",
       );
-
-      updateDietMealStatus(id, { imageUri: mockImageUri });
-      return next;
-    });
+    }
   };
 
   const handleCommentChange = (value: string) => {
@@ -169,20 +227,39 @@ export function DietDetailsScreen() {
               <View style={styles.mealHeaderRow}>
                 <ThemedText style={styles.rowText}>{meal.meal}</ThemedText>
 
-                <Pressable onPress={() => handlePhotoPick(meal.id)} style={styles.photoButton}>
-                  <ThemedText type="smallBold" style={styles.photoButtonText}>
-                    {meal.imageUri ? 'Change photo' : 'Add photo'}
-                  </ThemedText>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`${meal.imageUri ? 'Change' : 'Add'} photo for ${meal.meal}`}
+                  onPress={() => void handlePhotoPick(meal.id)}
+                  disabled={uploadingMealId !== null}
+                  style={[styles.photoButton, { borderColor: theme.border }]}>
+                  {uploadingMealId === meal.id ? (
+                    <ActivityIndicator size="small" color={theme.textSecondary} />
+                  ) : (
+                    <ThemedText type="smallBold" themeColor="textSecondary" style={styles.photoButtonText}>
+                      {meal.imageUri ? 'Change photo' : 'Add photo'}
+                    </ThemedText>
+                  )}
                 </Pressable>
               </View>
 
               {meal.imageUri ? (
-                <Image source={{ uri: meal.imageUri }} style={styles.thumbnail} />
+                <Image
+                  source={{ uri: meal.imageUri }}
+                  accessibilityLabel={`Photo of ${meal.meal}`}
+                  style={[styles.thumbnail, { backgroundColor: theme.surfaceSunken }]}
+                />
               ) : null}
             </View>
           </ThemedView>
         ))}
       </View>
+
+      {photoError ? (
+        <ThemedText type="small" themeColor="warning">
+          {photoError}
+        </ThemedText>
+      ) : null}
 
       <ThemedView type="backgroundElement" style={[styles.commentCard, { borderColor: theme.border }]}>
         <ThemedText type="smallBold">Comment</ThemedText>
@@ -274,21 +351,23 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   photoButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 999,
-    backgroundColor: 'rgba(58, 123, 255, 0.12)',
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.two,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Radii.sm,
     alignSelf: 'flex-end',
+    minHeight: 28,
+    minWidth: 92,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   photoButtonText: {
-    color: '#3A7BFF',
     fontSize: 11,
   },
   thumbnail: {
     width: '100%',
     height: 90,
     borderRadius: Spacing.two,
-    backgroundColor: '#E5E7EB',
   },
   commentCard: {
     borderRadius: Spacing.two,

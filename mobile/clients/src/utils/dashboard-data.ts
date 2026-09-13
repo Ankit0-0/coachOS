@@ -99,6 +99,7 @@ export type DietMealStatus = {
   id: string;
   meal: string;
   checked: boolean;
+  /** What the thumbnail renders: a signed URL from the API, or a local file while uploading. */
   imageUri?: string;
   comment: string;
 };

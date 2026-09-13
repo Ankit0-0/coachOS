@@ -193,6 +193,30 @@ export const coachInviteApi = {
 };
 
 // ---------------------------------------------------------------------------
+// Image uploads
+// ---------------------------------------------------------------------------
+
+/** Must match the backend allowlist in features/upload/schemas.ts. */
+export type UploadContentType = 'image/jpeg' | 'image/png' | 'image/webp';
+
+export type UploadPurpose = 'weight' | 'diet' | 'avatar';
+
+export interface PresignedUpload {
+  /** Valid for five minutes, and only for this one object and content type. */
+  uploadUrl: string;
+  /** What gets stored on the record. The API never returns raw keys on reads. */
+  key: string;
+}
+
+export const uploadApi = {
+  presign(input: { contentType: UploadContentType; purpose: UploadPurpose }): Promise<PresignedUpload> {
+    // No key is sent: the server builds it under the caller's own id, so one
+    // user can never aim an upload at another user's photo.
+    return apiRequest<PresignedUpload>('/uploads/presign', { method: 'POST', body: input });
+  },
+};
+
+// ---------------------------------------------------------------------------
 // Coach profile
 // ---------------------------------------------------------------------------
 
@@ -206,6 +230,8 @@ export interface CoachProfile {
   memberSince: string;
   /** Null only on accounts that predate the approval workflow. */
   approvalStatus: CoachApprovalStatus | null;
+  /** A freshly signed URL, not the stored key. Null when there is no avatar. */
+  avatarUrl: string | null;
   bio: string | null;
   specialties: string[];
   yearsExperience: number | null;
@@ -218,6 +244,8 @@ export interface CoachProfileUpdate {
   specialties?: string[];
   yearsExperience?: number | null;
   phone?: string;
+  /** An S3 key from uploadApi.presign. Null removes the avatar. */
+  avatarKey?: string | null;
 }
 
 export const coachProfileApi = {
@@ -355,6 +383,11 @@ export interface CheckIn {
   date: string;
   completedItemIds: string[];
   notes: string | null;
+  /**
+   * { [itemId]: signedUrl } for the client's meal photos. Read-only here —
+   * coaches never upload against a client's own records.
+   */
+  photoUrls: Record<string, string> | null;
   createdAt: string;
 }
 
@@ -363,6 +396,7 @@ export interface WeightEntry {
   clientId: string;
   date: string;
   weightKg: number;
+  /** A freshly signed URL, not the stored key. Expires in about an hour. */
   photoUrl: string | null;
   createdAt: string;
 }
@@ -370,6 +404,8 @@ export interface WeightEntry {
 export interface ClientProfile {
   name: string;
   email: string;
+  /** A freshly signed URL for the client's own avatar, or null. */
+  avatarUrl: string | null;
   heightCm: number | null;
   weightKg: number | null;
   goals: string | null;

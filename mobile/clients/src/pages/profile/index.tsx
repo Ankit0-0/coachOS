@@ -1,6 +1,6 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
@@ -14,6 +14,7 @@ import { Radii, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth';
 import { useTheme } from '@/hooks/use-theme';
 import { clientProfileApi, trackingApi, type ClientProfile } from '@/lib/api';
+import { pickAndUploadImage } from '@/lib/image-upload';
 
 type Draft = {
   name: string;
@@ -62,6 +63,8 @@ export function ProfileScreen() {
   // Shown inline rather than via Alert, which is a no-op on React Native Web.
   const [formError, setFormError] = useState<string | null>(null);
   const [isConfirmingSignOut, setIsConfirmingSignOut] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
 
   const load = useCallback(() => {
     Promise.all([clientProfileApi.get(), trackingApi.listAssignments().catch(() => [])])
@@ -78,6 +81,31 @@ export function ProfileScreen() {
       load();
     }, [load]),
   );
+
+  const handleAvatarPress = async () => {
+    if (isUploadingAvatar) return;
+
+    setAvatarError(null);
+    setIsUploadingAvatar(true);
+    try {
+      const result = await pickAndUploadImage('avatar');
+
+      // Cancelling leaves the current avatar exactly as it was.
+      if (result.status === 'cancelled') return;
+      if (result.status === 'error') {
+        setAvatarError(result.message);
+        return;
+      }
+
+      // The response carries a freshly signed avatarUrl, so the new photo
+      // appears without a reload.
+      setProfile(await clientProfileApi.update({ avatarKey: result.key }));
+    } catch (error) {
+      setAvatarError(errorMessage(error));
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
 
   const startEditing = () => {
     if (!profile) return;
@@ -156,15 +184,39 @@ export function ProfileScreen() {
   return (
     <ScreenScaffold includeBottomTabInset>
       <View style={styles.identity}>
-        <Avatar name={profile.name} size="lg" />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={profile.avatarUrl ? 'Change your photo' : 'Add a photo'}
+          onPress={() => void handleAvatarPress()}
+          disabled={isUploadingAvatar}
+          style={styles.avatarButton}>
+          <Avatar name={profile.name} size="lg" imageUrl={profile.avatarUrl} />
+          {isUploadingAvatar ? (
+            <View style={[styles.avatarOverlay, { backgroundColor: theme.surfaceSunken }]}>
+              <ActivityIndicator size="small" color={theme.textSecondary} />
+            </View>
+          ) : null}
+        </Pressable>
+
         <View style={styles.identityText}>
           <ThemedText type="display">{profile.name}</ThemedText>
           <View style={styles.identityMeta}>
             <Pill label="Client" />
             <ThemedText type="meta">Member since {formatMemberSince(profile.memberSince)}</ThemedText>
           </View>
+          <ThemedText type="meta">
+            {isUploadingAvatar ? 'Uploading photo\u2026' : 'Tap your photo to change it'}
+          </ThemedText>
         </View>
       </View>
+
+      {avatarError ? (
+        <View style={[styles.errorBanner, { backgroundColor: theme.dangerSoft }]}>
+          <ThemedText type="small" themeColor="danger">
+            {avatarError}
+          </ThemedText>
+        </View>
+      ) : null}
 
       <Card style={styles.statStrip}>
         <View style={styles.stat}>
@@ -323,6 +375,20 @@ const styles = StyleSheet.create({
   identityText: {
     flex: 1,
     gap: Spacing.one,
+  },
+  avatarButton: {
+    position: 'relative',
+  },
+  avatarOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: Radii.pill,
+    opacity: 0.8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   identityMeta: {
     flexDirection: 'row',

@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+/** An S3 object key from POST /uploads/presign. Null removes the avatar. */
+const avatarKeySchema = z.string().min(1).max(512).nullable();
+
 export const updateCoachProfileSchema = z
   .object({
     name: z.string().min(1).max(100).optional(),
@@ -7,6 +10,7 @@ export const updateCoachProfileSchema = z
     specialties: z.array(z.string().min(1).max(60)).max(12).optional(),
     yearsExperience: z.number().int().min(0).max(80).nullable().optional(),
     phone: z.string().max(40).optional(),
+    avatarKey: avatarKeySchema.optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: "At least one field must be provided",
@@ -22,6 +26,7 @@ export const updateClientProfileSchema = z
      */
     weightKg: z.number().min(20).max(500).nullable().optional(),
     goals: z.string().max(1000).optional(),
+    avatarKey: avatarKeySchema.optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: "At least one field must be provided",

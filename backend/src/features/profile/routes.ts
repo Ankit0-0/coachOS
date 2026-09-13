@@ -22,6 +22,9 @@ function respondToProfileError(response: Response, request: Request, error: unkn
   const code = error instanceof Error ? error.message : "INTERNAL_ERROR";
   if (code === "USER_NOT_FOUND") {
     sendError(response, 404);
+  } else if (code === "FORBIDDEN_KEY") {
+    logger.debug({ url: request.originalUrl, userId: request.user?.id }, "profile: rejected — avatar key is not namespaced to the caller");
+    sendError(response, 403);
   } else {
     logger.error({ err: error, url: request.originalUrl }, "coach/profile: unexpected error");
     sendError(response, 500);

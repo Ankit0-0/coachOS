@@ -2,6 +2,7 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
 
+import { ClientPhotos } from '@/components/client-detail/ClientPhotos';
 import { MonthNavigator } from '@/components/client-detail/MonthNavigator';
 import { SubscriptionSection } from '@/components/client-detail/SubscriptionSection';
 import { MonthlyActivityCalendar, type DailyActivity } from '@/components/client-detail/MonthlyActivityCalendar';
@@ -255,7 +256,7 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
       ) : (
         <>
           <View style={styles.identity}>
-            <Avatar name={name} size="md" />
+            <Avatar name={name} size="md" imageUrl={profile?.avatarUrl ?? null} />
             <View style={styles.identityCopy}>
               <ThemedText type="smallBold">{name}</ThemedText>
               <ThemedText type="meta">
@@ -369,6 +370,8 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
               />
             </Card>
           </Section>
+
+          <ClientPhotos weights={weights} checkIns={checkIns} />
 
           <Section title="Recent notes">
             {recentNotes.length === 0 ? (

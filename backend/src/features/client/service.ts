@@ -1,6 +1,7 @@
 import { logger } from "../../config/logger.js";
 import { prisma } from "../../config/prisma.config.js";
 import { findAcceptedInvite } from "../../utils/coach-access.js";
+import { getSignedReadUrl } from "../upload/service.js";
 import { parseDate, serializeCheckIn, serializeWeight } from "../tracking/service.js";
 
 type DateString = string;
@@ -48,7 +49,9 @@ export async function listClientCheckIns(
     },
     orderBy: { date: "asc" },
   });
-  return rows.map(serializeCheckIn);
+  // Same serializer as the client's own view, so the coach sees signed photo
+  // URLs on exactly the same terms — read-only, but not blank.
+  return Promise.all(rows.map(serializeCheckIn));
 }
 
 export async function listClientWeights(coachId: string, clientId: string, input: { from: DateString; to: DateString }) {
@@ -61,7 +64,7 @@ export async function listClientWeights(coachId: string, clientId: string, input
     },
     orderBy: { date: "asc" },
   });
-  return rows.map(serializeWeight);
+  return Promise.all(rows.map(serializeWeight));
 }
 
 export async function getClientProfile(coachId: string, clientId: string) {
@@ -79,6 +82,7 @@ export async function getClientProfile(coachId: string, clientId: string) {
   return {
     name: user.name,
     email: user.email,
+    avatarUrl: await getSignedReadUrl(profile?.avatarKey ?? null),
     heightCm: profile?.heightCm ?? null,
     weightKg: profile?.weightKg ?? null,
     goals: profile?.goals ?? null,
