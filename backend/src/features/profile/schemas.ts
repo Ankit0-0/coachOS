@@ -11,6 +11,8 @@ export const updateCoachProfileSchema = z
     yearsExperience: z.number().int().min(0).max(80).nullable().optional(),
     phone: z.string().max(40).optional(),
     avatarKey: avatarKeySchema.optional(),
+    /** Opt in to (or out of) being browsable by clients in Explore. */
+    listedInExplore: z.boolean().optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: "At least one field must be provided",

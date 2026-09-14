@@ -1,11 +1,16 @@
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { ClientsSection } from '@/components/home/ClientsSection';
+import { RequestsSection } from '@/components/home/RequestsSection';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 
 export function HomeScreen() {
+  // Bumped when a request is accepted, so the roster shows the new client at once.
+  const [rosterVersion, setRosterVersion] = useState(0);
+
   return (
     <ScreenScaffold includeBottomTabInset>
       <View style={styles.header}>
@@ -15,7 +20,9 @@ export function HomeScreen() {
         </ThemedText>
       </View>
 
-      <ClientsSection />
+      <RequestsSection onAccepted={() => setRosterVersion((version) => version + 1)} />
+
+      <ClientsSection refreshKey={rosterVersion} />
     </ScreenScaffold>
   );
 }

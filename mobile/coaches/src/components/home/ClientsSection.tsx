@@ -1,5 +1,5 @@
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { ClientListItem } from '@/components/clients/ClientListItem';
@@ -18,7 +18,8 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Something went wrong. Please try again.';
 }
 
-export function ClientsSection() {
+/** `refreshKey`: bump it to reload the roster, e.g. right after accepting a request. */
+export function ClientsSection({ refreshKey = 0 }: { refreshKey?: number }) {
   const theme = useTheme();
   const router = useRouter();
   const [clients, setClients] = useState<CoachInvite[]>([]);
@@ -47,6 +48,10 @@ export function ClientsSection() {
       loadInvites();
     }, [loadInvites]),
   );
+
+  useEffect(() => {
+    if (refreshKey > 0) loadInvites();
+  }, [refreshKey, loadInvites]);
 
   const handleInvite = async () => {
     const trimmed = email.trim();

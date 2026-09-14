@@ -193,6 +193,45 @@ export const coachInviteApi = {
 };
 
 // ---------------------------------------------------------------------------
+// Coaching requests (clients asking to join, from Explore)
+// ---------------------------------------------------------------------------
+
+export interface CoachingRequest {
+  id: string;
+  coachId: string;
+  clientId: string;
+  client?: InvitePerson;
+  /** Optional note the client wrote when asking. */
+  message: string | null;
+  status: InviteStatus;
+  createdAt: string;
+  respondedAt: string | null;
+}
+
+export const coachingRequestApi = {
+  list(status: InviteStatus = 'PENDING'): Promise<CoachingRequest[]> {
+    return apiRequest<{ requests: CoachingRequest[] }>(
+      `/coach/coach-requests?status=${encodeURIComponent(status)}`,
+    ).then((data) => data.requests);
+  },
+
+  /** Forms the coach–client relationship, exactly as an accepted invite would. */
+  accept(requestId: string): Promise<CoachingRequest> {
+    return apiRequest<{ request: CoachingRequest }>(
+      `/coach/coach-requests/${encodeURIComponent(requestId)}/accept`,
+      { method: 'POST' },
+    ).then((data) => data.request);
+  },
+
+  decline(requestId: string): Promise<CoachingRequest> {
+    return apiRequest<{ request: CoachingRequest }>(
+      `/coach/coach-requests/${encodeURIComponent(requestId)}/decline`,
+      { method: 'POST' },
+    ).then((data) => data.request);
+  },
+};
+
+// ---------------------------------------------------------------------------
 // Image uploads
 // ---------------------------------------------------------------------------
 
@@ -236,6 +275,8 @@ export interface CoachProfile {
   specialties: string[];
   yearsExperience: number | null;
   phone: string | null;
+  /** Whether clients can find this coach in Explore. Off until the coach opts in. */
+  listedInExplore: boolean;
 }
 
 export interface CoachProfileUpdate {
@@ -246,6 +287,7 @@ export interface CoachProfileUpdate {
   phone?: string;
   /** An S3 key from uploadApi.presign. Null removes the avatar. */
   avatarKey?: string | null;
+  listedInExplore?: boolean;
 }
 
 export const coachProfileApi = {

@@ -1,47 +1,121 @@
-import { Image } from 'expo-image';
-import { StyleSheet, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Avatar } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Pill } from '@/components/ui/pill';
+import { Radii, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { availableCoaches } from '@/utils/dashboard-data';
+import { exploreApi, type DirectoryCoach } from '@/lib/api';
+import { experienceLabel, relationshipPill } from '@/lib/explore';
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Something went wrong. Please try again.';
+}
 
 export function ExploreCoachesScreen() {
   const theme = useTheme();
+  const router = useRouter();
+  const [coaches, setCoaches] = useState<DirectoryCoach[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      setCoaches(await exploreApi.listCoaches());
+      setLoadError(null);
+    } catch (error) {
+      setLoadError(errorMessage(error));
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // On focus, so a request sent or cancelled on a profile shows up on return.
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+    }, [load]),
+  );
 
   return (
     <ScreenScaffold includeBottomTabInset>
       <View style={styles.header}>
-        <ThemedText type="smallBold" themeColor="accent">
-          Explore Coaches
-        </ThemedText>
-        <ThemedText type="subtitle" style={styles.title}>
-          Find the right fit
-        </ThemedText>
-        <ThemedText themeColor="textSecondary">
-          Browse coach profiles and specialties using the local mock dataset while the backend is still being built.
+        <ThemedText type="display">Explore</ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          Coaches who have chosen to be listed. Open a profile to ask one to coach you.
         </ThemedText>
       </View>
 
-      <View style={styles.grid}>
-        {availableCoaches.map((coach) => (
-          <ThemedView key={coach.id} type="backgroundElement" style={[styles.tile, { borderColor: theme.border }]}>
-            <Image source={{ uri: coach.image }} style={styles.avatar} />
-            <ThemedText type="smallBold">{coach.name}</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              {coach.title}
-            </ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              {coach.specialties.join(' • ')}
-            </ThemedText>
-            <ThemedText type="smallBold" style={{ color: coach.accent }}>
-              {coach.rating.toFixed(1)} ★ ({coach.reviews})
-            </ThemedText>
-          </ThemedView>
-        ))}
-      </View>
+      {isLoading ? (
+        <ActivityIndicator color={theme.textSecondary} />
+      ) : loadError && coaches.length === 0 ? (
+        <Card style={styles.stateCard}>
+          <ThemedText type="smallBold">Couldn&apos;t load coaches</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            {loadError}
+          </ThemedText>
+          <Button label="Try again" variant="secondary" onPress={() => void load()} />
+        </Card>
+      ) : coaches.length === 0 ? (
+        <Card style={styles.stateCard}>
+          <ThemedText type="smallBold">No coaches are listed yet</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            Coaches appear here once they choose to be listed. You can still join one directly
+            if they invite you by email.
+          </ThemedText>
+        </Card>
+      ) : (
+        <View style={styles.list}>
+          {loadError ? (
+            <View style={[styles.errorBanner, { backgroundColor: theme.dangerSoft }]}>
+              <ThemedText type="small" themeColor="danger">
+                Couldn&apos;t refresh: {loadError}
+              </ThemedText>
+            </View>
+          ) : null}
+
+          {coaches.map((coach) => {
+            const pill = relationshipPill(coach.relationship);
+            const experience = experienceLabel(coach.yearsExperience);
+            return (
+              <Pressable
+                key={coach.id}
+                accessibilityRole="button"
+                accessibilityLabel={`View ${coach.name}'s profile`}
+                onPress={() => router.push({ pathname: '/coaches/[id]', params: { id: coach.id } })}
+                style={({ pressed }) => [pressed && styles.pressed]}>
+                <Card style={styles.row}>
+                  <Avatar name={coach.name} size="md" imageUrl={coach.avatarUrl} />
+                  <View style={styles.rowCopy}>
+                    <View style={styles.nameRow}>
+                      <ThemedText type="smallBold" style={styles.name}>
+                        {coach.name}
+                      </ThemedText>
+                      {pill ? <Pill label={pill.label} tone={pill.tone} /> : null}
+                    </View>
+                    {experience ? <ThemedText type="meta">{experience}</ThemedText> : null}
+                    {coach.specialties.length > 0 ? (
+                      <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
+                        {coach.specialties.join(' · ')}
+                      </ThemedText>
+                    ) : null}
+                    {coach.bio ? (
+                      <ThemedText type="small" themeColor="textSecondary" numberOfLines={2}>
+                        {coach.bio}
+                      </ThemedText>
+                    ) : null}
+                  </View>
+                </Card>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
     </ScreenScaffold>
   );
 }
@@ -49,29 +123,37 @@ export function ExploreCoachesScreen() {
 const styles = StyleSheet.create({
   header: {
     gap: Spacing.one,
+    paddingTop: Spacing.two,
   },
-  title: {
-    fontSize: 32,
-    lineHeight: 38,
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  list: {
     gap: Spacing.two,
   },
-  tile: {
-    borderRadius: Spacing.two,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: Spacing.three,
-    minHeight: 196,
-    flexBasis: '48%',
-    flexGrow: 1,
-    gap: Spacing.one,
+  row: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.three,
   },
-  avatar: {
-    width: '100%',
-    height: 110,
-    borderRadius: Spacing.two,
-    marginBottom: Spacing.half,
+  rowCopy: {
+    flex: 1,
+    gap: Spacing.half,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+  },
+  name: {
+    flexShrink: 1,
+  },
+  pressed: {
+    opacity: 0.72,
+  },
+  stateCard: {
+    gap: Spacing.two,
+  },
+  errorBanner: {
+    borderRadius: Radii.sm,
+    padding: Spacing.three,
   },
 });

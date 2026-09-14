@@ -342,6 +342,76 @@ export const trackingApi = {
 };
 
 // ---------------------------------------------------------------------------
+// Explore: coach directory and coaching requests
+// ---------------------------------------------------------------------------
+
+/**
+ * Where you stand with a coach. The directory reports it, so the profile screen
+ * shows the one action that fits and never has to decode a 409.
+ */
+export type ExploreRelationship = 'COACHING' | 'INVITED' | 'REQUESTED' | 'NONE';
+
+/** A coach who opted in to Explore and is approved. Never includes contact details. */
+export interface DirectoryCoach {
+  id: string;
+  name: string;
+  bio: string | null;
+  specialties: string[];
+  yearsExperience: number | null;
+  /** A freshly signed URL, not the stored key. Null when there is no avatar. */
+  avatarUrl: string | null;
+  relationship: ExploreRelationship;
+  /** Set when `relationship` is REQUESTED, so the request can be cancelled. */
+  pendingRequestId: string | null;
+}
+
+export interface CoachRequest {
+  id: string;
+  coachId: string;
+  clientId: string;
+  coach?: { id: string; name: string };
+  message: string | null;
+  status: InviteStatus;
+  createdAt: string;
+  respondedAt: string | null;
+}
+
+export const exploreApi = {
+  listCoaches(): Promise<DirectoryCoach[]> {
+    return apiRequest<{ coaches: DirectoryCoach[] }>('/client/coaches').then((data) => data.coaches);
+  },
+
+  getCoach(coachId: string): Promise<DirectoryCoach> {
+    return apiRequest<{ coach: DirectoryCoach }>(`/client/coaches/${encodeURIComponent(coachId)}`).then(
+      (data) => data.coach,
+    );
+  },
+};
+
+export const coachRequestApi = {
+  create(input: { coachId: string; message?: string }): Promise<CoachRequest> {
+    return apiRequest<{ request: CoachRequest }>('/client/coach-requests', {
+      method: 'POST',
+      body: input,
+    }).then((data) => data.request);
+  },
+
+  list(status?: InviteStatus): Promise<CoachRequest[]> {
+    const query = status ? `?status=${encodeURIComponent(status)}` : '';
+    return apiRequest<{ requests: CoachRequest[] }>(`/client/coach-requests${query}`).then(
+      (data) => data.requests,
+    );
+  },
+
+  cancel(requestId: string): Promise<CoachRequest> {
+    return apiRequest<{ request: CoachRequest }>(
+      `/client/coach-requests/${encodeURIComponent(requestId)}/cancel`,
+      { method: 'POST' },
+    ).then((data) => data.request);
+  },
+};
+
+// ---------------------------------------------------------------------------
 // Subscription
 // ---------------------------------------------------------------------------
 

@@ -2,6 +2,11 @@ import { Router } from "express";
 
 import { adminCoachRouter, adminPlanRouter } from "./features/admin/routes.js";
 import { authRouter } from "./features/auth/routes.js";
+import {
+  clientCoachRequestRouter,
+  clientDirectoryRouter,
+  coachCoachRequestRouter,
+} from "./features/explore/routes.js";
 import { coachClientRouter } from "./features/client/routes.js";
 import { clientInviteRouter, coachInviteRouter } from "./features/invite/routes.js";
 import { clientSubscriptionRouter, coachSubscriptionRouter } from "./features/subscription/routes.js";
@@ -28,6 +33,9 @@ router.use("/coach/clients", coachSubscriptionRouter);
 router.use("/coach/profile", coachProfileRouter);
 router.use("/client/profile", clientProfileRouter);
 router.use("/client/subscription", clientSubscriptionRouter);
+router.use("/client/coaches", clientDirectoryRouter);
+router.use("/client/coach-requests", clientCoachRequestRouter);
+router.use("/coach/coach-requests", coachCoachRequestRouter);
 
 router.get("/health", (_request, response) => {
   response.json({ message: "Health check successful.", status: "ok" });
