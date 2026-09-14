@@ -6,6 +6,12 @@ const required = (name: string): string => {
   return value;
 };
 
+/** A positive integer from the environment, or the fallback when unset or invalid. */
+function positiveInt(value: string | undefined, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
 export const env = {
   databaseUrl: required("DATABASE_URL"),
   jwtSecret: required("JWT_SECRET"),
@@ -22,8 +28,22 @@ export const env = {
     .filter(Boolean),
   port: Number(process.env.PORT ?? 4000),
   nodeEnv: process.env.NODE_ENV ?? "development",
-  clientUrl: process.env.CLIENT_URL ?? "http://localhost:8081",
+  /**
+   * Browser origins allowed through CORS. Accepts a comma-separated list, since
+   * production has more than one browser client (the admin website and any
+   * Expo web build).
+   */
+  clientUrls: (process.env.CLIENT_URL ?? "http://localhost:8081")
+    .split(",")
+    .map((url) => url.trim())
+    .filter(Boolean),
   logLevel: process.env.LOG_LEVEL ?? (process.env.NODE_ENV === "production" ? "info" : "debug"),
+  /**
+   * Upper bound on the pg pool. Kept small because managed Postgres plans cap
+   * total connections (Aiven's free tier allows 20): one instance at 5 leaves
+   * room for migrations, a second instance during a deploy, and psql sessions.
+   */
+  dbPoolMax: positiveInt(process.env.DB_POOL_MAX, 5),
   /**
    * Optional. Without it, password reset codes are written to the log instead
    * of emailed — fine for local development, but production needs a real key

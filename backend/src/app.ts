@@ -17,7 +17,7 @@ app.use(
     origin: (origin, callback) => {
       // Allow non-browser clients (curl, React Native) that send no Origin.
       const noOrigin = !origin;
-      const configuredOrigin = origin === env.clientUrl;
+      const configuredOrigin = !!origin && env.clientUrls.includes(origin);
       // In development, allow any localhost port so `expo start --web` works
       // regardless of which port Metro picks (8081, 8082, ...).
       const devLocalhost =
