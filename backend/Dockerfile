@@ -41,18 +41,16 @@ WORKDIR /app
 ENV NODE_ENV=production \
     PORT=4000
 
-RUN corepack enable
-
 # The node image ships an unprivileged `node` user.
 COPY --from=build --chown=node:node /app /app
 
+# --chown covers the copied contents, not the /app directory itself, which
+# WORKDIR created as root. pnpm writes temp files to the workspace root, so
+# without this the container fails with EACCES on boot.
+RUN chown node:node /app
+
 USER node
 WORKDIR /app/backend
-
-# Fetch pnpm now, as the user that will run it, so a cold start never has to
-# download it before the server can boot.
-ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
-RUN pnpm --version
 
 EXPOSE 4000
 
@@ -61,4 +59,8 @@ EXPOSE 4000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD wget -qO- "http://127.0.0.1:${PORT}/heartbeat" >/dev/null || exit 1
 
-CMD ["pnpm", "start:prod"]
+# Call the binaries directly rather than through pnpm: a production container
+# has no reason to run a package manager on boot, and pnpm's pre-script
+# dependency check tries an install that fails in this filtered workspace.
+# Dropping pnpm also removes corepack from the cold-start path.
+CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy && ./node_modules/.bin/tsx src/server.ts"]
