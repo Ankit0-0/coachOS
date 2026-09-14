@@ -1,0 +1,18 @@
+# The backend image is built from the repo root; keep the context small and
+# keep anything secret out of it.
+**/node_modules
+.git
+.github
+.turbo
+**/.turbo
+mobile/
+admin-website/
+
+# Environment files hold real credentials. `.example.env` doesn't match these
+# patterns and stays in the context, which is harmless.
+**/.env
+**/.env.*
+
+backend/tests/
+backend/coverage/
+**/*.log
