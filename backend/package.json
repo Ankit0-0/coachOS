@@ -11,7 +11,8 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx scripts/seed.ts",
     "admin:create": "tsx scripts/create-admin.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "start:prod": "prisma migrate deploy && tsx src/server.ts"
   },
   "keywords": [],
   "author": "",
