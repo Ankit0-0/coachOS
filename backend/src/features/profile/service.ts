@@ -27,6 +27,7 @@ async function serializeCoachProfile(user: User, profile: CoachProfile | null) {
     specialties: profile?.specialties ?? [],
     yearsExperience: profile?.yearsExperience ?? null,
     phone: profile?.phone ?? null,
+    listedInExplore: profile?.listedInExplore ?? false,
   };
 }
 
@@ -51,6 +52,7 @@ export async function updateCoachProfile(
     yearsExperience?: number | null | undefined;
     phone?: string | undefined;
     avatarKey?: string | null | undefined;
+    listedInExplore?: boolean | undefined;
   },
 ) {
   const { name, ...profileFields } = input;
@@ -77,6 +79,7 @@ export async function updateCoachProfile(
           ...(profileFields.yearsExperience !== undefined ? { yearsExperience: profileFields.yearsExperience } : {}),
           ...(profileFields.phone !== undefined ? { phone: profileFields.phone } : {}),
           ...(profileFields.avatarKey !== undefined ? { avatarKey: profileFields.avatarKey } : {}),
+          ...(profileFields.listedInExplore !== undefined ? { listedInExplore: profileFields.listedInExplore } : {}),
         },
         create: {
           userId: coachId,
@@ -85,6 +88,7 @@ export async function updateCoachProfile(
           yearsExperience: profileFields.yearsExperience ?? null,
           phone: profileFields.phone ?? null,
           avatarKey: profileFields.avatarKey ?? null,
+          listedInExplore: profileFields.listedInExplore ?? false,
         },
       })
     : await prisma.coachProfile.findUnique({ where: { userId: coachId } });

@@ -65,8 +65,11 @@ model User {
   coachProfile  CoachProfile?
   clientProfile ClientProfile?
 
-  sentInvites     CoachClientInvite[] @relation("SentInvites")
-  receivedInvites CoachClientInvite[] @relation("ReceivedInvites")
+  sentInvites           CoachClientInvite[] @relation("SentInvites")
+  receivedInvites       CoachClientInvite[] @relation("ReceivedInvites")
+  /// Requests a client sent from Explore, and the ones a coach received.
+  sentCoachRequests     CoachRequest[]      @relation("SentCoachRequests")
+  receivedCoachRequests CoachRequest[]      @relation("ReceivedCoachRequests")
 
   coachSubscriptions  Subscription[] @relation("CoachSubscriptions")
   clientSubscriptions Subscription[] @relation("ClientSubscriptions")
@@ -204,6 +207,32 @@ model CoachProfile {
   phone           String?
   /// S3 object key for the avatar; see WeightEntry.photoKey.
   avatarKey       String?
+  /// Opt-in: whether clients can find this coach in Explore. Off by default,
+  /// so nobody is listed without choosing to be. Only approved coaches are
+  /// ever shown, whatever this says.
+  listedInExplore Boolean  @default(false)
+}
+
+/// A client asking to be coached, sent from Explore — the reverse direction of
+/// CoachClientInvite. Accepting one creates an ACCEPTED CoachClientInvite, so
+/// the relationship every coach-scoped route checks is the same either way.
+model CoachRequest {
+  id String @id @default(cuid())
+
+  clientId String
+  client   User   @relation("SentCoachRequests", fields: [clientId], references: [id], onDelete: Cascade)
+
+  coachId String
+  coach   User   @relation("ReceivedCoachRequests", fields: [coachId], references: [id], onDelete: Cascade)
+
+  /// Optional note from the client, shown to the coach.
+  message     String?
+  status      InviteStatus @default(PENDING)
+  createdAt   DateTime     @default(now())
+  respondedAt DateTime?
+
+  @@index([coachId, status])
+  @@index([clientId, status])
 }
 
 model ClientProfile {

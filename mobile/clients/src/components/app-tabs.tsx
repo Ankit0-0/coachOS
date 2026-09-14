@@ -32,7 +32,8 @@ export default function AppTabs() {
         />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="explore-coaches">
+      {/* A group with its own Stack, so a coach's profile opens inside this tab. */}
+      <NativeTabs.Trigger name="(explore)">
         <NativeTabs.Trigger.Label>Explore</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           sf={{ default: 'magnifyingglass.circle', selected: 'magnifyingglass.circle.fill' }}

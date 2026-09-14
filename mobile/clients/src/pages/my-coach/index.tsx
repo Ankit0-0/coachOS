@@ -11,7 +11,9 @@ import { longDateLabel } from '@/lib/dates';
 import {
   clientInviteApi,
   clientSubscriptionApi,
+  coachRequestApi,
   type ClientInvite,
+  type CoachRequest,
   type ClientSubscription,
   type InvitePerson,
 } from '@/lib/api';
@@ -30,21 +32,26 @@ export function MyCoachScreen() {
   const [coach, setCoach] = useState<InvitePerson | null>(null);
   const [pendingInvites, setPendingInvites] = useState<ClientInvite[]>([]);
   const [subscription, setSubscription] = useState<ClientSubscription | null>(null);
+  /** Requests this client sent from Explore that a coach hasn't answered yet. */
+  const [sentRequests, setSentRequests] = useState<CoachRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [actioningId, setActioningId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     try {
-      const [accepted, pending, currentSubscription] = await Promise.all([
+      const [accepted, pending, currentSubscription, requests] = await Promise.all([
         clientInviteApi.list('ACCEPTED'),
         clientInviteApi.list('PENDING'),
         // Null for an open-ended relationship, and a failure here shouldn't
         // take the whole screen down over a secondary detail.
         clientSubscriptionApi.get().catch(() => null),
+        // Secondary too: the invites above are what gets a client started.
+        coachRequestApi.list('PENDING').catch(() => [] as CoachRequest[]),
       ]);
       setCoach(accepted[0]?.coach ?? null);
       setPendingInvites(pending);
       setSubscription(currentSubscription);
+      setSentRequests(requests);
     } catch (error) {
       Alert.alert('Could not load your coach', errorMessage(error));
     } finally {
@@ -65,6 +72,20 @@ export function MyCoachScreen() {
       await loadData();
     } catch (error) {
       Alert.alert('Could not accept invite', errorMessage(error));
+    } finally {
+      setActioningId(null);
+    }
+  };
+
+  const handleCancelRequest = async (request: CoachRequest) => {
+    try {
+      setActioningId(request.id);
+      await coachRequestApi.cancel(request.id);
+      setSentRequests((current) => current.filter((item) => item.id !== request.id));
+    } catch (error) {
+      // Already answered or cancelled elsewhere: the reload shows where it landed.
+      Alert.alert('Could not cancel request', errorMessage(error));
+      await loadData();
     } finally {
       setActioningId(null);
     }
@@ -187,6 +208,36 @@ export function MyCoachScreen() {
           </Pressable>
         </ThemedView>
       )}
+
+      {!isLoading && sentRequests.length > 0 ? (
+        <View style={styles.section}>
+          <ThemedText type="smallBold">Requests you&apos;ve sent</ThemedText>
+          {sentRequests.map((request) => (
+            <ThemedView key={request.id} type="backgroundElement" style={[styles.inviteRow, { borderColor: theme.border }]}>
+              <View style={styles.inviteInfo}>
+                <ThemedText type="smallBold">{request.coach?.name ?? 'A coach'}</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  Waiting for a reply · sent {longDateLabel(request.createdAt)}
+                </ThemedText>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Cancel request to ${request.coach?.name ?? 'coach'}`}
+                style={[styles.actionButton, { borderColor: theme.border, borderWidth: 1 }]}
+                onPress={() => void handleCancelRequest(request)}
+                disabled={actioningId === request.id}>
+                {actioningId === request.id ? (
+                  <ActivityIndicator color={theme.textSecondary} size="small" />
+                ) : (
+                  <ThemedText type="small" themeColor="textSecondary">
+                    Cancel
+                  </ThemedText>
+                )}
+              </Pressable>
+            </ThemedView>
+          ))}
+        </View>
+      ) : null}
     </ScreenScaffold>
   );
 }

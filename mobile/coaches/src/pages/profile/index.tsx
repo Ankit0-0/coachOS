@@ -1,6 +1,6 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Switch, TextInput, View } from 'react-native';
 
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
@@ -58,6 +58,8 @@ export function ProfileScreen() {
   // Shown inline rather than via Alert, which is a no-op on React Native Web.
   const [formError, setFormError] = useState<string | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isSavingListing, setIsSavingListing] = useState(false);
+  const [listingError, setListingError] = useState<string | null>(null);
   const [avatarError, setAvatarError] = useState<string | null>(null);
 
   const load = useCallback(() => {
@@ -84,6 +86,23 @@ export function ProfileScreen() {
       load();
     }, [load]),
   );
+
+  /** Optimistic: flips at once, and flips back if the save fails. */
+  const handleListingChange = async (listed: boolean) => {
+    if (!profile || isSavingListing) return;
+    const previous = profile;
+    setListingError(null);
+    setIsSavingListing(true);
+    setProfile({ ...profile, listedInExplore: listed });
+    try {
+      setProfile(await coachProfileApi.update({ listedInExplore: listed }));
+    } catch (error) {
+      setProfile(previous);
+      setListingError(errorMessage(error));
+    } finally {
+      setIsSavingListing(false);
+    }
+  };
 
   const handleAvatarPress = async () => {
     if (isUploadingAvatar) return;
@@ -367,6 +386,38 @@ export function ProfileScreen() {
         </Section>
       )}
 
+      <Section title="Explore">
+        <Card style={styles.listingCard}>
+          <View style={styles.listingRow}>
+            <View style={styles.listingCopy}>
+              <ThemedText type="smallBold">Show me in Explore</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                Clients can find your profile and ask you to coach them. They see your name, photo,
+                bio, specialties and experience — never your email or phone.
+              </ThemedText>
+            </View>
+            <Switch
+              accessibilityLabel="Show me in Explore"
+              value={profile.listedInExplore}
+              onValueChange={(listed) => void handleListingChange(listed)}
+              disabled={isSavingListing}
+              trackColor={{ false: theme.border, true: theme.accent }}
+              thumbColor={theme.surface}
+            />
+          </View>
+          {profile.listedInExplore && profile.approvalStatus !== 'APPROVED' ? (
+            <ThemedText type="meta">You&apos;ll appear once an admin approves your account.</ThemedText>
+          ) : null}
+          {listingError ? (
+            <View style={[styles.errorBanner, { backgroundColor: theme.dangerSoft }]}>
+              <ThemedText type="small" themeColor="danger">
+                {listingError}
+              </ThemedText>
+            </View>
+          ) : null}
+        </Card>
+      </Section>
+
       <Section title="Account">
         <Card>
           <ThemedText type="smallBold">Signed in as {profile.email}</ThemedText>
@@ -505,5 +556,17 @@ const styles = StyleSheet.create({
   errorBanner: {
     borderRadius: Radii.sm,
     padding: Spacing.three,
+  },
+  listingCard: {
+    gap: Spacing.two,
+  },
+  listingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  listingCopy: {
+    flex: 1,
+    gap: Spacing.half,
   },
 });
