@@ -1,4 +1,6 @@
+import * as FileSystem from 'expo-file-system/legacy';
 import * as ImagePicker from 'expo-image-picker';
+import { Platform } from 'react-native';
 
 import { ApiError, uploadApi, type UploadContentType, type UploadPurpose } from '@/lib/api';
 
@@ -42,13 +44,65 @@ function resolveContentType(asset: ImagePicker.ImagePickerAsset): UploadContentT
 }
 
 /**
- * The bytes to PUT. On web the picker hands back a `File` directly; on native
- * the local `file://` URI has to be read through fetch.
+ * Byte size before anything is uploaded. Web has the File in hand; on native
+ * the picker's fileSize isn't always populated, so the file system is asked.
  */
-async function readBytes(asset: ImagePicker.ImagePickerAsset): Promise<Blob> {
-  if (asset.file) return asset.file;
-  const response = await fetch(asset.uri);
-  return response.blob();
+async function fileSize(asset: ImagePicker.ImagePickerAsset): Promise<number> {
+  if (asset.file) return asset.file.size;
+  if (asset.fileSize) return asset.fileSize;
+  const info = await FileSystem.getInfoAsync(asset.uri);
+  return info.exists ? info.size : 0;
+}
+
+type PutResult = { ok: true } | { ok: false; status: number; body: string };
+
+/**
+ * PUTs the image to the presigned URL.
+ *
+ * Native uses expo-file-system's uploadAsync, which streams the file straight
+ * from its URI with exactly the headers given. React Native's fetch with a Blob
+ * body can't be trusted here: the presigned URL signs `content-type`, and any
+ * difference in what's sent — a replaced type, an added charset, a dropped
+ * header — makes S3 answer 403 SignatureDoesNotMatch.
+ *
+ * Web keeps fetch with the picker's File, which browsers send faithfully.
+ */
+async function putToS3(
+  uploadUrl: string,
+  asset: ImagePicker.ImagePickerAsset,
+  contentType: UploadContentType,
+): Promise<PutResult> {
+  if (Platform.OS === 'web' || asset.file) {
+    const response = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': contentType },
+      body: asset.file ?? (await (await fetch(asset.uri)).blob()),
+    });
+    return response.ok ? { ok: true } : { ok: false, status: response.status, body: await response.text() };
+  }
+
+  const result = await FileSystem.uploadAsync(uploadUrl, asset.uri, {
+    httpMethod: 'PUT',
+    uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+    headers: { 'Content-Type': contentType },
+  });
+  return result.status >= 200 && result.status < 300
+    ? { ok: true }
+    : { ok: false, status: result.status, body: result.body };
+}
+
+/**
+ * What S3 said, pulled out of its XML error: the code (SignatureDoesNotMatch,
+ * AccessDenied, …) and, for signature failures, the content-type header S3
+ * actually received — which is the usual culprit.
+ */
+function describeS3Failure(status: number, body: string): { code: string; receivedContentType?: string } {
+  const code = /<Code>([^<]+)<\/Code>/.exec(body)?.[1] ?? `HTTP ${status}`;
+  const canonical = /<CanonicalRequest>([\s\S]*?)<\/CanonicalRequest>/.exec(body)?.[1];
+  const receivedContentType = canonical
+    ? /^content-type:(.*)$/m.exec(canonical)?.[1]?.trim()
+    : undefined;
+  return { code, receivedContentType };
 }
 
 function uploadErrorMessage(error: unknown): string {
@@ -103,8 +157,7 @@ export async function pickAndUploadImage(purpose: UploadPurpose): Promise<ImageU
   }
 
   try {
-    const bytes = await readBytes(asset);
-    const size = bytes.size || asset.fileSize || 0;
+    const size = await fileSize(asset);
     if (size > MAX_UPLOAD_BYTES) {
       const megabytes = (size / 1024 / 1024).toFixed(1);
       return { status: 'error', message: `That photo is ${megabytes}MB. Please pick one under 5MB.` };
@@ -112,18 +165,30 @@ export async function pickAndUploadImage(purpose: UploadPurpose): Promise<ImageU
 
     const { uploadUrl, key } = await uploadApi.presign({ contentType, purpose });
 
-    // The Content-Type has to match what was signed, or S3 rejects the PUT.
-    const response = await fetch(uploadUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': contentType },
-      body: bytes,
-    });
-    if (!response.ok) {
-      return { status: 'error', message: 'The photo was rejected during upload. Please try again.' };
+    const put = await putToS3(uploadUrl, asset, contentType);
+    if (!put.ok) {
+      const { code, receivedContentType } = describeS3Failure(put.status, put.body);
+      console.warn('[image-upload] S3 rejected the PUT', {
+        platform: Platform.OS,
+        status: put.status,
+        code,
+        signedContentType: contentType,
+        receivedContentType,
+        pickerMimeType: asset.mimeType,
+        body: put.body.slice(0, 2000),
+      });
+      // TEMPORARY: S3's code is shown in-app so a device test reports the real
+      // cause without a debugger attached. Remove once native uploads are
+      // confirmed working — the detail stays in the console log above.
+      const detail = receivedContentType !== undefined
+        ? `${code}, sent content-type "${receivedContentType}", signed "${contentType}"`
+        : code;
+      return { status: 'error', message: `The photo was rejected during upload (${detail}).` };
     }
 
     return { status: 'uploaded', key, uri: asset.uri };
   } catch (error) {
+    console.warn('[image-upload] upload failed', { platform: Platform.OS, error: String(error) });
     return { status: 'error', message: uploadErrorMessage(error) };
   }
 }
