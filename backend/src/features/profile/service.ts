@@ -109,6 +109,7 @@ async function serializeClientProfile(user: User, profile: ClientProfile | null)
     heightCm: profile?.heightCm ?? null,
     weightKg: profile?.weightKg ?? null,
     goals: profile?.goals ?? null,
+    phone: profile?.phone ?? null,
   };
 }
 
@@ -131,6 +132,7 @@ export async function updateClientProfile(
     heightCm?: number | null | undefined;
     weightKg?: number | null | undefined;
     goals?: string | undefined;
+    phone?: string | undefined;
     avatarKey?: string | null | undefined;
   },
 ) {
@@ -156,6 +158,7 @@ export async function updateClientProfile(
           ...(profileFields.heightCm !== undefined ? { heightCm: profileFields.heightCm } : {}),
           ...(profileFields.weightKg !== undefined ? { weightKg: profileFields.weightKg } : {}),
           ...(profileFields.goals !== undefined ? { goals: profileFields.goals } : {}),
+          ...(profileFields.phone !== undefined ? { phone: profileFields.phone } : {}),
           ...(profileFields.avatarKey !== undefined ? { avatarKey: profileFields.avatarKey } : {}),
         },
         create: {
@@ -163,6 +166,7 @@ export async function updateClientProfile(
           heightCm: profileFields.heightCm ?? null,
           weightKg: profileFields.weightKg ?? null,
           goals: profileFields.goals ?? null,
+          phone: profileFields.phone ?? null,
           avatarKey: profileFields.avatarKey ?? null,
         },
       })

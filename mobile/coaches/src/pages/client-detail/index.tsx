@@ -12,6 +12,7 @@ import { DetailHeader } from '@/components/detail-header';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
 import { Avatar } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { FieldRow } from '@/components/ui/field-row';
 import { Pill } from '@/components/ui/pill';
@@ -32,7 +33,9 @@ import {
   type WorkoutContent,
 } from '@/lib/api';
 import { dayOfMonth, lastNDaysRange, longDateLabel, monthRange, weekdayLabel } from '@/lib/dates';
+import { formatPhone } from '@/lib/phone';
 import { planStats, planSummary } from '@/lib/plan-format';
+import { buildWhatsAppUrl, openWhatsApp } from '@/lib/whatsapp';
 
 const WEIGHT_LOOKBACK_DAYS = 30;
 const WEIGHT_CHART_POINTS = 7;
@@ -78,6 +81,8 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
   const [isLoading, setIsLoading] = useState(true);
   /** Which plan type the assign sheet is open for; null when it's closed. */
   const [pickerType, setPickerType] = useState<PlanType | null>(null);
+  /** Inline, since Alert is a no-op on React Native Web. */
+  const [whatsAppError, setWhatsAppError] = useState<string | null>(null);
 
   const now = new Date();
   const [viewedMonth, setViewedMonth] = useState({ year: now.getFullYear(), month: now.getMonth() });
@@ -170,7 +175,16 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, MAX_RECENT_NOTES);
 
-  const renderPlanCard = (label: string, type: PlanType, assignment: PlanAssignment | undefined) => {
+  const canWhatsApp = buildWhatsAppUrl(profile?.phone) !== null;
+
+  // Nothing prefilled: this opens a conversation, it doesn't send a message.
+  const handleWhatsApp = async () => {
+    setWhatsAppError(null);
+    const result = await openWhatsApp(profile?.phone);
+    if (result.status === 'error') setWhatsAppError(result.message);
+  };
+
+  const renderPlanCard =(label: string, type: PlanType, assignment: PlanAssignment | undefined) => {
     const stats = assignment ? planStats(assignment.plan) : null;
 
     return (
@@ -229,11 +243,22 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
               <ThemedText type="meta">
                 {profile?.onboardedAt ? `Client since ${longDateLabel(profile.onboardedAt)}` : 'Start date unknown'}
               </ThemedText>
+              {/* Hidden, not disabled, without a usable number — this line says why instead. */}
+              {canWhatsApp ? null : <ThemedText type="meta">Hasn’t added a phone number yet</ThemedText>}
             </View>
+            {canWhatsApp ? (
+              <Button label="Message on WhatsApp" variant="secondary" size="sm" onPress={() => void handleWhatsApp()} />
+            ) : null}
           </View>
+          {whatsAppError ? (
+            <ThemedText type="small" themeColor="danger">
+              {whatsAppError}
+            </ThemedText>
+          ) : null}
 
           <Section title="Profile and goals">
             <Card padded={false} style={styles.fieldCard}>
+              <FieldRow label="Phone" value={formatPhone(profile?.phone)} />
               <FieldRow label="Height" value={profile?.heightCm != null ? `${profile.heightCm} cm` : null} />
               <FieldRow label="Latest weight" value={displayWeight != null ? `${displayWeight} kg` : null} />
               <FieldRow label="Goals" value={profile?.goals} stacked divider={false} />

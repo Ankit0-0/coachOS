@@ -243,7 +243,7 @@ async function main() {
     bio: "Barbell-first strength coach. I work with lifters who want to get strong without living in the gym.",
     specialties: ["Strength", "Powerlifting", "Return to training"],
     yearsExperience: 9,
-    phone: "+1 555 0182",
+    phone: "14155550182",
   });
 
   const nina = await ensureUser("nina@coachos.dev", "Nina Alvarez", "COACH");
@@ -251,7 +251,7 @@ async function main() {
     bio: "Nutrition-led coaching for busy people. Plans you can actually cook on a Tuesday night.",
     specialties: ["Nutrition", "Body recomposition"],
     yearsExperience: 5,
-    phone: "+1 555 0147",
+    phone: "14155550147",
   });
 
   // Kept from the original seed so existing logins and default plans still work.

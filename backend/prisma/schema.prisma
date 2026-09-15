@@ -243,6 +243,9 @@ model ClientProfile {
   heightCm  Int?
   weightKg  Float?
   goals     String?
+  /// Digits only with the country code (e.g. 919876543210), as wa.me wants
+  /// it. Shared only with a coach who has an accepted invite.
+  phone     String?
   /// S3 object key for the avatar; see WeightEntry.photoKey.
   avatarKey String?
 }
