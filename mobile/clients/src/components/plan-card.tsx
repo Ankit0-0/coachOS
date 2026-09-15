@@ -5,7 +5,8 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { Card } from '@/components/ui/card';
+import { Pill } from '@/components/ui/pill';
 import { Radii, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -14,87 +15,95 @@ type SymbolName = ComponentProps<typeof SymbolView>['name'];
 /** A card on Home for one of the client's real, active assignments. */
 export type HomePlanCard = {
   id: 'workout' | 'diet';
+  /** "Workout" or "Diet". The icon says it on screen; this says it to a screen reader. */
+  kind: string;
   title: string;
-  eyebrow: string;
+  /** The one supporting line under the title. */
   summary: string;
-  metric: string;
-  detail: string;
+  /** Short facts, each carrying its unit: "24 min", "4 exercises". */
+  chips: string[];
   route: '/workout' | '/diet';
   iconName: SymbolName;
-  /** 0–100 from today's check-in. Omitted to show a chevron instead of a ring. */
-  progressPercent?: number;
+  /** 0–100 from today's check-in. Always drawn — an empty ring at 0, never a missing one. */
+  progressPercent: number;
+  /** What the ring counts, for a screen reader: "3 of 12 sets done today". */
+  progressLabel: string;
 };
 
 type PlanCardProps = {
   plan: HomePlanCard;
 };
 
+const RING_SIZE = 46;
+const RING_RADIUS = 18;
+const RING_STROKE = 3;
+
+/**
+ * Title first, one line of summary under it, then the plan's figures as muted
+ * chips — and today's progress as the same ring on every card, so a workout and
+ * a diet read alike. Focus notes and exercise or meal lists live on the plan's
+ * own screen.
+ */
 export function PlanCard({ plan }: PlanCardProps) {
   const theme = useTheme();
-  const hasProgress = plan.progressPercent !== undefined;
-  const progressPercent = Math.round(plan.progressPercent ?? 0);
-  const radius = 18;
-  const circumference = 2 * Math.PI * radius;
-  const dashOffset = circumference - (progressPercent / 100) * circumference;
+  const percent = Math.max(0, Math.min(100, Math.round(plan.progressPercent)));
+  const circumference = 2 * Math.PI * RING_RADIUS;
+  const center = RING_SIZE / 2;
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Open ${plan.title}`}
+      accessibilityLabel={`${plan.kind} plan: ${plan.title}. ${plan.progressLabel}. Open plan`}
       onPress={() => router.push(plan.route)}
       style={({ pressed }) => [styles.pressable, pressed && styles.pressed]}>
-      <ThemedView
-        type="backgroundElement"
-        style={[styles.card, { borderColor: theme.border }]}>
+      <Card style={styles.card}>
         <View style={[styles.iconWrap, { backgroundColor: theme.surfaceSunken }]}>
-          <SymbolView name={plan.iconName} size={28} tintColor={theme.textSecondary} />
+          <SymbolView name={plan.iconName} size={22} tintColor={theme.textSecondary} />
         </View>
 
         <View style={styles.copy}>
-          <ThemedText type="meta">{plan.eyebrow}</ThemedText>
-          <ThemedText type="heading">
+          <ThemedText type="heading" numberOfLines={2}>
             {plan.title}
           </ThemedText>
-          <ThemedText themeColor="textSecondary">{plan.summary}</ThemedText>
-          <View style={styles.metaRow}>
-            <ThemedText type="smallBold">{plan.metric}</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary" style={styles.detail}>
-              {plan.detail}
+          {plan.summary ? (
+            <ThemedText type="small" themeColor="textSecondary" numberOfLines={2}>
+              {plan.summary}
+            </ThemedText>
+          ) : null}
+          {plan.chips.length > 0 ? (
+            <View style={styles.chips}>
+              {plan.chips.map((chip) => (
+                <Pill key={chip} label={chip} />
+              ))}
+            </View>
+          ) : null}
+        </View>
+
+        <View style={styles.ring} aria-hidden>
+          <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
+            <Circle cx={center} cy={center} r={RING_RADIUS} stroke={theme.border} strokeWidth={RING_STROKE} fill="none" />
+            {percent > 0 ? (
+              <Circle
+                cx={center}
+                cy={center}
+                r={RING_RADIUS}
+                stroke={theme.accent}
+                strokeWidth={RING_STROKE}
+                fill="none"
+                strokeDasharray={circumference}
+                strokeDashoffset={circumference - (percent / 100) * circumference}
+                strokeLinecap="round"
+                transform={`rotate(-90 ${center} ${center})`}
+              />
+            ) : null}
+          </Svg>
+          <View style={styles.ringValue}>
+            <ThemedText type="meta" themeColor={percent > 0 ? 'accent' : 'textMuted'}>
+              {percent}%
             </ThemedText>
           </View>
         </View>
-
-        {hasProgress ? (
-          <View style={styles.progressWrap}>
-            <Svg width={46} height={46} viewBox="0 0 46 46">
-              <Circle cx={23} cy={23} r={18} stroke={theme.border} strokeWidth={3} fill="none" />
-              <Circle
-                cx={23}
-                cy={23}
-                r={18}
-                stroke={theme.accent}
-                strokeWidth={3}
-                fill="none"
-                strokeDasharray={circumference}
-                strokeDashoffset={dashOffset}
-                strokeLinecap="round"
-                transform="rotate(-90 23 23)"
-              />
-            </Svg>
-            <View style={styles.progressValue}>
-              <ThemedText type="meta" themeColor="accent">
-                {progressPercent}%
-              </ThemedText>
-            </View>
-          </View>
-        ) : (
-          <SymbolView
-            name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
-            size={18}
-            tintColor={theme.textSecondary}
-          />
-        )}
-      </ThemedView>
+      </Card>
     </Pressable>
   );
 }
@@ -107,38 +116,36 @@ const styles = StyleSheet.create({
     opacity: 0.72,
   },
   card: {
-    borderRadius: Radii.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: Spacing.three,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
+    padding: Spacing.three,
   },
   iconWrap: {
-    width: 56,
-    height: 56,
+    width: 40,
+    height: 40,
     borderRadius: Radii.sm,
     alignItems: 'center',
     justifyContent: 'center',
+    alignSelf: 'flex-start',
   },
   copy: {
     flex: 1,
     gap: Spacing.one,
   },
-  metaRow: {
+  chips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: Spacing.one,
     paddingTop: Spacing.one,
   },
-  detail: {
-    flexShrink: 1,
-  },
-  progressWrap: {
-    width: 46,
-    height: 46,
+  ring: {
+    width: RING_SIZE,
+    height: RING_SIZE,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  progressValue: {
+  ringValue: {
     position: 'absolute',
     alignItems: 'center',
     justifyContent: 'center',

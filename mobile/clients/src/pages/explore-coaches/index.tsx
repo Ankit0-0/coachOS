@@ -1,18 +1,16 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
+import { CoachCard } from '@/components/explore/CoachCard';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
-import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Pill } from '@/components/ui/pill';
 import { Radii, Spacing } from '@/constants/theme';
 import { useRefresh } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { exploreApi, type DirectoryCoach } from '@/lib/api';
-import { experienceLabel, relationshipPill } from '@/lib/explore';
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Something went wrong. Please try again.';
@@ -82,41 +80,13 @@ export function ExploreCoachesScreen() {
             </View>
           ) : null}
 
-          {coaches.map((coach) => {
-            const pill = relationshipPill(coach.relationship);
-            const experience = experienceLabel(coach.yearsExperience);
-            return (
-              <Pressable
-                key={coach.id}
-                accessibilityRole="button"
-                accessibilityLabel={`View ${coach.name}'s profile`}
-                onPress={() => router.push({ pathname: '/coaches/[id]', params: { id: coach.id } })}
-                style={({ pressed }) => [pressed && styles.pressed]}>
-                <Card style={styles.row}>
-                  <Avatar name={coach.name} size="md" imageUrl={coach.avatarUrl} />
-                  <View style={styles.rowCopy}>
-                    <View style={styles.nameRow}>
-                      <ThemedText type="smallBold" style={styles.name}>
-                        {coach.name}
-                      </ThemedText>
-                      {pill ? <Pill label={pill.label} tone={pill.tone} /> : null}
-                    </View>
-                    {experience ? <ThemedText type="meta">{experience}</ThemedText> : null}
-                    {coach.specialties.length > 0 ? (
-                      <ThemedText type="small" themeColor="textSecondary" numberOfLines={1}>
-                        {coach.specialties.join(' · ')}
-                      </ThemedText>
-                    ) : null}
-                    {coach.bio ? (
-                      <ThemedText type="small" themeColor="textSecondary" numberOfLines={2}>
-                        {coach.bio}
-                      </ThemedText>
-                    ) : null}
-                  </View>
-                </Card>
-              </Pressable>
-            );
-          })}
+          {coaches.map((coach) => (
+            <CoachCard
+              key={coach.id}
+              coach={coach}
+              onPress={() => router.push({ pathname: '/coaches/[id]', params: { id: coach.id } })}
+            />
+          ))}
         </View>
       )}
     </ScreenScaffold>
@@ -129,28 +99,7 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.two,
   },
   list: {
-    gap: Spacing.two,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
     gap: Spacing.three,
-  },
-  rowCopy: {
-    flex: 1,
-    gap: Spacing.half,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.two,
-  },
-  name: {
-    flexShrink: 1,
-  },
-  pressed: {
-    opacity: 0.72,
   },
   stateCard: {
     gap: Spacing.two,

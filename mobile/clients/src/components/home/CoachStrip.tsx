@@ -1,10 +1,12 @@
 import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { type ComponentProps, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Avatar } from '@/components/ui/avatar';
+import { CALL_ICON, IconButton, MESSAGE_ICON } from '@/components/ui/icon-button';
+import { InlineNotice } from '@/components/ui/inline-notice';
 import { Radii, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { InvitePerson } from '@/lib/api';
@@ -15,26 +17,6 @@ type CoachStripProps = {
   coach: InvitePerson;
 };
 
-type IconButtonProps = {
-  icon: ComponentProps<typeof SymbolView>['name'];
-  label: string;
-  onPress: () => void;
-};
-
-function IconButton({ icon, label, onPress }: IconButtonProps) {
-  const theme = useTheme();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      onPress={onPress}
-      hitSlop={4}
-      style={({ pressed }) => [styles.iconButton, { borderColor: theme.border }, pressed && styles.pressed]}>
-      <SymbolView name={icon} size={18} tintColor={theme.text} />
-    </Pressable>
-  );
-}
-
 /**
  * Who the client is working with, one tap from calling or messaging them. Slim
  * on purpose: it sits above the day's plan, which is what the client opened
@@ -43,8 +25,9 @@ function IconButton({ icon, label, onPress }: IconButtonProps) {
 export function CoachStrip({ coach }: CoachStripProps) {
   const theme = useTheme();
   const router = useRouter();
-  /** Inline, since Alert is a no-op on React Native Web. */
+  /** A small notice under the strip, since Alert is a no-op on React Native Web. */
   const [error, setError] = useState<string | null>(null);
+  const dismissError = useCallback(() => setError(null), []);
 
   // Both hide together: they share the one number, and there's none to use.
   const hasNumber = buildTelUrl(coach.phone) !== null && buildWhatsAppUrl(coach.phone) !== null;
@@ -84,13 +67,9 @@ export function CoachStrip({ coach }: CoachStripProps) {
           </View>
           {hasNumber ? (
             <View style={styles.actions}>
+              <IconButton icon={CALL_ICON} label={`Call ${coach.name}`} onPress={() => void call()} />
               <IconButton
-                icon={{ ios: 'phone', android: 'call', web: 'call' }}
-                label={`Call ${coach.name}`}
-                onPress={() => void call()}
-              />
-              <IconButton
-                icon={{ ios: 'message', android: 'chat', web: 'chat' }}
+                icon={MESSAGE_ICON}
                 label={`Message ${coach.name} on WhatsApp`}
                 onPress={() => void chat()}
               />
@@ -105,11 +84,7 @@ export function CoachStrip({ coach }: CoachStripProps) {
           </View>
         </View>
       </View>
-      {error ? (
-        <ThemedText type="small" themeColor="danger">
-          {error}
-        </ThemedText>
-      ) : null}
+      <InlineNotice message={error} onDismiss={dismissError} />
     </View>
   );
 }
@@ -146,16 +121,5 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     gap: Spacing.two,
-  },
-  iconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: Radii.pill,
-    borderWidth: StyleSheet.hairlineWidth,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pressed: {
-    opacity: 0.7,
   },
 });

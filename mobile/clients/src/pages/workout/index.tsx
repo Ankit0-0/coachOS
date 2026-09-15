@@ -17,6 +17,7 @@ import { useRefresh } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { trackingApi } from '@/lib/api';
 import { todayKey } from '@/lib/dates';
+import { formatDuration } from '@/lib/plan-units';
 import {
   workoutContentOf,
   workoutExercisesFrom,
@@ -207,7 +208,7 @@ export function WorkoutDetailsScreen() {
       <ThemedView type="backgroundElement" style={[styles.summary, { borderColor: theme.border }]}>
         <View style={styles.summaryHeader}>
           <ThemedText type="smallBold" themeColor="accent">
-            {content.duration}
+            {formatDuration(content.duration)}
           </ThemedText>
           <ThemedText type="smallBold" themeColor="textSecondary">
             {completedSets}/{totalSets} sets checked

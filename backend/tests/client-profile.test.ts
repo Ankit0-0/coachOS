@@ -73,6 +73,15 @@ describe("client profile endpoints", () => {
     expect(cleared.body.profile.phone).toBe("");
   });
 
+  it("caps the self-reported weight at 150 kg, like a weigh-in", async () => {
+    const auth = { Authorization: `Bearer ${client.token}` };
+    expect((await api.patch("/v1/client/profile").set(auth).send({ weightKg: 151 })).status).toBe(400);
+    expect((await api.patch("/v1/client/profile").set(auth).send({ weightKg: -5 })).status).toBe(400);
+    expect((await api.get("/v1/client/profile").set(auth)).body.profile.weightKg).toBe(79.5);
+    expect((await api.patch("/v1/client/profile").set(auth).send({ weightKg: 150 })).status).toBe(200);
+    await api.patch("/v1/client/profile").set(auth).send({ weightKg: 79.5 });
+  });
+
   it("rejects an empty update body", async () => {
     const res = await api
       .patch("/v1/client/profile")

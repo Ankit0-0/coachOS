@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
+import { type ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -9,9 +10,11 @@ import { useTheme } from '@/hooks/use-theme';
 type DetailHeaderProps = {
   title: string;
   subtitle: string;
+  /** Sits at the top right, beside the title — e.g. call and message buttons. */
+  actions?: ReactNode;
 };
 
-export function DetailHeader({ title, subtitle }: DetailHeaderProps) {
+export function DetailHeader({ title, subtitle, actions }: DetailHeaderProps) {
   const theme = useTheme();
 
   return (
@@ -28,11 +31,14 @@ export function DetailHeader({ title, subtitle }: DetailHeaderProps) {
         />
       </Pressable>
       <View style={styles.copy}>
-        <ThemedText type="subtitle" style={styles.title}>
+        <ThemedText type="subtitle" style={styles.title} numberOfLines={actions ? 2 : undefined}>
           {title}
         </ThemedText>
-        <ThemedText themeColor="textSecondary">{subtitle}</ThemedText>
+        <ThemedText themeColor="textSecondary" numberOfLines={actions ? 1 : undefined}>
+          {subtitle}
+        </ThemedText>
       </View>
+      {actions ? <View style={styles.actions}>{actions}</View> : null}
     </View>
   );
 }
@@ -56,6 +62,12 @@ const styles = StyleSheet.create({
   },
   copy: {
     flex: 1,
+  },
+  actions: {
+    flexDirection: 'row',
+    alignSelf: 'flex-start',
+    gap: Spacing.two,
+    paddingTop: Spacing.half,
   },
   title: {
     fontSize: 28,

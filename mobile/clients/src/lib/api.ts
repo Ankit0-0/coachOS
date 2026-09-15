@@ -230,6 +230,10 @@ export interface InvitePerson {
   phone?: string | null;
   /** The coach's photo as a signed URL. Present only on an ACCEPTED invite; null without a photo. */
   avatarUrl?: string | null;
+  /** The coach's profile, for the Your Coach page. Present only on an ACCEPTED invite. */
+  bio?: string | null;
+  specialties?: string[];
+  yearsExperience?: number | null;
 }
 
 export interface ClientInvite {
@@ -371,6 +375,10 @@ export interface DirectoryCoach {
   yearsExperience: number | null;
   /** A freshly signed URL, not the stored key. Null when there is no avatar. */
   avatarUrl: string | null;
+  /** Clients whose relationship is still running: a current subscription, or none (open-ended). */
+  activeClientCount: number;
+  /** Every client the coach has ever accepted. */
+  totalClientCount: number;
   relationship: ExploreRelationship;
   /** Set when `relationship` is REQUESTED, so the request can be cancelled. */
   pendingRequestId: string | null;

@@ -13,9 +13,10 @@ import { DetailHeader } from '@/components/detail-header';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
 import { Avatar } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { FieldRow } from '@/components/ui/field-row';
+import { CALL_ICON, IconButton, MESSAGE_ICON } from '@/components/ui/icon-button';
+import { InlineNotice } from '@/components/ui/inline-notice';
 import { Pill } from '@/components/ui/pill';
 import { Section } from '@/components/ui/section';
 import { Spacing } from '@/constants/theme';
@@ -33,6 +34,7 @@ import {
   type WeightEntry,
   type WorkoutContent,
 } from '@/lib/api';
+import { buildTelUrl, startCall } from '@/lib/call';
 import { dayOfMonth, lastNDaysRange, longDateLabel, monthRange } from '@/lib/dates';
 import { formatPhone } from '@/lib/phone';
 import { planStats, planSummary } from '@/lib/plan-format';
@@ -83,8 +85,9 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
   const [isLoading, setIsLoading] = useState(true);
   /** Which plan type the assign sheet is open for; null when it's closed. */
   const [pickerType, setPickerType] = useState<PlanType | null>(null);
-  /** Inline, since Alert is a no-op on React Native Web. */
-  const [whatsAppError, setWhatsAppError] = useState<string | null>(null);
+  /** A small notice under the header, since Alert is a no-op on React Native Web. */
+  const [contactError, setContactError] = useState<string | null>(null);
+  const dismissContactError = useCallback(() => setContactError(null), []);
   const [chartRange, setChartRange] = useState<WeightRangeKey>(DEFAULT_WEIGHT_RANGE);
   /** Weigh-ins in the chart's selected range, separate from `weights` so switching range can't move the photos. */
   const [chartWeights, setChartWeights] = useState<WeightEntry[]>([]);
@@ -197,13 +200,20 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, MAX_RECENT_NOTES);
 
-  const canWhatsApp = buildWhatsAppUrl(profile?.phone) !== null;
+  // Call and WhatsApp share the one number, so they show and hide together.
+  const canContact = buildTelUrl(profile?.phone) !== null && buildWhatsAppUrl(profile?.phone) !== null;
+
+  const handleCall = async () => {
+    setContactError(null);
+    const result = await startCall(profile?.phone);
+    if (result.status === 'error') setContactError(result.message);
+  };
 
   // Nothing prefilled: this opens a conversation, it doesn't send a message.
   const handleWhatsApp = async () => {
-    setWhatsAppError(null);
+    setContactError(null);
     const result = await openWhatsApp(profile?.phone);
-    if (result.status === 'error') setWhatsAppError(result.message);
+    if (result.status === 'error') setContactError(result.message);
   };
 
   const renderPlanCard =(label: string, type: PlanType, assignment: PlanAssignment | undefined) => {
@@ -252,7 +262,19 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
 
   return (
     <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh}>
-      <DetailHeader title={name} subtitle={email} />
+      <DetailHeader
+        title={name}
+        subtitle={email}
+        actions={
+          canContact ? (
+            <>
+              <IconButton icon={CALL_ICON} label={`Call ${name}`} onPress={() => void handleCall()} />
+              <IconButton icon={MESSAGE_ICON} label={`Message ${name} on WhatsApp`} onPress={() => void handleWhatsApp()} />
+            </>
+          ) : null
+        }
+      />
+      <InlineNotice message={contactError} onDismiss={dismissContactError} />
 
       {isLoading ? (
         <ActivityIndicator color={theme.textSecondary} />
@@ -266,17 +288,9 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
                 {profile?.onboardedAt ? `Client since ${longDateLabel(profile.onboardedAt)}` : 'Start date unknown'}
               </ThemedText>
               {/* Hidden, not disabled, without a usable number — this line says why instead. */}
-              {canWhatsApp ? null : <ThemedText type="meta">Hasn’t added a phone number yet</ThemedText>}
+              {canContact ? null : <ThemedText type="meta">Hasn’t added a phone number yet</ThemedText>}
             </View>
-            {canWhatsApp ? (
-              <Button label="Message on WhatsApp" variant="secondary" size="sm" onPress={() => void handleWhatsApp()} />
-            ) : null}
           </View>
-          {whatsAppError ? (
-            <ThemedText type="small" themeColor="danger">
-              {whatsAppError}
-            </ThemedText>
-          ) : null}
 
           <Section title="Profile and goals">
             <Card padded={false} style={styles.fieldCard}>

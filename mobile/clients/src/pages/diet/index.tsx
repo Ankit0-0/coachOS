@@ -17,6 +17,7 @@ import { trackingApi } from '@/lib/api';
 import { todayKey } from '@/lib/dates';
 import { pickAndUploadImage } from '@/lib/image-upload';
 import { dietContentOf } from '@/lib/plan-content';
+import { formatCalories } from '@/lib/plan-units';
 
 export function DietDetailsScreen() {
   const theme = useTheme();
@@ -209,7 +210,7 @@ export function DietDetailsScreen() {
       <ThemedView type="backgroundElement" style={[styles.summary, { borderColor: theme.border }]}>
         {content.calories ? (
           <ThemedText type="smallBold" style={{ color: theme.warning }}>
-            {content.calories}
+            {formatCalories(content.calories)}
           </ThemedText>
         ) : null}
         {content.focus ? <ThemedText>{content.focus}</ThemedText> : null}

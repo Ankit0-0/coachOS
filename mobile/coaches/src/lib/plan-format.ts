@@ -1,4 +1,5 @@
 import type { DietContent, Plan, WorkoutContent } from '@/lib/api';
+import { formatCalories, formatDuration } from '@/lib/plan-units';
 
 export type PlanStats = {
   /** What the plan contains, e.g. "5 exercises". */
@@ -14,7 +15,7 @@ export function planStats(plan: Plan): PlanStats {
     const count = content.exercises.length;
     return {
       primary: `${count} ${count === 1 ? 'exercise' : 'exercises'}`,
-      secondary: content.duration,
+      secondary: formatDuration(content.duration),
     };
   }
 
@@ -22,7 +23,7 @@ export function planStats(plan: Plan): PlanStats {
   const count = content.meals.length;
   return {
     primary: `${count} ${count === 1 ? 'meal' : 'meals'}`,
-    secondary: content.calories,
+    secondary: formatCalories(content.calories),
   };
 }
 
