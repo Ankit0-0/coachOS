@@ -10,6 +10,7 @@ import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { Spacing } from '@/constants/theme';
+import { useRefresh } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { planApi, type Plan } from '@/lib/api';
 
@@ -24,27 +25,30 @@ export function SavedPlansScreen() {
   const [diet, setDiet] = useState<PlanGroup>(EMPTY_GROUP);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Shared by focus and pull-to-refresh, so a refresh reports failures the
+  // same way the initial load does.
+  const load = useCallback(async () => {
+    try {
+      const [workoutPlans, dietPlans] = await Promise.all([planApi.list('WORKOUT'), planApi.list('DIET')]);
+      setWorkout(workoutPlans);
+      setDiet(dietPlans);
+    } catch {
+      // As before: keep what's on screen; the list shows its empty state.
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
-      let active = true;
-      Promise.all([planApi.list('WORKOUT'), planApi.list('DIET')])
-        .then(([workoutPlans, dietPlans]) => {
-          if (!active) return;
-          setWorkout(workoutPlans);
-          setDiet(dietPlans);
-        })
-        .catch(() => {})
-        .finally(() => {
-          if (active) setIsLoading(false);
-        });
-      return () => {
-        active = false;
-      };
-    }, []),
+      void load();
+    }, [load]),
   );
 
+  const { isRefreshing, refresh } = useRefresh(load);
+
   return (
-    <ScreenScaffold includeBottomTabInset>
+    <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh}>
       <View style={styles.header}>
         <ThemedText type="display">Plans</ThemedText>
         <ThemedText type="small" themeColor="textSecondary">

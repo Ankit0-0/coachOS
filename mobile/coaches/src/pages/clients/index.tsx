@@ -7,6 +7,7 @@ import { DetailHeader } from '@/components/detail-header';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
 import { Card } from '@/components/ui/card';
+import { useRefresh } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { coachInviteApi, type CoachInvite } from '@/lib/api';
 
@@ -15,26 +16,29 @@ export function ClientsScreen() {
   const [clients, setClients] = useState<CoachInvite[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Shared by focus and pull-to-refresh, so a refresh reports failures the
+  // same way the initial load does.
+  const load = useCallback(async () => {
+    try {
+      const invites = await coachInviteApi.list('ACCEPTED');
+      setClients(invites);
+    } catch {
+      // As before: keep what's on screen; the list shows its empty state.
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
-      let active = true;
-      coachInviteApi
-        .list('ACCEPTED')
-        .then((invites) => {
-          if (active) setClients(invites);
-        })
-        .catch(() => {})
-        .finally(() => {
-          if (active) setIsLoading(false);
-        });
-      return () => {
-        active = false;
-      };
-    }, []),
+      void load();
+    }, [load]),
   );
 
+  const { isRefreshing, refresh } = useRefresh(load);
+
   return (
-    <ScreenScaffold>
+    <ScreenScaffold refreshing={isRefreshing} onRefresh={refresh}>
       <DetailHeader
         title="Roster"
         subtitle={clients.length === 1 ? '1 client' : `${clients.length} clients`}

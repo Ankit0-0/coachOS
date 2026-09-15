@@ -1,114 +1,94 @@
-import { useEffect, useRef, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { DetailHeader } from '@/components/detail-header';
 import { LockedState } from '@/components/locked-state';
+import { PlanStateCard } from '@/components/plan-state-card';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Fonts, Radii, Spacing } from '@/constants/theme';
-import { useOnboardingStatus } from '@/hooks/use-onboarding-status';
-import { useTheme } from '@/hooks/use-theme';
 import { useTrackingAssignments } from '@/hooks/use-assignments';
+import { useOnboardingStatus } from '@/hooks/use-onboarding-status';
+import { useRefresh } from '@/hooks/use-refresh';
+import { useTheme } from '@/hooks/use-theme';
 import { trackingApi } from '@/lib/api';
 import { todayKey } from '@/lib/dates';
 import { pickAndUploadImage } from '@/lib/image-upload';
-import {
-  dietDetails,
-  type DietMealStatus,
-  getDietComment,
-  getDietMealStatusItems,
-  setDietComment,
-  updateDietMealStatus,
-} from '@/utils/dashboard-data';
+import { dietContentOf } from '@/lib/plan-content';
 
 export function DietDetailsScreen() {
   const theme = useTheme();
-  const { hasCoach, isLoading: isCheckingOnboarding } = useOnboardingStatus();
-  const { diet: dietAssignment } = useTrackingAssignments();
-  const [meals, setMeals] = useState(() => getDietMealStatusItems());
-  const [comment, setCommentState] = useState(() => getDietComment());
+  const onboarding = useOnboardingStatus();
+  const tracking = useTrackingAssignments();
+  const dietAssignment = tracking.diet;
+  const assignmentId = dietAssignment?.id;
+  const content = useMemo(() => dietContentOf(dietAssignment), [dietAssignment]);
+  const meals = content?.meals ?? [];
+
+  // Per-meal state, keyed by the plan's meal ids (which are also the check-in item ids).
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(() => new Set());
+  /** Signed URLs from the API, or a local file while an upload is saving. */
+  const [photoUris, setPhotoUris] = useState<Record<string, string>>({});
+  // Component state only: nothing about one client's day is kept at module
+  // level, where it would survive a sign-out and show to the next user.
+  const [comment, setComment] = useState('');
   const [isSavingLog, setIsSavingLog] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   /** Which meal is mid-upload, so only that row shows a spinner. */
   const [uploadingMealId, setUploadingMealId] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
 
-  // Restore today's already-checked meals so progress survives app restarts.
-  const hasLoadedToday = useRef(false);
-  useEffect(() => {
-    if (!dietAssignment || hasLoadedToday.current) return;
-    hasLoadedToday.current = true;
+  /** Today's saved check-in: ticks and photos, so progress survives restarts. */
+  const loadToday = useCallback(async () => {
+    if (!assignmentId) return;
+    try {
+      const rows = await trackingApi.listCheckIns({ assignmentId, from: todayKey(), to: todayKey() });
+      const checkIn = rows[0];
+      setCheckedIds(new Set(checkIn?.completedItemIds ?? []));
+      // Reads carry signed URLs only, never keys — which is fine, because
+      // adding a photo sends just that meal's key and the server merges.
+      setPhotoUris(checkIn?.photoUrls ?? {});
+    } catch {
+      // Could not restore — keep whatever is on screen.
+    }
+  }, [assignmentId]);
 
-    (async () => {
-      try {
-        const rows = await trackingApi.listCheckIns({
-          assignmentId: dietAssignment.id,
-          from: todayKey(),
-          to: todayKey(),
-        });
-        const checkIn = rows[0];
-        if (!checkIn) return;
+  // Restored on focus (and again if the assignment changes); pull-to-refresh
+  // calls it directly.
+  useFocusEffect(
+    useCallback(() => {
+      void loadToday();
+    }, [loadToday]),
+  );
 
-        const completed = new Set(checkIn.completedItemIds);
-        const photoUrls = checkIn.photoUrls ?? {};
-        setMeals((current) =>
-          current.map((meal) => ({
-            ...meal,
-            checked: completed.has(meal.id),
-            // Reads carry signed URLs only, never keys — which is fine, because
-            // adding a photo sends just that meal's key and the server merges.
-            imageUri: photoUrls[meal.id] ?? meal.imageUri,
-          })),
-        );
-        // Keep the module-level cache in sync for other screens in this session.
-        for (const meal of getDietMealStatusItems()) {
-          updateDietMealStatus(meal.id, { checked: completed.has(meal.id) });
-        }
-      } catch {
-        // Could not restore — leave today's screen empty.
-      }
-    })();
-  }, [dietAssignment]);
+  const { isRefreshing, refresh } = useRefresh(onboarding.reload, tracking.reload, loadToday);
+
+  /** Only ids that belong to the current plan — a stale tick from an old plan never gets saved. */
+  function completedItemIds(ids: Set<string>): string[] {
+    return meals.filter((meal) => ids.has(meal.id)).map((meal) => meal.id);
+  }
 
   const handleToggleMeal = (id: string) => {
-    const next = meals.map((meal) =>
-      meal.id === id ? { ...meal, checked: !meal.checked } : meal,
-    );
+    const next = new Set(checkedIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
 
-    setMeals(next);
+    setCheckedIds(next);
     setSaveMessage(null);
 
-    const updatedMeal = next.find((meal) => meal.id === id);
-    if (updatedMeal) {
-      updateDietMealStatus(id, { checked: updatedMeal.checked });
-    }
-
-    if (dietAssignment) {
+    if (assignmentId) {
       trackingApi
-        .saveCheckIn({
-          assignmentId: dietAssignment.id,
-          date: todayKey(),
-          completedItemIds: next.filter((meal) => meal.checked).map((meal) => meal.id),
-        })
+        .saveCheckIn({ assignmentId, date: todayKey(), completedItemIds: completedItemIds(next) })
         .catch(() => {
           // Optimistic UI — keep the local toggle even if the sync fails.
         });
     }
   };
 
-  /** Writes a photo onto one meal in both local state and the shared cache. */
-  const applyPhoto = (id: string, imageUri: string): DietMealStatus[] => {
-    const next = getDietMealStatusItems().map((meal) =>
-      meal.id === id ? { ...meal, imageUri } : meal,
-    );
-    updateDietMealStatus(id, { imageUri });
-    setMeals(next);
-    return next;
-  };
-
   const handlePhotoPick = async (id: string) => {
-    if (uploadingMealId) return;
+    if (uploadingMealId || !assignmentId) return;
 
     setPhotoError(null);
     setSaveMessage(null);
@@ -130,24 +110,19 @@ export function DietDetailsScreen() {
 
     // Show the local file straight away, then swap in the signed URL the API
     // returns once the key is saved against today's check-in.
-    const withLocal = applyPhoto(id, result.uri);
-
-    if (!dietAssignment) {
-      setPhotoError('Photo uploaded, but there is no active diet plan to attach it to.');
-      return;
-    }
+    setPhotoUris((current) => ({ ...current, [id]: result.uri }));
 
     try {
       const checkIn = await trackingApi.saveCheckIn({
-        assignmentId: dietAssignment.id,
+        assignmentId,
         date: todayKey(),
-        completedItemIds: withLocal.filter((meal) => meal.checked).map((meal) => meal.id),
+        completedItemIds: completedItemIds(checkedIds),
         // Only this meal's key: the server merges it into the stored map, so
         // photos on the other meals are left exactly as they were.
         photoKeys: { [id]: result.key },
       });
       const signedUrl = checkIn.photoUrls?.[id];
-      if (signedUrl) applyPhoto(id, signedUrl);
+      if (signedUrl) setPhotoUris((current) => ({ ...current, [id]: signedUrl }));
     } catch (error) {
       setPhotoError(
         error instanceof Error
@@ -157,23 +132,14 @@ export function DietDetailsScreen() {
     }
   };
 
-  const handleCommentChange = (value: string) => {
-    setCommentState(value);
-    setDietComment(value);
-  };
-
   const handleSaveDietLog = async () => {
-    if (!dietAssignment) {
-      setSaveMessage('No active diet assignment found.');
-      return;
-    }
+    if (!assignmentId) return;
     try {
       setIsSavingLog(true);
-      const completedItemIds = meals.filter((meal) => meal.checked).map((meal) => meal.id);
       await trackingApi.saveCheckIn({
-        assignmentId: dietAssignment.id,
+        assignmentId,
         date: todayKey(),
-        completedItemIds,
+        completedItemIds: completedItemIds(checkedIds),
       });
       setSaveMessage('Diet log saved to your history.');
     } catch (error) {
@@ -185,7 +151,7 @@ export function DietDetailsScreen() {
     }
   };
 
-  if (isCheckingOnboarding) {
+  if (onboarding.isLoading) {
     return (
       <ScreenScaffold>
         <ActivityIndicator color={theme.textSecondary} />
@@ -193,66 +159,116 @@ export function DietDetailsScreen() {
     );
   }
 
-  if (!hasCoach) {
-    return <LockedState title="Diet" />;
+  if (!onboarding.hasCoach) {
+    return <LockedState title="Diet" refreshing={isRefreshing} onRefresh={refresh} />;
+  }
+
+  if (tracking.isLoading) {
+    return (
+      <ScreenScaffold>
+        <DetailHeader title="Diet" subtitle="Loading your plan…" />
+        <ActivityIndicator color={theme.textSecondary} />
+      </ScreenScaffold>
+    );
+  }
+
+  // Only fall through to the plan when there is a real, readable one.
+  if (!dietAssignment || !content || meals.length === 0) {
+    const failed = !dietAssignment && tracking.error;
+    return (
+      <ScreenScaffold refreshing={isRefreshing} onRefresh={refresh}>
+        <DetailHeader title="Diet" subtitle={failed ? 'Something went wrong' : 'No plan yet'} />
+        {failed ? (
+          <PlanStateCard
+            tone="danger"
+            title="Couldn't load your diet plan"
+            message={`${tracking.error?.message ?? 'Check your connection.'} Pull down to try again.`}
+          />
+        ) : (
+          <PlanStateCard
+            title="Your coach hasn't assigned a diet plan yet"
+            message="When they do, your meals will appear here. Pull down to check again."
+          />
+        )}
+      </ScreenScaffold>
+    );
   }
 
   return (
-    <ScreenScaffold>
-      <DetailHeader title="Diet" subtitle={dietDetails.title} />
+    <ScreenScaffold refreshing={isRefreshing} onRefresh={refresh}>
+      <DetailHeader title="Diet" subtitle={dietAssignment.title} />
+
+      {tracking.error ? (
+        <PlanStateCard
+          tone="danger"
+          title="Couldn't refresh your plan"
+          message={`${tracking.error.message} Showing the last version loaded.`}
+        />
+      ) : null}
 
       <ThemedView type="backgroundElement" style={[styles.summary, { borderColor: theme.border }]}>
-        <ThemedText type="smallBold" style={{ color: theme.warning }}>
-          {dietDetails.calories}
-        </ThemedText>
-        <ThemedText>{dietDetails.focus}</ThemedText>
+        {content.calories ? (
+          <ThemedText type="smallBold" style={{ color: theme.warning }}>
+            {content.calories}
+          </ThemedText>
+        ) : null}
+        {content.focus ? <ThemedText>{content.focus}</ThemedText> : null}
       </ThemedView>
 
       <View style={styles.list}>
-        {meals.map((meal) => (
-          <ThemedView key={meal.id} type="backgroundElement" style={[styles.row, { borderColor: theme.border }]}>
-            <Pressable
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: meal.checked }}
-              onPress={() => handleToggleMeal(meal.id)}
-              style={[styles.checkbox, meal.checked && styles.checkboxChecked]}>
-              {meal.checked ? (
-                <ThemedText themeColor="onAccent" style={styles.checkText}>
-                  ✓
-                </ThemedText>
-              ) : null}
-            </Pressable>
+        {meals.map((meal) => {
+          const checked = checkedIds.has(meal.id);
+          const imageUri = photoUris[meal.id];
+          return (
+            <ThemedView key={meal.id} type="backgroundElement" style={[styles.row, { borderColor: theme.border }]}>
+              <Pressable
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked }}
+                accessibilityLabel={meal.label}
+                onPress={() => handleToggleMeal(meal.id)}
+                style={[
+                  styles.checkbox,
+                  { borderColor: checked ? theme.accent : theme.textMuted },
+                  checked && { backgroundColor: theme.accent },
+                ]}>
+                {checked ? (
+                  <ThemedText themeColor="onAccent" style={styles.checkText}>
+                    ✓
+                  </ThemedText>
+                ) : null}
+              </Pressable>
 
-            <View style={styles.mealContent}>
-              <View style={styles.mealHeaderRow}>
-                <ThemedText style={styles.rowText}>{meal.meal}</ThemedText>
+              <View style={styles.mealContent}>
+                <View style={styles.mealHeaderRow}>
+                  <ThemedText style={styles.rowText}>{meal.label}</ThemedText>
 
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`${meal.imageUri ? 'Change' : 'Add'} photo for ${meal.meal}`}
-                  onPress={() => void handlePhotoPick(meal.id)}
-                  disabled={uploadingMealId !== null}
-                  style={[styles.photoButton, { borderColor: theme.border }]}>
-                  {uploadingMealId === meal.id ? (
-                    <ActivityIndicator size="small" color={theme.textSecondary} />
-                  ) : (
-                    <ThemedText type="smallBold" themeColor="textSecondary" style={styles.photoButtonText}>
-                      {meal.imageUri ? 'Change photo' : 'Add photo'}
-                    </ThemedText>
-                  )}
-                </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`${imageUri ? 'Change' : 'Add'} photo for ${meal.label}`}
+                    onPress={() => void handlePhotoPick(meal.id)}
+                    disabled={uploadingMealId !== null}
+                    style={[styles.photoButton, { borderColor: theme.border }]}>
+                    {uploadingMealId === meal.id ? (
+                      <ActivityIndicator size="small" color={theme.textSecondary} />
+                    ) : (
+                      <ThemedText type="smallBold" themeColor="textSecondary" style={styles.photoButtonText}>
+                        {imageUri ? 'Change photo' : 'Add photo'}
+                      </ThemedText>
+                    )}
+                  </Pressable>
+                </View>
+
+                {imageUri ? (
+                  <Image
+                    source={{ uri: imageUri }}
+                    accessibilityLabel={`Photo of ${meal.label}`}
+                    style={[styles.thumbnail, { backgroundColor: theme.surfaceSunken }]}
+                  />
+                ) : null}
               </View>
-
-              {meal.imageUri ? (
-                <Image
-                  source={{ uri: meal.imageUri }}
-                  accessibilityLabel={`Photo of ${meal.meal}`}
-                  style={[styles.thumbnail, { backgroundColor: theme.surfaceSunken }]}
-                />
-              ) : null}
-            </View>
-          </ThemedView>
-        ))}
+            </ThemedView>
+          );
+        })}
       </View>
 
       {photoError ? (
@@ -265,11 +281,11 @@ export function DietDetailsScreen() {
         <ThemedText type="smallBold">Comment</ThemedText>
         <TextInput
           value={comment}
-          onChangeText={handleCommentChange}
+          onChangeText={setComment}
           placeholder="How was today's diet?"
           multiline
           numberOfLines={4}
-          style={[styles.textInput, { color: theme.text, borderColor: theme.border }]} 
+          style={[styles.textInput, { color: theme.text, borderColor: theme.border }]}
           placeholderTextColor={theme.textSecondary}
         />
       </ThemedView>
@@ -321,16 +337,11 @@ const styles = StyleSheet.create({
   checkbox: {
     width: 22,
     height: 22,
-    borderRadius: 11,
+    borderRadius: Radii.pill,
     borderWidth: 2,
-    borderColor: '#8FA3B7',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
-  },
-  checkboxChecked: {
-    backgroundColor: '#3A7BFF',
-    borderColor: '#3A7BFF',
   },
   checkText: {
     fontFamily: Fonts.sansBold,

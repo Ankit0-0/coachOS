@@ -5,7 +5,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { SetFeedback, WorkoutExercise, WorkoutSet } from '@/utils/dashboard-data';
+import type { SetFeedback, WorkoutExercise, WorkoutSet } from '@/lib/plan-content';
 
 type ExerciseCardProps = {
   exercise: WorkoutExercise;
@@ -31,9 +31,11 @@ export function ExerciseCard({
             {exercise.sets.length} sets
           </ThemedText>
           <ThemedText style={styles.title}>{exercise.name}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {exercise.note}
-          </ThemedText>
+          {exercise.note ? (
+            <ThemedText type="small" themeColor="textSecondary">
+              {exercise.note}
+            </ThemedText>
+          ) : null}
         </View>
         <ThemedText type="smallBold" themeColor="textSecondary">
           {completedSets}/{exercise.sets.length}
@@ -45,10 +47,10 @@ export function ExerciseCard({
           Set
         </ThemedText>
         <ThemedText type="smallBold" themeColor="textSecondary" style={styles.valueColumn}>
-          Weight
+          Reps
         </ThemedText>
         <ThemedText type="smallBold" themeColor="textSecondary" style={styles.valueColumn}>
-          Reps
+          Rest
         </ThemedText>
       </View>
 
@@ -87,10 +89,10 @@ export function ExerciseCard({
                   {set.setNumber}
                 </ThemedText>
                 <ThemedText type="small" style={styles.valueColumn}>
-                  {set.weight}
+                  {set.reps}
                 </ThemedText>
                 <ThemedText type="small" style={styles.valueColumn}>
-                  {set.reps}
+                  {set.rest}
                 </ThemedText>
                 <SymbolView
                   name={{

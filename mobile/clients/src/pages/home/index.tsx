@@ -1,27 +1,32 @@
-import { Image, Pressable, StyleSheet, TextInput, View } from 'react-native';
-import { useState } from 'react';
-
-import { useRouter } from 'expo-router';
-
-import { ActivityIndicator } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, Image, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { LockedState } from '@/components/locked-state';
-import { PlanCard } from '@/components/plan-card';
+import { PlanCard, type HomePlanCard } from '@/components/plan-card';
+import { PlanStateCard } from '@/components/plan-state-card';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Radii, Spacing } from '@/constants/theme';
+import { useTrackingAssignments } from '@/hooks/use-assignments';
 import { useOnboardingStatus } from '@/hooks/use-onboarding-status';
+import { useRefresh } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { trackingApi } from '@/lib/api';
 import { todayKey } from '@/lib/dates';
 import { pickAndUploadImage } from '@/lib/image-upload';
-import { todaysPlanCards } from '@/utils/dashboard-data';
+import { dietContentOf, workoutContentOf } from '@/lib/plan-content';
 
 export function HomeScreen() {
   const theme = useTheme();
   const router = useRouter();
-  const { hasCoach, isLoading: isCheckingOnboarding } = useOnboardingStatus();
+  const onboarding = useOnboardingStatus();
+  const tracking = useTrackingAssignments();
+  const { workout: workoutAssignment, diet: dietAssignment } = tracking;
+  const dietAssignmentId = dietAssignment?.id;
+  /** Meal ids ticked in today's diet check-in, for the progress ring. */
+  const [dietCheckedIds, setDietCheckedIds] = useState<string[]>([]);
   /** The local file, shown as a preview until the entry is saved. */
   const [physiqueImage, setPhysiqueImage] = useState<string | null>(null);
   /** The S3 key behind it — this is what the weight entry actually stores. */
@@ -30,6 +35,64 @@ export function HomeScreen() {
   const [weightValue, setWeightValue] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
+
+  const loadDietProgress = useCallback(async () => {
+    if (!dietAssignmentId) {
+      setDietCheckedIds([]);
+      return;
+    }
+    try {
+      const rows = await trackingApi.listCheckIns({
+        assignmentId: dietAssignmentId,
+        from: todayKey(),
+        to: todayKey(),
+      });
+      setDietCheckedIds(rows[0]?.completedItemIds ?? []);
+    } catch {
+      // Progress is secondary; the card still opens the plan without it.
+    }
+  }, [dietAssignmentId]);
+
+  // Refetched on focus so the ring reflects meals ticked on the diet screen.
+  useFocusEffect(
+    useCallback(() => {
+      void loadDietProgress();
+    }, [loadDietProgress]),
+  );
+
+  const { isRefreshing, refresh } = useRefresh(onboarding.reload, tracking.reload, loadDietProgress);
+
+  // Cards only for assignments that actually exist — never sample plans.
+  const planCards: HomePlanCard[] = [];
+  const workoutContent = workoutContentOf(workoutAssignment);
+  if (workoutAssignment && workoutContent) {
+    planCards.push({
+      id: 'workout',
+      title: workoutAssignment.title,
+      eyebrow: workoutContent.focus || "Today's workout",
+      summary: workoutContent.summary,
+      metric: workoutContent.duration,
+      detail: workoutContent.exercises.slice(0, 2).map((exercise) => exercise.name).join(' • '),
+      route: '/workout',
+      iconName: { ios: 'figure.strengthtraining.traditional', android: 'fitness_center', web: 'fitness_center' },
+    });
+  }
+  const dietContent = dietContentOf(dietAssignment);
+  if (dietAssignment && dietContent) {
+    const mealIds = new Set(dietContent.meals.map((meal) => meal.id));
+    const ticked = dietCheckedIds.filter((id) => mealIds.has(id)).length;
+    planCards.push({
+      id: 'diet',
+      title: dietAssignment.title,
+      eyebrow: dietContent.focus || "Today's diet",
+      summary: dietContent.summary,
+      metric: dietContent.calories,
+      detail: dietContent.meals.slice(0, 2).map((meal) => meal.label).join(' • '),
+      route: '/diet',
+      iconName: { ios: 'fork.knife.circle', android: 'restaurant', web: 'restaurant' },
+      progressPercent: mealIds.size > 0 ? (ticked / mealIds.size) * 100 : 0,
+    });
+  }
 
   const pickPhysiquePhoto = async () => {
     if (isUploadingPhoto) return;
@@ -82,7 +145,7 @@ export function HomeScreen() {
     }
   };
 
-  if (isCheckingOnboarding) {
+  if (onboarding.isLoading) {
     return (
       <ScreenScaffold includeBottomTabInset>
         <ActivityIndicator color={theme.textSecondary} />
@@ -90,12 +153,12 @@ export function HomeScreen() {
     );
   }
 
-  if (!hasCoach) {
-    return <LockedState title="Home" />;
+  if (!onboarding.hasCoach) {
+    return <LockedState title="Home" refreshing={isRefreshing} onRefresh={refresh} />;
   }
 
   return (
-    <ScreenScaffold includeBottomTabInset>
+    <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh}>
       <View style={styles.header}>
         <ThemedText type="smallBold" themeColor="accent">
           Coach OS
@@ -104,7 +167,9 @@ export function HomeScreen() {
           Ready for today?
         </ThemedText>
         <ThemedText themeColor="textSecondary">
-          Your coach has lined up the two things that matter most today: training and food.
+          {planCards.length > 0
+            ? 'Here is what your coach has lined up for today.'
+            : 'Your plans will show up here as soon as your coach assigns them.'}
         </ThemedText>
       </View>
 
@@ -114,14 +179,36 @@ export function HomeScreen() {
         </ThemedText>
       </View>
 
-      <View style={styles.cards}>
-        {todaysPlanCards.map((plan) => (
-          <PlanCard key={plan.id} plan={plan} />
-        ))}
-      </View>
+      {tracking.isLoading ? (
+        <ActivityIndicator color={theme.textSecondary} />
+      ) : planCards.length > 0 ? (
+        <View style={styles.cards}>
+          {tracking.error ? (
+            <PlanStateCard
+              tone="danger"
+              title="Couldn't refresh your plans"
+              message={`${tracking.error.message} Showing the last version loaded.`}
+            />
+          ) : null}
+          {planCards.map((plan) => (
+            <PlanCard key={plan.id} plan={plan} />
+          ))}
+        </View>
+      ) : tracking.error ? (
+        <PlanStateCard
+          tone="danger"
+          title="Couldn't load your plans"
+          message={`${tracking.error.message} Pull down to try again.`}
+        />
+      ) : (
+        <PlanStateCard
+          title="No plans assigned yet"
+          message="Your coach hasn't assigned a workout or diet plan. Pull down to check again."
+        />
+      )}
 
       <ThemedView type="backgroundElement" style={[styles.updateCard, { borderColor: theme.border }]}>
-        <ThemedText type="smallBold">Today's update</ThemedText>
+        <ThemedText type="smallBold">Today&apos;s update</ThemedText>
 
         <View style={styles.updateRow}>
           <ThemedText type="small" themeColor="textSecondary" style={styles.label}>

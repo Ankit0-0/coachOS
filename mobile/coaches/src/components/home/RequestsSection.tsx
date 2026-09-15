@@ -1,5 +1,5 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useImperativeHandle, useState, type Ref } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Section } from '@/components/ui/section';
 import { Radii, Spacing } from '@/constants/theme';
+import type { RefreshHandle } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError, coachingRequestApi, type CoachingRequest } from '@/lib/api';
 import { longDateLabel } from '@/lib/dates';
@@ -24,13 +25,14 @@ function errorMessage(error: unknown): string {
 type RequestsSectionProps = {
   /** Called after an accept, so the roster can reload and show the new client. */
   onAccepted?: () => void;
+  ref?: Ref<RefreshHandle>;
 };
 
 /**
  * Clients who found this coach in Explore and asked to join. Renders nothing
  * when there are none, so coaches who aren't listed never see an empty box.
  */
-export function RequestsSection({ onAccepted }: RequestsSectionProps) {
+export function RequestsSection({ onAccepted, ref }: RequestsSectionProps) {
   const theme = useTheme();
   const [requests, setRequests] = useState<CoachingRequest[]>([]);
   const [actioningId, setActioningId] = useState<string | null>(null);
@@ -49,6 +51,8 @@ export function RequestsSection({ onAccepted }: RequestsSectionProps) {
       void load();
     }, [load]),
   );
+
+  useImperativeHandle(ref, () => ({ reload: load }), [load]);
 
   async function respond(request: CoachingRequest, action: 'accept' | 'decline') {
     setActioningId(request.id);

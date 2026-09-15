@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Pill } from '@/components/ui/pill';
 import { Radii, Spacing } from '@/constants/theme';
+import { useRefresh } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { exploreApi, type DirectoryCoach } from '@/lib/api';
 import { experienceLabel, relationshipPill } from '@/lib/explore';
@@ -42,8 +43,10 @@ export function ExploreCoachesScreen() {
     }, [load]),
   );
 
+  const { isRefreshing, refresh } = useRefresh(load);
+
   return (
-    <ScreenScaffold includeBottomTabInset>
+    <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh}>
       <View style={styles.header}>
         <ThemedText type="display">Explore</ThemedText>
         <ThemedText type="small" themeColor="textSecondary">

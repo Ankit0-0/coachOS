@@ -1,25 +1,48 @@
 import { PropsWithChildren } from 'react';
-import { ScrollView, StyleSheet, ViewStyle } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 type ScreenScaffoldProps = PropsWithChildren<{
   includeBottomTabInset?: boolean;
   contentStyle?: ViewStyle;
+  /**
+   * Pull-to-refresh. Pass both to enable it. `refreshing` should be its own
+   * state, separate from a screen's initial loading flag, so a refresh keeps
+   * the current content on screen instead of blanking it to a spinner.
+   */
+  refreshing?: boolean;
+  onRefresh?: () => void;
 }>;
 
 export function ScreenScaffold({
   children,
   contentStyle,
   includeBottomTabInset = false,
+  refreshing = false,
+  onRefresh,
 }: ScreenScaffoldProps) {
+  const theme = useTheme();
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
         <ScrollView
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            onRefresh ? (
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={theme.textSecondary}
+                colors={[theme.accent]}
+                progressBackgroundColor={theme.surface}
+              />
+            ) : undefined
+          }
           contentContainerStyle={[
             styles.content,
             includeBottomTabInset && styles.contentWithTabs,

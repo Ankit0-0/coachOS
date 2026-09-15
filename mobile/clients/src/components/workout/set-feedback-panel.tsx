@@ -5,7 +5,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { SetFeedback, WorkoutExercise, WorkoutSet } from '@/utils/dashboard-data';
+import type { SetFeedback, WorkoutExercise, WorkoutSet } from '@/lib/plan-content';
 
 type SelectedSet = {
   exercise: WorkoutExercise;
@@ -44,7 +44,7 @@ export function SetFeedbackPanel({
               </ThemedText>
               <ThemedText style={styles.title}>{selectedSet.exercise.name}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
-                {selectedSet.set.weight} · {selectedSet.set.reps} reps
+                {selectedSet.set.reps} reps · {selectedSet.set.rest} rest
               </ThemedText>
             </View>
             <Pressable

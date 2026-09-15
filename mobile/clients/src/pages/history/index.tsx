@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { MonthNavigator } from '@/components/history/MonthNavigator';
 import { MonthlyActivityCalendar, type DailyActivity } from '@/components/history/MonthlyActivityCalendar';
 import { WeightChart, type WeightPoint } from '@/components/history/WeightChart';
 import { LockedState } from '@/components/locked-state';
+import { PlanStateCard } from '@/components/plan-state-card';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -12,6 +14,7 @@ import { Spacing } from '@/constants/theme';
 import { useOnboardingStatus } from '@/hooks/use-onboarding-status';
 import { useTheme } from '@/hooks/use-theme';
 import { useTrackingAssignments } from '@/hooks/use-assignments';
+import { useRefresh } from '@/hooks/use-refresh';
 import { trackingApi, type CheckIn, type TrackingAssignment, type WeightEntry } from '@/lib/api';
 import { dayOfMonth, lastNDaysRange, monthRange, todayKey, weekdayLabel } from '@/lib/dates';
 import { pickAndUploadImage } from '@/lib/image-upload';
@@ -42,8 +45,10 @@ function completedMatches(checkIn: CheckIn | undefined, validIds: Set<string>): 
 
 export function HistoryScreen() {
   const theme = useTheme();
-  const { hasCoach, isLoading: isCheckingOnboarding } = useOnboardingStatus();
-  const { workout: workoutAssignment, diet: dietAssignment } = useTrackingAssignments();
+  const onboarding = useOnboardingStatus();
+  const { hasCoach, isLoading: isCheckingOnboarding } = onboarding;
+  const tracking = useTrackingAssignments();
+  const { workout: workoutAssignment, diet: dietAssignment } = tracking;
 
   const [workoutCheckIns, setWorkoutCheckIns] = useState<CheckIn[]>([]);
   const [dietCheckIns, setDietCheckIns] = useState<CheckIn[]>([]);
@@ -70,46 +75,47 @@ export function HistoryScreen() {
   const [photoKey, setPhotoKey] = useState<string | null>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
 
-  useEffect(() => {
-    let active = true;
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const workoutAssignmentId = workoutAssignment?.id;
+  const dietAssignmentId = dietAssignment?.id;
+  // Month changes can overlap: only the latest request is allowed to land.
+  const latestRequest = useRef(0);
 
-    async function load() {
-      const week = lastNDaysRange(7);
-      try {
-        const [workoutRows, dietRows, weightRows] = await Promise.all([
-          workoutAssignment
-            ? trackingApi.listCheckIns({
-                assignmentId: workoutAssignment.id,
-                from: month.from,
-                to: month.to,
-              })
-            : Promise.resolve<CheckIn[]>([]),
-          dietAssignment
-            ? trackingApi.listCheckIns({
-                assignmentId: dietAssignment.id,
-                from: month.from,
-                to: month.to,
-              })
-            : Promise.resolve<CheckIn[]>([]),
-          trackingApi.listWeights(week),
-        ]);
-        if (!active) return;
-        setWorkoutCheckIns(workoutRows);
-        setDietCheckIns(dietRows);
-        setWeights(weightRows);
-      } catch {
-        // Leave the current state as-is; the user can pull the screen again.
-      } finally {
-        if (active) setIsLoading(false);
-      }
+  const loadActivity = useCallback(async () => {
+    const request = ++latestRequest.current;
+    const week = lastNDaysRange(7);
+    try {
+      const [workoutRows, dietRows, weightRows] = await Promise.all([
+        workoutAssignmentId
+          ? trackingApi.listCheckIns({ assignmentId: workoutAssignmentId, from: month.from, to: month.to })
+          : Promise.resolve<CheckIn[]>([]),
+        dietAssignmentId
+          ? trackingApi.listCheckIns({ assignmentId: dietAssignmentId, from: month.from, to: month.to })
+          : Promise.resolve<CheckIn[]>([]),
+        trackingApi.listWeights(week),
+      ]);
+      if (request !== latestRequest.current) return;
+      setWorkoutCheckIns(workoutRows);
+      setDietCheckIns(dietRows);
+      setWeights(weightRows);
+      setLoadError(null);
+    } catch (error) {
+      if (request !== latestRequest.current) return;
+      // Keep what is on screen and say so, on first load and on refresh alike.
+      setLoadError(error instanceof Error ? error.message : 'Could not load your history.');
+    } finally {
+      if (request === latestRequest.current) setIsLoading(false);
     }
+  }, [workoutAssignmentId, dietAssignmentId, month.from, month.to]);
 
-    load();
-    return () => {
-      active = false;
-    };
-    // month.from/to rather than the object, which is rebuilt every render.
-  }, [workoutAssignment, dietAssignment, month.from, month.to]);
+  // Reloads on focus and whenever the viewed month (and so loadActivity) changes.
+  useFocusEffect(
+    useCallback(() => {
+      void loadActivity();
+    }, [loadActivity]),
+  );
+
+  const { isRefreshing, refresh } = useRefresh(onboarding.reload, tracking.reload, loadActivity);
 
   const workoutIds = workoutItemIds(workoutAssignment);
   const dietIds = dietItemIds(dietAssignment);
@@ -214,11 +220,11 @@ export function HistoryScreen() {
   }
 
   if (!hasCoach) {
-    return <LockedState title="History" />;
+    return <LockedState title="History" refreshing={isRefreshing} onRefresh={refresh} />;
   }
 
   return (
-    <ScreenScaffold>
+    <ScreenScaffold refreshing={isRefreshing} onRefresh={refresh}>
       <View style={styles.header}>
         <ThemedText type="smallBold" themeColor="accent">
           History
@@ -227,6 +233,14 @@ export function HistoryScreen() {
           Weight trend
         </ThemedText>
       </View>
+
+      {loadError ? (
+        <PlanStateCard
+          tone="danger"
+          title="Couldn't load your history"
+          message={`${loadError} Pull down to try again.`}
+        />
+      ) : null}
 
       <ThemedView type="backgroundElement" style={[styles.chartCard, { borderColor: theme.border }]}>
         <View style={styles.chartHeader}>
@@ -311,26 +325,41 @@ export function HistoryScreen() {
           />
         </View>
 
-        <ThemedText type="small" themeColor="textSecondary" style={styles.summaryText}>
-          Target achieved {completedDays}/{month.daysInMonth} days
-        </ThemedText>
+        {!tracking.isLoading && !workoutAssignment && !dietAssignment ? (
+          // Weigh-ins above don't depend on a plan; plan activity does.
+          <PlanStateCard
+            title="No plans assigned yet"
+            message="Your coach hasn't assigned a workout or diet plan, so there's no plan activity to show."
+          />
+        ) : (
+          <>
+            <ThemedText type="small" themeColor="textSecondary" style={styles.summaryText}>
+              Target achieved {completedDays}/{month.daysInMonth} days
+            </ThemedText>
 
-        <View style={styles.legendRow}>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, styles.workoutDot]} />
-            <ThemedText type="small" themeColor="textSecondary">Workout</ThemedText>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, styles.dietDot]} />
-            <ThemedText type="small" themeColor="textSecondary">Diet</ThemedText>
-          </View>
-        </View>
+            {/* Only the plan types this client actually has. */}
+            <View style={styles.legendRow}>
+              {workoutAssignment ? (
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, styles.workoutDot]} />
+                  <ThemedText type="small" themeColor="textSecondary">Workout</ThemedText>
+                </View>
+              ) : null}
+              {dietAssignment ? (
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, styles.dietDot]} />
+                  <ThemedText type="small" themeColor="textSecondary">Diet</ThemedText>
+                </View>
+              ) : null}
+            </View>
 
-        <MonthlyActivityCalendar
-          entries={dailyActivity}
-          daysInMonth={month.daysInMonth}
-          firstWeekday={month.firstWeekday}
-        />
+            <MonthlyActivityCalendar
+              entries={dailyActivity}
+              daysInMonth={month.daysInMonth}
+              firstWeekday={month.firstWeekday}
+            />
+          </>
+        )}
       </ThemedView>
     </ScreenScaffold>
   );

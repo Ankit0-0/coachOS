@@ -12,6 +12,7 @@ import { Pill } from '@/components/ui/pill';
 import { Section } from '@/components/ui/section';
 import { Radii, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth';
+import { useRefresh } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { coachInviteApi, coachProfileApi, planApi, type CoachProfile } from '@/lib/api';
 import { pickAndUploadImage } from '@/lib/image-upload';
@@ -62,30 +63,34 @@ export function ProfileScreen() {
   const [listingError, setListingError] = useState<string | null>(null);
   const [avatarError, setAvatarError] = useState<string | null>(null);
 
-  const load = useCallback(() => {
-    Promise.all([
-      coachProfileApi.get(),
-      coachInviteApi.list('ACCEPTED'),
-      planApi.list('WORKOUT'),
-      planApi.list('DIET'),
-    ])
-      .then(([nextProfile, clients, workout, diet]) => {
-        setProfile(nextProfile);
-        setStats({
-          clients: clients.length,
-          workoutPlans: workout.own.length,
-          dietPlans: diet.own.length,
-        });
-      })
-      .catch(() => {})
-      .finally(() => setIsLoading(false));
+  const load = useCallback(async () => {
+    try {
+      const [nextProfile, clients, workout, diet] = await Promise.all([
+        coachProfileApi.get(),
+        coachInviteApi.list('ACCEPTED'),
+        planApi.list('WORKOUT'),
+        planApi.list('DIET'),
+      ]);
+      setProfile(nextProfile);
+      setStats({
+        clients: clients.length,
+        workoutPlans: workout.own.length,
+        dietPlans: diet.own.length,
+      });
+    } catch {
+      // As before: the screen shows its "didn't load" card when nothing has loaded.
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   useFocusEffect(
     useCallback(() => {
-      load();
+      void load();
     }, [load]),
   );
+
+  const { isRefreshing, refresh } = useRefresh(load);
 
   /** Optimistic: flips at once, and flips back if the save fails. */
   const handleListingChange = async (listed: boolean) => {
@@ -193,21 +198,21 @@ export function ProfileScreen() {
 
   if (!profile) {
     return (
-      <ScreenScaffold includeBottomTabInset>
+      <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh}>
         <ThemedText type="display">Profile</ThemedText>
         <Card>
           <ThemedText type="smallBold">Your profile didn&apos;t load</ThemedText>
           <ThemedText type="small" themeColor="textSecondary" style={styles.errorCopy}>
             Check your connection and try again.
           </ThemedText>
-          <Button label="Retry" variant="secondary" onPress={load} />
+          <Button label="Retry" variant="secondary" onPress={() => void load()} />
         </Card>
       </ScreenScaffold>
     );
   }
 
   return (
-    <ScreenScaffold includeBottomTabInset>
+    <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh}>
       <View style={styles.identity}>
         <Pressable
           accessibilityRole="button"

@@ -12,6 +12,7 @@ import { Pill } from '@/components/ui/pill';
 import { Section } from '@/components/ui/section';
 import { Radii, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth';
+import { useRefresh } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { clientProfileApi, trackingApi, type ClientProfile } from '@/lib/api';
 import { pickAndUploadImage } from '@/lib/image-upload';
@@ -63,22 +64,32 @@ export function ProfileScreen() {
   // Shown inline rather than via Alert, which is a no-op on React Native Web.
   const [formError, setFormError] = useState<string | null>(null);
   const [isConfirmingSignOut, setIsConfirmingSignOut] = useState(false);
+  /** A failed reload while a profile is already on screen: keep it, and say so. */
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
 
-  const load = useCallback(() => {
-    Promise.all([clientProfileApi.get(), trackingApi.listAssignments().catch(() => [])])
-      .then(([nextProfile, assignments]) => {
-        setProfile(nextProfile);
-        setPlanCount(assignments.length);
-      })
-      .catch(() => {})
-      .finally(() => setIsLoading(false));
+  const load = useCallback(async () => {
+    try {
+      const [nextProfile, assignments] = await Promise.all([
+        clientProfileApi.get(),
+        trackingApi.listAssignments().catch(() => []),
+      ]);
+      setProfile(nextProfile);
+      setPlanCount(assignments.length);
+      setLoadError(null);
+    } catch (error) {
+      setLoadError(errorMessage(error));
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  const { isRefreshing, refresh } = useRefresh(load);
 
   useFocusEffect(
     useCallback(() => {
-      load();
+      void load();
     }, [load]),
   );
 
@@ -168,21 +179,29 @@ export function ProfileScreen() {
 
   if (!profile) {
     return (
-      <ScreenScaffold includeBottomTabInset>
+      <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh}>
         <ThemedText type="display">Profile</ThemedText>
         <Card>
           <ThemedText type="smallBold">Your profile didn&apos;t load</ThemedText>
           <ThemedText type="small" themeColor="textSecondary" style={styles.errorCopy}>
-            Check your connection and try again.
+            {loadError ?? 'Check your connection'}. Try again, or pull down to refresh.
           </ThemedText>
-          <Button label="Retry" variant="secondary" onPress={load} />
+          <Button label="Retry" variant="secondary" onPress={() => void load()} />
         </Card>
       </ScreenScaffold>
     );
   }
 
   return (
-    <ScreenScaffold includeBottomTabInset>
+    <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh}>
+      {loadError ? (
+        <View style={[styles.errorBanner, { backgroundColor: theme.dangerSoft }]}>
+          <ThemedText type="small" themeColor="danger">
+            Couldn&apos;t refresh your profile: {loadError}
+          </ThemedText>
+        </View>
+      ) : null}
+
       <View style={styles.identity}>
         <Pressable
           accessibilityRole="button"
