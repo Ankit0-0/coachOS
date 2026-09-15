@@ -17,7 +17,8 @@ import { useTheme } from '@/hooks/use-theme';
 import { trackingApi, type WeightEntry } from '@/lib/api';
 import { todayKey } from '@/lib/dates';
 import { pickAndUploadImage } from '@/lib/image-upload';
-import { dietContentOf, workoutContentOf } from '@/lib/plan-content';
+import { dietContentOf, workoutContentOf, workoutExercisesFrom } from '@/lib/plan-content';
+import { formatCalories, formatDuration } from '@/lib/plan-units';
 import { parseWeightInput } from '@/lib/weight';
 
 export function HomeScreen() {
@@ -26,8 +27,11 @@ export function HomeScreen() {
   const onboarding = useOnboardingStatus();
   const tracking = useTrackingAssignments();
   const { workout: workoutAssignment, diet: dietAssignment } = tracking;
+  const workoutAssignmentId = workoutAssignment?.id;
   const dietAssignmentId = dietAssignment?.id;
-  /** Meal ids ticked in today's diet check-in, for the progress ring. */
+  /** Set ids ticked in today's workout check-in, for its progress ring. */
+  const [workoutCheckedIds, setWorkoutCheckedIds] = useState<string[]>([]);
+  /** Meal ids ticked in today's diet check-in, for its progress ring. */
   const [dietCheckedIds, setDietCheckedIds] = useState<string[]>([]);
   /**
    * What's already saved for today, read back from the API. Without it the card
@@ -45,22 +49,25 @@ export function HomeScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
 
-  const loadDietProgress = useCallback(async () => {
-    if (!dietAssignmentId) {
-      setDietCheckedIds([]);
-      return;
-    }
-    try {
-      const rows = await trackingApi.listCheckIns({
-        assignmentId: dietAssignmentId,
-        from: todayKey(),
-        to: todayKey(),
-      });
-      setDietCheckedIds(rows[0]?.completedItemIds ?? []);
-    } catch {
-      // Progress is secondary; the card still opens the plan without it.
-    }
-  }, [dietAssignmentId]);
+  /** Today's ticked items for each plan, so both cards draw the same ring. */
+  const loadTodayProgress = useCallback(async () => {
+    const todaysTicks = async (assignmentId: string | undefined, set: (ids: string[]) => void) => {
+      if (!assignmentId) {
+        set([]);
+        return;
+      }
+      try {
+        const rows = await trackingApi.listCheckIns({ assignmentId, from: todayKey(), to: todayKey() });
+        set(rows[0]?.completedItemIds ?? []);
+      } catch {
+        // Progress is secondary; the card still opens the plan without it.
+      }
+    };
+    await Promise.all([
+      todaysTicks(workoutAssignmentId, setWorkoutCheckedIds),
+      todaysTicks(dietAssignmentId, setDietCheckedIds),
+    ]);
+  }, [workoutAssignmentId, dietAssignmentId]);
 
   const loadTodayUpdate = useCallback(async () => {
     try {
@@ -71,16 +78,16 @@ export function HomeScreen() {
     }
   }, []);
 
-  // Refetched on focus so the ring reflects meals ticked on the diet screen,
+  // Refetched on focus so the rings reflect what was ticked on the plan screens,
   // and today's update reflects a weigh-in logged from History.
   useFocusEffect(
     useCallback(() => {
-      void loadDietProgress();
+      void loadTodayProgress();
       void loadTodayUpdate();
-    }, [loadDietProgress, loadTodayUpdate]),
+    }, [loadTodayProgress, loadTodayUpdate]),
   );
 
-  const { isRefreshing, refresh } = useRefresh(onboarding.reload, tracking.reload, loadDietProgress, loadTodayUpdate);
+  const { isRefreshing, refresh } = useRefresh(onboarding.reload, tracking.reload, loadTodayProgress, loadTodayUpdate);
 
   const shownWeight = weightValue ?? (todayEntry ? String(todayEntry.weightKg) : '');
   const shownPhoto = physiqueImage ?? todayEntry?.photoUrl ?? null;
@@ -89,31 +96,42 @@ export function HomeScreen() {
   const planCards: HomePlanCard[] = [];
   const workoutContent = workoutContentOf(workoutAssignment);
   if (workoutAssignment && workoutContent) {
+    const setIds = new Set(workoutExercisesFrom(workoutContent).flatMap((exercise) => exercise.sets.map((set) => set.id)));
+    const setsDone = workoutCheckedIds.filter((id) => setIds.has(id)).length;
+    const exerciseCount = workoutContent.exercises.length;
     planCards.push({
       id: 'workout',
+      kind: 'Workout',
       title: workoutAssignment.title,
-      eyebrow: workoutContent.focus || "Today's workout",
       summary: workoutContent.summary,
-      metric: workoutContent.duration,
-      detail: workoutContent.exercises.slice(0, 2).map((exercise) => exercise.name).join(' • '),
+      chips: [
+        formatDuration(workoutContent.duration),
+        `${exerciseCount} ${exerciseCount === 1 ? 'exercise' : 'exercises'}`,
+        `${setIds.size} ${setIds.size === 1 ? 'set' : 'sets'}`,
+      ].filter(Boolean),
       route: '/workout',
       iconName: { ios: 'figure.strengthtraining.traditional', android: 'fitness_center', web: 'fitness_center' },
+      progressPercent: setIds.size > 0 ? (setsDone / setIds.size) * 100 : 0,
+      progressLabel: `${setsDone} of ${setIds.size} sets done today`,
     });
   }
   const dietContent = dietContentOf(dietAssignment);
   if (dietAssignment && dietContent) {
     const mealIds = new Set(dietContent.meals.map((meal) => meal.id));
-    const ticked = dietCheckedIds.filter((id) => mealIds.has(id)).length;
+    const mealsDone = dietCheckedIds.filter((id) => mealIds.has(id)).length;
     planCards.push({
       id: 'diet',
+      kind: 'Diet',
       title: dietAssignment.title,
-      eyebrow: dietContent.focus || "Today's diet",
       summary: dietContent.summary,
-      metric: dietContent.calories,
-      detail: dietContent.meals.slice(0, 2).map((meal) => meal.label).join(' • '),
+      chips: [
+        formatCalories(dietContent.calories),
+        `${mealIds.size} ${mealIds.size === 1 ? 'meal' : 'meals'}`,
+      ].filter(Boolean),
       route: '/diet',
       iconName: { ios: 'fork.knife.circle', android: 'restaurant', web: 'restaurant' },
-      progressPercent: mealIds.size > 0 ? (ticked / mealIds.size) * 100 : 0,
+      progressPercent: mealIds.size > 0 ? (mealsDone / mealIds.size) * 100 : 0,
+      progressLabel: `${mealsDone} of ${mealIds.size} meals done today`,
     });
   }
 

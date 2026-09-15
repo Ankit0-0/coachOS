@@ -11,6 +11,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { FieldRow } from '@/components/ui/field-row';
+import { InlineNotice } from '@/components/ui/inline-notice';
 import { Pill } from '@/components/ui/pill';
 import { Section } from '@/components/ui/section';
 import { Spacing } from '@/constants/theme';
@@ -50,8 +51,9 @@ export function MyCoachScreen() {
   const [sentRequests, setSentRequests] = useState<CoachRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [actioningId, setActioningId] = useState<string | null>(null);
-  /** Inline, since Alert is a no-op on React Native Web. */
+  /** A small notice under the contact buttons, since Alert is a no-op on React Native Web. */
   const [contactError, setContactError] = useState<string | null>(null);
+  const dismissContactError = useCallback(() => setContactError(null), []);
 
   const loadData = useCallback(async () => {
     try {
@@ -184,11 +186,7 @@ export function MyCoachScreen() {
                 </View>
               </View>
             ) : null}
-            {contactError ? (
-              <ThemedText type="small" themeColor="danger">
-                {contactError}
-              </ThemedText>
-            ) : null}
+            <InlineNotice message={contactError} onDismiss={dismissContactError} />
           </Card>
 
           <Section title="About">

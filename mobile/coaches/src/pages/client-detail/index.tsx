@@ -16,6 +16,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { Card } from '@/components/ui/card';
 import { FieldRow } from '@/components/ui/field-row';
 import { CALL_ICON, IconButton, MESSAGE_ICON } from '@/components/ui/icon-button';
+import { InlineNotice } from '@/components/ui/inline-notice';
 import { Pill } from '@/components/ui/pill';
 import { Section } from '@/components/ui/section';
 import { Spacing } from '@/constants/theme';
@@ -84,8 +85,9 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
   const [isLoading, setIsLoading] = useState(true);
   /** Which plan type the assign sheet is open for; null when it's closed. */
   const [pickerType, setPickerType] = useState<PlanType | null>(null);
-  /** Inline, since Alert is a no-op on React Native Web. */
+  /** A small notice under the header, since Alert is a no-op on React Native Web. */
   const [contactError, setContactError] = useState<string | null>(null);
+  const dismissContactError = useCallback(() => setContactError(null), []);
   const [chartRange, setChartRange] = useState<WeightRangeKey>(DEFAULT_WEIGHT_RANGE);
   /** Weigh-ins in the chart's selected range, separate from `weights` so switching range can't move the photos. */
   const [chartWeights, setChartWeights] = useState<WeightEntry[]>([]);
@@ -272,11 +274,7 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
           ) : null
         }
       />
-      {contactError ? (
-        <ThemedText type="small" themeColor="danger">
-          {contactError}
-        </ThemedText>
-      ) : null}
+      <InlineNotice message={contactError} onDismiss={dismissContactError} />
 
       {isLoading ? (
         <ActivityIndicator color={theme.textSecondary} />

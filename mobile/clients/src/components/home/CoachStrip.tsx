@@ -1,11 +1,12 @@
 import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Avatar } from '@/components/ui/avatar';
 import { CALL_ICON, IconButton, MESSAGE_ICON } from '@/components/ui/icon-button';
+import { InlineNotice } from '@/components/ui/inline-notice';
 import { Radii, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { InvitePerson } from '@/lib/api';
@@ -24,8 +25,9 @@ type CoachStripProps = {
 export function CoachStrip({ coach }: CoachStripProps) {
   const theme = useTheme();
   const router = useRouter();
-  /** Inline, since Alert is a no-op on React Native Web. */
+  /** A small notice under the strip, since Alert is a no-op on React Native Web. */
   const [error, setError] = useState<string | null>(null);
+  const dismissError = useCallback(() => setError(null), []);
 
   // Both hide together: they share the one number, and there's none to use.
   const hasNumber = buildTelUrl(coach.phone) !== null && buildWhatsAppUrl(coach.phone) !== null;
@@ -82,11 +84,7 @@ export function CoachStrip({ coach }: CoachStripProps) {
           </View>
         </View>
       </View>
-      {error ? (
-        <ThemedText type="small" themeColor="danger">
-          {error}
-        </ThemedText>
-      ) : null}
+      <InlineNotice message={error} onDismiss={dismissError} />
     </View>
   );
 }
