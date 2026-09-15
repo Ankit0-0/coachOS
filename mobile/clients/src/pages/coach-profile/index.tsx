@@ -175,7 +175,7 @@ export function CoachProfileScreen({ coachId }: { coachId: string }) {
               <ThemedText type="small" themeColor="textSecondary">
                 Your plans and check-ins are already shared with them.
               </ThemedText>
-              <Button label="Go to My Coach" variant="secondary" onPress={() => router.push('/my-coach')} fullWidth />
+              <Button label="Open your coach" variant="secondary" onPress={() => router.push('/my-coach')} fullWidth />
             </>
           ) : coach.relationship === 'INVITED' ? (
             <>
@@ -189,7 +189,7 @@ export function CoachProfileScreen({ coachId }: { coachId: string }) {
             <>
               <ThemedText type="smallBold">Request sent</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
-                Waiting for {coach.name} to respond. You&apos;ll find them under My Coach once they accept.
+                Waiting for {coach.name} to respond. Once they accept, they&apos;ll be at the top of Home.
               </ThemedText>
               <Button
                 label="Cancel request"

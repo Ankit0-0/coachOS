@@ -104,6 +104,7 @@ export function ClientsSection({ ref }: { ref?: Ref<RefreshHandle> }) {
                 clientId={invite.clientId ?? invite.client?.id ?? ''}
                 name={invite.client?.name ?? invite.clientEmail}
                 email={invite.client?.email ?? invite.clientEmail}
+                avatarUrl={invite.client?.avatarUrl}
                 subscriptionStatus={invite.subscriptionStatus}
                 divider={index < preview.length - 1}
               />

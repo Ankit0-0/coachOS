@@ -26,12 +26,6 @@ export default function AppTabs() {
           <TabTrigger name="home" href={'/' as never} asChild>
             <TabButton label="Home" iconName={{ ios: 'house', android: 'home', web: 'home' }} />
           </TabTrigger>
-          <TabTrigger name="my-coach" href="/my-coach" asChild>
-            <TabButton
-              label="My Coach"
-              iconName={{ ios: 'person.crop.circle', android: 'support_agent', web: 'support_agent' }}
-            />
-          </TabTrigger>
           <TabTrigger name="explore-coaches" href="/explore-coaches" asChild>
             <TabButton
               label="Explore"

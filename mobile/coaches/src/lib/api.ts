@@ -157,6 +157,8 @@ export interface InvitePerson {
   id: string;
   name: string;
   email: string;
+  /** The client's photo as a signed URL. Only on an ACCEPTED invite; null when they have none. */
+  avatarUrl?: string | null;
 }
 
 export interface CoachInvite {

@@ -39,6 +39,10 @@ export function LockedState({ title, refreshing, onRefresh }: LockedStateProps) 
             Explore coaches
           </ThemedText>
         </Pressable>
+        {/* Invites live on the coach screen, which is no longer a tab — this is the way in before there's a coach. */}
+        <Pressable accessibilityRole="button" onPress={() => router.push('/my-coach')} hitSlop={8}>
+          <ThemedText type="linkPrimary">Invites and requests</ThemedText>
+        </Pressable>
       </ThemedView>
     </ScreenScaffold>
   );

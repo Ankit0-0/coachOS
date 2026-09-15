@@ -7,7 +7,8 @@ import { PlanPickerModal } from '@/components/client-detail/PlanPickerModal';
 import { MonthNavigator } from '@/components/client-detail/MonthNavigator';
 import { SubscriptionSection } from '@/components/client-detail/SubscriptionSection';
 import { MonthlyActivityCalendar, type DailyActivity } from '@/components/client-detail/MonthlyActivityCalendar';
-import { WeightChart, type WeightPoint } from '@/components/client-detail/WeightChart';
+import { WeightChart } from '@/components/client-detail/WeightChart';
+import { WeightRangeSelector } from '@/components/client-detail/WeightRangeSelector';
 import { DetailHeader } from '@/components/detail-header';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
@@ -32,13 +33,14 @@ import {
   type WeightEntry,
   type WorkoutContent,
 } from '@/lib/api';
-import { dayOfMonth, lastNDaysRange, longDateLabel, monthRange, weekdayLabel } from '@/lib/dates';
+import { dayOfMonth, lastNDaysRange, longDateLabel, monthRange } from '@/lib/dates';
 import { formatPhone } from '@/lib/phone';
 import { planStats, planSummary } from '@/lib/plan-format';
+import { DEFAULT_WEIGHT_RANGE, weightRangeDates, type WeightRangeKey } from '@/lib/weight-range';
 import { buildWhatsAppUrl, openWhatsApp } from '@/lib/whatsapp';
 
+/** For "Latest weight" and the physique photos — the chart loads its own range. */
 const WEIGHT_LOOKBACK_DAYS = 30;
-const WEIGHT_CHART_POINTS = 7;
 const MAX_RECENT_NOTES = 10;
 
 type ClientDetailScreenProps = {
@@ -83,6 +85,10 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
   const [pickerType, setPickerType] = useState<PlanType | null>(null);
   /** Inline, since Alert is a no-op on React Native Web. */
   const [whatsAppError, setWhatsAppError] = useState<string | null>(null);
+  const [chartRange, setChartRange] = useState<WeightRangeKey>(DEFAULT_WEIGHT_RANGE);
+  /** Weigh-ins in the chart's selected range, separate from `weights` so switching range can't move the photos. */
+  const [chartWeights, setChartWeights] = useState<WeightEntry[]>([]);
+  const latestChartRequest = useRef(0);
 
   const now = new Date();
   const [viewedMonth, setViewedMonth] = useState({ year: now.getFullYear(), month: now.getMonth() });
@@ -117,15 +123,35 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
     }
   }, [clientId, month.from, month.to]);
 
+  // Range changes can overlap: only the latest request may land.
+  const loadChartWeights = useCallback(async () => {
+    const request = ++latestChartRequest.current;
+    try {
+      const rows = await coachClientApi.listWeights(clientId, weightRangeDates(chartRange));
+      if (request === latestChartRequest.current) setChartWeights(rows);
+    } catch {
+      // Keep the chart that's on screen.
+    }
+  }, [clientId, chartRange]);
+
   useFocusEffect(
     useCallback(() => {
       void loadAll();
     }, [loadAll]),
   );
+  useFocusEffect(
+    useCallback(() => {
+      void loadChartWeights();
+    }, [loadChartWeights]),
+  );
 
   const subscriptionSection = useRef<RefreshHandle>(null);
-  // Profile, plans, weights and check-ins, plus the subscription section's own load.
-  const { isRefreshing, refresh } = useRefresh(loadAll, () => subscriptionSection.current?.reload());
+  // Profile, plans, weights, check-ins and the chart, plus the subscription section's own load.
+  const { isRefreshing, refresh } = useRefresh(loadAll, loadChartWeights, () =>
+    subscriptionSection.current?.reload(),
+  );
+  const chartDates = weightRangeDates(chartRange);
+  const latestChartEntry = chartWeights.length > 0 ? chartWeights[chartWeights.length - 1] : undefined;
 
   const activeWorkout = assignments.find((a) => a.status === 'ACTIVE' && a.plan.type === 'WORKOUT');
   const activeDiet = assignments.find((a) => a.status === 'ACTIVE' && a.plan.type === 'DIET');
@@ -165,10 +191,6 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
   const completedDays = dailyActivity.filter(
     (entry) => entry.workoutCompleted > 0 || entry.dietCompleted > 0,
   ).length;
-
-  const weightPoints: WeightPoint[] = weights
-    .slice(-WEIGHT_CHART_POINTS)
-    .map((entry) => ({ day: weekdayLabel(entry.date), value: entry.weightKg }));
 
   const recentNotes = checkIns
     .filter((checkIn) => checkIn.notes && checkIn.notes.trim().length > 0)
@@ -283,16 +305,19 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
             <Card>
               <View style={styles.cardHeader}>
                 <ThemedText type="smallBold">Weight trend</ThemedText>
-                {latestWeightEntry ? (
+                {latestChartEntry ? (
                   <View style={styles.latestWeight}>
-                    <ThemedText type="numeric">{latestWeightEntry.weightKg}</ThemedText>
+                    <ThemedText type="numeric">{latestChartEntry.weightKg}</ThemedText>
                     <ThemedText type="meta">kg</ThemedText>
                   </View>
                 ) : (
                   <ThemedText type="meta">No data yet</ThemedText>
                 )}
               </View>
-              <WeightChart data={weightPoints} />
+              <View style={styles.chartBody}>
+                <WeightRangeSelector value={chartRange} onChange={setChartRange} />
+                <WeightChart entries={chartWeights} from={chartDates.from} to={chartDates.to} />
+              </View>
             </Card>
 
             <Card>
@@ -417,6 +442,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'baseline',
     gap: Spacing.two,
+  },
+  chartBody: {
+    gap: Spacing.three,
+    paddingTop: Spacing.three,
   },
   latestWeight: {
     flexDirection: 'row',
