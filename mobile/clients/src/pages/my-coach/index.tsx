@@ -9,6 +9,8 @@ import { Spacing } from '@/constants/theme';
 import { useRefresh } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { longDateLabel } from '@/lib/dates';
+import { formatPhone } from '@/lib/phone';
+import { buildWhatsAppUrl, openWhatsApp } from '@/lib/whatsapp';
 import {
   clientInviteApi,
   clientSubscriptionApi,
@@ -37,6 +39,8 @@ export function MyCoachScreen() {
   const [sentRequests, setSentRequests] = useState<CoachRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [actioningId, setActioningId] = useState<string | null>(null);
+  /** Inline, since Alert is a no-op on React Native Web. */
+  const [whatsAppError, setWhatsAppError] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -68,6 +72,13 @@ export function MyCoachScreen() {
 
   // Same loader as the initial load, so a failed refresh reports the same way.
   const { isRefreshing, refresh } = useRefresh(loadData);
+
+  // Nothing prefilled: this opens a conversation, it doesn't send a message.
+  const handleWhatsApp = async () => {
+    setWhatsAppError(null);
+    const result = await openWhatsApp(coach?.phone);
+    if (result.status === 'error') setWhatsAppError(result.message);
+  };
 
   const handleAccept = async (invite: ClientInvite) => {
     try {
@@ -131,6 +142,11 @@ export function MyCoachScreen() {
           <ThemedText type="small" themeColor="textSecondary">
             {coach.email}
           </ThemedText>
+          {formatPhone(coach.phone) ? (
+            <ThemedText type="small" themeColor="textSecondary">
+              {formatPhone(coach.phone)}
+            </ThemedText>
+          ) : null}
 
           {/* Nothing renders when there is no record: an open-ended
               relationship is normal, not a missing value. */}
@@ -152,14 +168,23 @@ export function MyCoachScreen() {
                 Call
               </ThemedText>
             </Pressable>
-            <Pressable
-              style={[styles.actionButton, { borderColor: theme.border, borderWidth: 1 }]}
-              onPress={() => notAvailableYet('Message')}>
-              <ThemedText type="smallBold" themeColor="text">
-                Message
-              </ThemedText>
-            </Pressable>
+            {/* Hidden, not disabled, when the coach has no usable number. */}
+            {buildWhatsAppUrl(coach.phone) ? (
+              <Pressable
+                accessibilityRole="button"
+                style={[styles.actionButton, { borderColor: theme.border, borderWidth: 1 }]}
+                onPress={() => void handleWhatsApp()}>
+                <ThemedText type="smallBold" themeColor="text">
+                  Message on WhatsApp
+                </ThemedText>
+              </Pressable>
+            ) : null}
           </View>
+          {whatsAppError ? (
+            <ThemedText type="small" themeColor="danger">
+              {whatsAppError}
+            </ThemedText>
+          ) : null}
         </ThemedView>
       ) : pendingInvites.length > 0 ? (
         <View style={styles.section}>

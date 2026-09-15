@@ -284,6 +284,7 @@ export interface CoachProfileUpdate {
   bio?: string;
   specialties?: string[];
   yearsExperience?: number | null;
+  /** Digits only with the country code (see lib/phone). An empty string removes it. */
   phone?: string;
   /** An S3 key from uploadApi.presign. Null removes the avatar. */
   avatarKey?: string | null;
@@ -451,6 +452,8 @@ export interface ClientProfile {
   heightCm: number | null;
   weightKg: number | null;
   goals: string | null;
+  /** Digits only with the country code. Empty or null when the client hasn't added one. */
+  phone: string | null;
   onboardedAt: string | null;
 }
 

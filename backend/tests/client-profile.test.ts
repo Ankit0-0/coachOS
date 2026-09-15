@@ -25,6 +25,7 @@ describe("client profile endpoints", () => {
     expect(res.body.profile.heightCm).toBeNull();
     expect(res.body.profile.weightKg).toBeNull();
     expect(res.body.profile.goals).toBeNull();
+    expect(res.body.profile.phone).toBeNull();
   });
 
   it("creates the profile row on first update and persists the values", async () => {
@@ -52,6 +53,24 @@ describe("client profile endpoints", () => {
     expect(res.body.profile.goals).toBe("Just the goals this time");
     expect(res.body.profile.heightCm).toBe(181);
     expect(res.body.profile.name).toBe("Updated Name");
+  });
+
+  it("stores, clears and length-limits the phone like the coach profile does", async () => {
+    const auth = { Authorization: `Bearer ${client.token}` };
+
+    const saved = await api.patch("/v1/client/profile").set(auth).send({ phone: "919800000001" });
+    expect(saved.status).toBe(200);
+    expect(saved.body.profile.phone).toBe("919800000001");
+    // A phone-only update leaves the rest of the profile alone.
+    expect(saved.body.profile.heightCm).toBe(181);
+
+    const tooLong = await api.patch("/v1/client/profile").set(auth).send({ phone: "9".repeat(41) });
+    expect(tooLong.status).toBe(400);
+    expect((await api.get("/v1/client/profile").set(auth)).body.profile.phone).toBe("919800000001");
+
+    const cleared = await api.patch("/v1/client/profile").set(auth).send({ phone: "" });
+    expect(cleared.status).toBe(200);
+    expect(cleared.body.profile.phone).toBe("");
   });
 
   it("rejects an empty update body", async () => {

@@ -223,6 +223,11 @@ export interface InvitePerson {
   id: string;
   name: string;
   email: string;
+  /**
+   * The coach's number, digits only with the country code. Present only on an
+   * ACCEPTED invite, and null when the coach hasn't added one.
+   */
+  phone?: string | null;
 }
 
 export interface ClientInvite {
@@ -252,6 +257,8 @@ export interface ClientProfile {
   /** Self-reported. Separate from WeightEntry, which is the tracked history. */
   weightKg: number | null;
   goals: string | null;
+  /** Digits only with the country code, e.g. 919876543210. Empty or null when not added. */
+  phone: string | null;
 }
 
 export interface ClientProfileUpdate {
@@ -259,6 +266,8 @@ export interface ClientProfileUpdate {
   heightCm?: number | null;
   weightKg?: number | null;
   goals?: string;
+  /** Digits only with the country code (see lib/phone). An empty string removes it. */
+  phone?: string;
   /** An S3 key from uploadApi.presign. Null removes the avatar. */
   avatarKey?: string | null;
 }

@@ -16,9 +16,11 @@ import { useRefresh } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { clientProfileApi, trackingApi, type ClientProfile } from '@/lib/api';
 import { pickAndUploadImage } from '@/lib/image-upload';
+import { formatPhone, INVALID_PHONE_MESSAGE, parsePhone, phoneFieldHint, phoneForEditing } from '@/lib/phone';
 
 type Draft = {
   name: string;
+  phone: string;
   heightCm: string;
   weightKg: string;
   goals: string;
@@ -37,6 +39,7 @@ function formatMemberSince(iso: string): string {
 function draftFrom(profile: ClientProfile): Draft {
   return {
     name: profile.name,
+    phone: phoneForEditing(profile.phone),
     heightCm: profile.heightCm === null ? '' : String(profile.heightCm),
     weightKg: profile.weightKg === null ? '' : String(profile.weightKg),
     goals: profile.goals ?? '',
@@ -138,6 +141,13 @@ export function ProfileScreen() {
       return;
     }
 
+    // Optional: blank clears it. Anything else has to be a number WhatsApp can reach.
+    const phone = parsePhone(draft.phone);
+    if (phone.status === 'invalid') {
+      setFormError(INVALID_PHONE_MESSAGE);
+      return;
+    }
+
     const heightCm = parseOptionalNumber(draft.heightCm);
     if (heightCm === undefined) {
       setFormError('Enter your height in centimetres, or leave it blank.');
@@ -155,6 +165,7 @@ export function ProfileScreen() {
       setFormError(null);
       const updated = await clientProfileApi.update({
         name: draft.name.trim(),
+        phone: phone.status === 'valid' ? phone.digits : '',
         heightCm,
         weightKg,
         goals: draft.goals.trim(),
@@ -273,6 +284,25 @@ export function ProfileScreen() {
 
             <View style={styles.field}>
               <ThemedText type="label" themeColor="textSecondary">
+                Phone
+              </ThemedText>
+              <TextInput
+                style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+                value={draft.phone}
+                onChangeText={(value) => setDraft({ ...draft, phone: value })}
+                placeholder="98765 43210"
+                placeholderTextColor={theme.textMuted}
+                keyboardType="phone-pad"
+                autoComplete="tel"
+                textContentType="telephoneNumber"
+                editable={!isSaving}
+              />
+              <ThemedText type="meta">{phoneFieldHint(draft.phone)}</ThemedText>
+              <ThemedText type="meta">Only your coach can see it, to message you on WhatsApp.</ThemedText>
+            </View>
+
+            <View style={styles.field}>
+              <ThemedText type="label" themeColor="textSecondary">
                 Height (cm)
               </ThemedText>
               <TextInput
@@ -342,10 +372,15 @@ export function ProfileScreen() {
           <Card padded={false} style={styles.detailCard}>
             <FieldRow label="Name" value={profile.name} />
             <FieldRow label="Email" value={profile.email} />
+            <FieldRow label="Phone" value={formatPhone(profile.phone)} />
             <FieldRow label="Height" value={profile.heightCm === null ? null : `${profile.heightCm} cm`} />
             <FieldRow label="Weight" value={profile.weightKg === null ? null : `${profile.weightKg} kg`} />
             <FieldRow label="Goals" value={profile.goals} stacked divider={false} />
           </Card>
+          {/* A nudge, never a requirement: nothing in the app needs a number. */}
+          {formatPhone(profile.phone) === null ? (
+            <ThemedText type="meta">Add your phone number so your coach can reach you on WhatsApp.</ThemedText>
+          ) : null}
         </Section>
       )}
 

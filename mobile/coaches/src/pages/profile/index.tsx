@@ -16,6 +16,7 @@ import { useRefresh } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { coachInviteApi, coachProfileApi, planApi, type CoachProfile } from '@/lib/api';
 import { pickAndUploadImage } from '@/lib/image-upload';
+import { formatPhone, INVALID_PHONE_MESSAGE, parsePhone, phoneFieldHint, phoneForEditing } from '@/lib/phone';
 
 type Stats = { clients: number; workoutPlans: number; dietPlans: number };
 
@@ -40,7 +41,7 @@ function formatMemberSince(iso: string): string {
 function draftFrom(profile: CoachProfile): Draft {
   return {
     name: profile.name,
-    phone: profile.phone ?? '',
+    phone: phoneForEditing(profile.phone),
     yearsExperience: profile.yearsExperience === null ? '' : String(profile.yearsExperience),
     specialties: profile.specialties.join(', '),
     bio: profile.bio ?? '',
@@ -161,12 +162,19 @@ export function ProfileScreen() {
       return;
     }
 
+    // Optional: blank clears it. Anything else has to be a number WhatsApp can reach.
+    const phone = parsePhone(draft.phone);
+    if (phone.status === 'invalid') {
+      setFormError(INVALID_PHONE_MESSAGE);
+      return;
+    }
+
     try {
       setIsSaving(true);
       setFormError(null);
       const updated = await coachProfileApi.update({
         name: draft.name.trim(),
-        phone: draft.phone.trim(),
+        phone: phone.status === 'valid' ? phone.digits : '',
         bio: draft.bio.trim(),
         yearsExperience: parsedYears,
         specialties: draft.specialties
@@ -290,11 +298,15 @@ export function ProfileScreen() {
                 style={[styles.input, { borderColor: theme.border, color: theme.text }]}
                 value={draft.phone}
                 onChangeText={(value) => setDraft({ ...draft, phone: value })}
-                placeholder="How clients reach you"
+                placeholder="98765 43210"
                 placeholderTextColor={theme.textMuted}
                 keyboardType="phone-pad"
+                autoComplete="tel"
+                textContentType="telephoneNumber"
                 editable={!isSaving}
               />
+              <ThemedText type="meta">{phoneFieldHint(draft.phone)}</ThemedText>
+              <ThemedText type="meta">Only clients you coach can see it, to message you on WhatsApp.</ThemedText>
             </View>
 
             <View style={styles.field}>
@@ -365,7 +377,7 @@ export function ProfileScreen() {
           <Card padded={false} style={styles.detailCard}>
             <FieldRow label="Name" value={profile.name} />
             <FieldRow label="Email" value={profile.email} />
-            <FieldRow label="Phone" value={profile.phone} />
+            <FieldRow label="Phone" value={formatPhone(profile.phone)} />
             <FieldRow
               label="Experience"
               value={profile.yearsExperience === null ? null : `${profile.yearsExperience} years`}

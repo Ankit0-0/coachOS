@@ -76,6 +76,18 @@ describe("Explore: coach directory and coaching requests", () => {
       expect(ids).not.toContain(pendingListedCoach.id);
     });
 
+    it("never includes a phone number in the browse list", async () => {
+      const res = await api.get("/v1/client/coaches").set(auth(client));
+      expect(res.status).toBe(200);
+      expect(res.body.coaches.length).toBeGreaterThan(0);
+      for (const coach of res.body.coaches) {
+        expect(coach).not.toHaveProperty("phone");
+        expect(coach).not.toHaveProperty("email");
+      }
+      // listedCoach has a phone on file, so this would catch it under any key.
+      expect(JSON.stringify(res.body)).not.toContain("555-0100");
+    });
+
     it("shows profile fields but never contact details", async () => {
       const res = await api.get(`/v1/client/coaches/${listedCoach.id}`).set(auth(client));
       expect(res.status).toBe(200);

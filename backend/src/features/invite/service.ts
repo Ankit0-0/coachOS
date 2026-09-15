@@ -9,7 +9,7 @@ import { normalizeEmail } from "../../utils/email.js";
 type PersonSummary = { id: string; name: string; email: string };
 
 type InviteRow = CoachClientInvite & {
-  coach?: PersonSummary | null;
+  coach?: (PersonSummary & { phone?: string | null }) | null;
   client?: PersonSummary | null;
 };
 
@@ -88,14 +88,32 @@ export async function listCoachInvites(coachId: string, status?: InviteStatus) {
   });
 }
 
+/**
+ * The coach's phone rides along only on an ACCEPTED invite — it is what the
+ * client's My Coach screen messages them on. A pending or declined invite is
+ * not a relationship, so it gets name and email only. Gated on each row's own
+ * status rather than the query filter, so a change to the filter can't leak it.
+ */
+function serializeClientInvite(
+  row: CoachClientInvite & { coach: PersonSummary & { coachProfile: { phone: string | null } | null } },
+) {
+  const { coachProfile, ...coach } = row.coach;
+  return serializeInvite({
+    ...row,
+    coach: row.status === "ACCEPTED" ? { ...coach, phone: coachProfile?.phone ?? null } : coach,
+  });
+}
+
 export async function listClientInvites(clientId: string, email: string, status: InviteStatus = "PENDING") {
   const clientEmail = normalizeEmail(email);
   const rows = await prisma.coachClientInvite.findMany({
     where: { status, OR: [{ clientId }, { clientEmail }] },
-    include: { coach: { select: { id: true, name: true, email: true } } },
+    include: {
+      coach: { select: { id: true, name: true, email: true, coachProfile: { select: { phone: true } } } },
+    },
     orderBy: { createdAt: "desc" },
   });
-  return rows.map(serializeInvite);
+  return rows.map(serializeClientInvite);
 }
 
 async function respondToInvite(inviteId: string, userId: string, email: string, status: "ACCEPTED" | "DECLINED") {

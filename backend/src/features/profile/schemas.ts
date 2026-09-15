@@ -28,6 +28,7 @@ export const updateClientProfileSchema = z
      */
     weightKg: z.number().min(20).max(500).nullable().optional(),
     goals: z.string().max(1000).optional(),
+    phone: z.string().max(40).optional(),
     avatarKey: avatarKeySchema.optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
