@@ -274,7 +274,7 @@ export function HistoryScreen() {
               { backgroundColor: theme.accent, opacity: isLoggingWeight ? 0.6 : pressed ? 0.8 : 1 },
             ]}
           >
-            <ThemedText type="smallBold" style={styles.logButtonText}>
+            <ThemedText type="smallBold" themeColor="onAccent">
               {isLoggingWeight ? 'Saving…' : 'Save weight'}
             </ThemedText>
           </Pressable>
@@ -341,13 +341,13 @@ export function HistoryScreen() {
             <View style={styles.legendRow}>
               {workoutAssignment ? (
                 <View style={styles.legendItem}>
-                  <View style={[styles.legendDot, styles.workoutDot]} />
+                  <View style={[styles.legendDot, { backgroundColor: theme.chartWorkout }]} />
                   <ThemedText type="small" themeColor="textSecondary">Workout</ThemedText>
                 </View>
               ) : null}
               {dietAssignment ? (
                 <View style={styles.legendItem}>
-                  <View style={[styles.legendDot, styles.dietDot]} />
+                  <View style={[styles.legendDot, { backgroundColor: theme.chartDiet }]} />
                   <ThemedText type="small" themeColor="textSecondary">Diet</ThemedText>
                 </View>
               ) : null}
@@ -413,9 +413,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logButtonText: {
-    color: '#FFFFFF',
-  },
   weightMessage: {
     textAlign: 'center',
   },
@@ -436,6 +433,4 @@ const styles = StyleSheet.create({
   },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendDot: { width: 10, height: 10, borderRadius: 5 },
-  workoutDot: { backgroundColor: '#3A7BFF' },
-  dietDot: { backgroundColor: '#34D399' },
 });

@@ -1,8 +1,9 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { ClientPhotos } from '@/components/client-detail/ClientPhotos';
+import { PlanPickerModal } from '@/components/client-detail/PlanPickerModal';
 import { MonthNavigator } from '@/components/client-detail/MonthNavigator';
 import { SubscriptionSection } from '@/components/client-detail/SubscriptionSection';
 import { MonthlyActivityCalendar, type DailyActivity } from '@/components/client-detail/MonthlyActivityCalendar';
@@ -21,7 +22,6 @@ import { useTheme } from '@/hooks/use-theme';
 import {
   assignmentApi,
   coachClientApi,
-  planApi,
   type CheckIn,
   type ClientProfile,
   type DietContent,
@@ -32,7 +32,7 @@ import {
   type WorkoutContent,
 } from '@/lib/api';
 import { dayOfMonth, lastNDaysRange, longDateLabel, monthRange, weekdayLabel } from '@/lib/dates';
-import { planStats } from '@/lib/plan-format';
+import { planStats, planSummary } from '@/lib/plan-format';
 
 const WEIGHT_LOOKBACK_DAYS = 30;
 const WEIGHT_CHART_POINTS = 7;
@@ -43,10 +43,6 @@ type ClientDetailScreenProps = {
   name: string;
   email: string;
 };
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Something went wrong. Please try again.';
-}
 
 function workoutItemIds(plan: Plan | undefined): Set<string> {
   const ids = new Set<string>();
@@ -71,11 +67,6 @@ function completedMatches(checkIn: CheckIn | undefined, validIds: Set<string>): 
   return checkIn.completedItemIds.filter((id) => validIds.has(id)).length;
 }
 
-function planSummary(plan: Plan): string {
-  const content = plan.content as WorkoutContent | DietContent;
-  return content.summary;
-}
-
 export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreenProps) {
   const theme = useTheme();
   const [assignments, setAssignments] = useState<PlanAssignment[]>([]);
@@ -85,9 +76,8 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
   // ones, so switching a client's plan doesn't erase their history here.
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  /** Which plan type the assign sheet is open for; null when it's closed. */
   const [pickerType, setPickerType] = useState<PlanType | null>(null);
-  const [pickerPlans, setPickerPlans] = useState<{ own: Plan[]; defaults: Plan[] } | null>(null);
-  const [isAssigning, setIsAssigning] = useState(false);
 
   const now = new Date();
   const [viewedMonth, setViewedMonth] = useState({ year: now.getFullYear(), month: now.getMonth() });
@@ -180,34 +170,6 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, MAX_RECENT_NOTES);
 
-  const openPicker = async (type: PlanType) => {
-    if (pickerType === type) {
-      setPickerType(null);
-      return;
-    }
-    setPickerType(type);
-    setPickerPlans(null);
-    try {
-      setPickerPlans(await planApi.list(type));
-    } catch (error) {
-      Alert.alert('Could not load plans', errorMessage(error));
-      setPickerType(null);
-    }
-  };
-
-  const handleAssign = async (planId: string) => {
-    try {
-      setIsAssigning(true);
-      await assignmentApi.create({ clientId, planId });
-      setPickerType(null);
-      await loadAll();
-    } catch (error) {
-      Alert.alert('Could not assign plan', errorMessage(error));
-    } finally {
-      setIsAssigning(false);
-    }
-  };
-
   const renderPlanCard = (label: string, type: PlanType, assignment: PlanAssignment | undefined) => {
     const stats = assignment ? planStats(assignment.plan) : null;
 
@@ -215,7 +177,7 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
       <Card>
         <View style={styles.cardHeader}>
           <ThemedText type="smallBold">{label}</ThemedText>
-          <Pressable accessibilityRole="button" onPress={() => openPicker(type)} hitSlop={8}>
+          <Pressable accessibilityRole="button" onPress={() => setPickerType(type)} hitSlop={8}>
             <ThemedText type="linkPrimary">
               {assignment?.status === 'ACTIVE' ? 'Change plan' : 'Assign plan'}
             </ThemedText>
@@ -282,50 +244,14 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
             {renderPlanCard('Workout', 'WORKOUT', latestWorkout)}
             {renderPlanCard('Diet', 'DIET', latestDiet)}
 
-            {pickerType ? (
-              <Card>
-                <ThemedText type="smallBold">
-                  Choose a {pickerType === 'WORKOUT' ? 'workout' : 'diet'} plan
-                </ThemedText>
-                {!pickerPlans ? (
-                  <ActivityIndicator color={theme.textSecondary} />
-                ) : pickerPlans.own.length === 0 && pickerPlans.defaults.length === 0 ? (
-                  <ThemedText type="small" themeColor="textSecondary">
-                    No plans available yet — create one from the Plans tab.
-                  </ThemedText>
-                ) : (
-                  <View style={styles.pickerList}>
-                    {[...pickerPlans.own, ...pickerPlans.defaults].map((plan) => {
-                      const stats = planStats(plan);
-                      return (
-                        <Pressable
-                          key={plan.id}
-                          accessibilityRole="button"
-                          disabled={isAssigning}
-                          onPress={() => handleAssign(plan.id)}
-                          style={({ pressed }) => [pressed && styles.pressed]}>
-                          <Card variant="inset" style={styles.pickerRow}>
-                            <View style={styles.pickerCopy}>
-                              <ThemedText type="smallBold" numberOfLines={1}>
-                                {plan.title}
-                              </ThemedText>
-                              <View style={styles.planStats}>
-                                <ThemedText type="meta" themeColor="textSecondary">
-                                  {stats.primary}
-                                </ThemedText>
-                                <ThemedText type="meta">{stats.secondary}</ThemedText>
-                              </View>
-                            </View>
-                            {plan.isDefault ? <Pill label="Shared" tone="neutral" /> : null}
-                            {isAssigning ? <ActivityIndicator color={theme.textSecondary} size="small" /> : null}
-                          </Card>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                )}
-              </Card>
-            ) : null}
+            <PlanPickerModal
+              type={pickerType}
+              clientId={clientId}
+              currentPlanId={(pickerType === 'DIET' ? activeDiet : activeWorkout)?.planId ?? null}
+              onClose={() => setPickerType(null)}
+              onAssigned={loadAll}
+            />
+
           </Section>
 
           <Section title="Progress">
@@ -376,7 +302,13 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
             </Card>
           </Section>
 
-          <ClientPhotos weights={weights} checkIns={checkIns} />
+          <ClientPhotos
+            weights={weights}
+            checkIns={checkIns}
+            planByAssignmentId={planByAssignmentId}
+            weightLookbackDays={WEIGHT_LOOKBACK_DAYS}
+            monthLabel={month.monthYearLabel}
+          />
 
           <Section title="Recent notes">
             {recentNotes.length === 0 ? (
@@ -481,23 +413,6 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-  },
-  pickerList: {
-    gap: Spacing.two,
-    paddingTop: Spacing.one,
-  },
-  pickerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    paddingVertical: Spacing.three,
-  },
-  pickerCopy: {
-    flex: 1,
-    gap: Spacing.half,
-  },
-  pressed: {
-    opacity: 0.6,
   },
   noteRow: {
     paddingVertical: Spacing.three,
