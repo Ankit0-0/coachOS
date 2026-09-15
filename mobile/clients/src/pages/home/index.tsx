@@ -247,11 +247,15 @@ export function HomeScreen() {
             placeholder="Add value"
             keyboardType="decimal-pad"
             placeholderTextColor={theme.textSecondary}
-            style={[styles.input, styles.weightInput, { color: theme.text, borderColor: theme.border }]}
+            style={[
+              styles.input,
+              styles.weightInput,
+              { color: theme.text, borderColor: theme.border, backgroundColor: theme.surfaceSunken },
+            ]}
           />
         </View>
 
-        <View style={styles.saveRow}>
+        <View style={[styles.saveRow, { borderTopColor: theme.border }]}>
           {savedMessage ? (
             <ThemedText
               type="small"
@@ -269,7 +273,7 @@ export function HomeScreen() {
               styles.saveButton,
               { backgroundColor: theme.accent, opacity: isSaving ? 0.6 : pressed ? 0.8 : 1 },
             ]}>
-            <ThemedText type="smallBold" style={styles.saveButtonText}>
+            <ThemedText type="smallBold" themeColor="onAccent">
               {isSaving ? 'Saving…' : 'Save update'}
             </ThemedText>
           </Pressable>
@@ -347,7 +351,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     textAlign: 'right',
     fontSize: 12,
-    backgroundColor: 'rgba(148, 163, 184, 0.04)',
   },
   weightInput: {
     width: 96,
@@ -359,7 +362,6 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     paddingTop: Spacing.one,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(148, 163, 184, 0.25)',
   },
   saveMessage: {
     flex: 1,
@@ -370,9 +372,6 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  saveButtonText: {
-    color: '#FFFFFF',
   },
   historyCard: {
     borderRadius: Spacing.two,

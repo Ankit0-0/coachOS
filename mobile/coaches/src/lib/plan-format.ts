@@ -26,6 +26,11 @@ export function planStats(plan: Plan): PlanStats {
   };
 }
 
+/** The plan's one-line summary, e.g. "Pressing strength with controlled rows." */
+export function planSummary(plan: Plan): string {
+  return (plan.content as WorkoutContent | DietContent).summary;
+}
+
 /** Maps a plan into the shape the shared plan list components render. */
 export function toPlanListEntry(plan: Plan) {
   const stats = planStats(plan);

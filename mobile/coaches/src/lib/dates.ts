@@ -60,6 +60,19 @@ export function weekdayLabel(dateKey: string): string {
   return date.toLocaleString('en-US', { weekday: 'short' });
 }
 
+/**
+ * Compact day label for captions, e.g. "14 Sep". Parses a YYYY-MM-DD key as a
+ * local date, so it never shifts a day across a timezone boundary.
+ */
+export function shortDateLabel(dateKey: string): string {
+  const date = new Date(`${dateKey.slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return dateKey;
+  // Built by hand: Intl's short month varies by engine and locale ("Sep" vs "Sept").
+  return `${date.getDate()} ${SHORT_MONTHS[date.getMonth()]}`;
+}
+
+const SHORT_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
 /** Human-readable date for display, e.g. "5 Sep 2026". */
 export function longDateLabel(value: string): string {
   const date = new Date(value);

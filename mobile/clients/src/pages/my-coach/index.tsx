@@ -148,7 +148,7 @@ export function MyCoachScreen() {
             <Pressable
               style={[styles.actionButton, { backgroundColor: theme.accent }]}
               onPress={() => notAvailableYet('Call')}>
-              <ThemedText type="smallBold" style={styles.actionButtonLabel}>
+              <ThemedText type="smallBold" themeColor="onAccent">
                 Call
               </ThemedText>
             </Pressable>
@@ -178,9 +178,9 @@ export function MyCoachScreen() {
                   onPress={() => handleAccept(invite)}
                   disabled={actioningId === invite.id}>
                   {actioningId === invite.id ? (
-                    <ActivityIndicator color="#FFFFFF" size="small" />
+                    <ActivityIndicator color={theme.onAccent} size="small" />
                   ) : (
-                    <ThemedText type="small" style={styles.actionButtonLabel}>
+                    <ThemedText type="small" themeColor="onAccent">
                       Accept
                     </ThemedText>
                   )}
@@ -206,7 +206,7 @@ export function MyCoachScreen() {
           <Pressable
             style={[styles.exploreButton, { backgroundColor: theme.accent }]}
             onPress={() => router.push('/explore-coaches')}>
-            <ThemedText type="smallBold" style={styles.actionButtonLabel}>
+            <ThemedText type="smallBold" themeColor="onAccent">
               Explore coaches
             </ThemedText>
           </Pressable>
@@ -304,8 +304,5 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  actionButtonLabel: {
-    color: '#FFFFFF',
   },
 });

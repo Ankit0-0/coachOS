@@ -407,7 +407,12 @@ export function ProfileScreen() {
               onValueChange={(listed) => void handleListingChange(listed)}
               disabled={isSavingListing}
               trackColor={{ false: theme.border, true: theme.accent }}
-              thumbColor={theme.surface}
+              // Not `surface`: in dark mode that is the card colour itself, so the
+              // thumb vanished. Muted when off, and onAccent on the accent track.
+              thumbColor={profile.listedInExplore ? theme.onAccent : theme.textMuted}
+              // React Native Web ignores thumbColor while on and falls back to its own
+              // teal (#009688); activeThumbColor is its web-only override.
+              {...({ activeThumbColor: theme.onAccent } as object)}
             />
           </View>
           {profile.listedInExplore && profile.approvalStatus !== 'APPROVED' ? (
