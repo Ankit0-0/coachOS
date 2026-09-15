@@ -6,6 +6,7 @@ import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { useRefresh } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { longDateLabel } from '@/lib/dates';
 import {
@@ -65,6 +66,9 @@ export function MyCoachScreen() {
     }, [loadData]),
   );
 
+  // Same loader as the initial load, so a failed refresh reports the same way.
+  const { isRefreshing, refresh } = useRefresh(loadData);
+
   const handleAccept = async (invite: ClientInvite) => {
     try {
       setActioningId(invite.id);
@@ -104,7 +108,7 @@ export function MyCoachScreen() {
   };
 
   return (
-    <ScreenScaffold includeBottomTabInset>
+    <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh}>
       <View style={styles.header}>
         <ThemedText type="smallBold" themeColor="accent">
           My Coach

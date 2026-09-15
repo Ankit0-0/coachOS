@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { ClientsSection } from '@/components/home/ClientsSection';
@@ -6,13 +6,19 @@ import { RequestsSection } from '@/components/home/RequestsSection';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
+import { useRefresh, type RefreshHandle } from '@/hooks/use-refresh';
 
 export function HomeScreen() {
-  // Bumped when a request is accepted, so the roster shows the new client at once.
-  const [rosterVersion, setRosterVersion] = useState(0);
+  const requests = useRef<RefreshHandle>(null);
+  const roster = useRef<RefreshHandle>(null);
+  // Both sections load independently; the spinner clears once both are done.
+  const { isRefreshing, refresh } = useRefresh(
+    () => requests.current?.reload(),
+    () => roster.current?.reload(),
+  );
 
   return (
-    <ScreenScaffold includeBottomTabInset>
+    <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh}>
       <View style={styles.header}>
         <ThemedText type="display">Clients</ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
@@ -20,9 +26,10 @@ export function HomeScreen() {
         </ThemedText>
       </View>
 
-      <RequestsSection onAccepted={() => setRosterVersion((version) => version + 1)} />
+      {/* Accepting a request reloads the roster so the new client shows at once. */}
+      <RequestsSection ref={requests} onAccepted={() => void roster.current?.reload()} />
 
-      <ClientsSection refreshKey={rosterVersion} />
+      <ClientsSection ref={roster} />
     </ScreenScaffold>
   );
 }

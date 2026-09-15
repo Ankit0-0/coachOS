@@ -1,5 +1,5 @@
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useImperativeHandle, useState, type Ref } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { ClientListItem } from '@/components/clients/ClientListItem';
@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/card';
 import { Pill } from '@/components/ui/pill';
 import { Section } from '@/components/ui/section';
 import { Radii, Spacing } from '@/constants/theme';
+import type { RefreshHandle } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { coachInviteApi, type CoachInvite } from '@/lib/api';
 
@@ -18,8 +19,8 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Something went wrong. Please try again.';
 }
 
-/** `refreshKey`: bump it to reload the roster, e.g. right after accepting a request. */
-export function ClientsSection({ refreshKey = 0 }: { refreshKey?: number }) {
+/** `ref.reload()` reloads the roster, e.g. on pull-to-refresh or after accepting a request. */
+export function ClientsSection({ ref }: { ref?: Ref<RefreshHandle> }) {
   const theme = useTheme();
   const router = useRouter();
   const [clients, setClients] = useState<CoachInvite[]>([]);
@@ -33,25 +34,29 @@ export function ClientsSection({ refreshKey = 0 }: { refreshKey?: number }) {
   // through Alert, none of these messages appeared in a browser at all.
   const [formError, setFormError] = useState<string | null>(null);
 
-  const loadInvites = useCallback(() => {
-    Promise.all([coachInviteApi.list('ACCEPTED'), coachInviteApi.list('PENDING')])
-      .then(([accepted, pendingInvites]) => {
-        setClients(accepted);
-        setPending(pendingInvites);
-      })
-      .catch(() => {})
-      .finally(() => setIsLoading(false));
+  const loadInvites = useCallback(async () => {
+    try {
+      const [accepted, pendingInvites] = await Promise.all([
+        coachInviteApi.list('ACCEPTED'),
+        coachInviteApi.list('PENDING'),
+      ]);
+      setClients(accepted);
+      setPending(pendingInvites);
+    } catch {
+      // As before: keep the roster on screen.
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  // Lets the screen's pull-to-refresh wait for the roster to finish loading.
+  useImperativeHandle(ref, () => ({ reload: loadInvites }), [loadInvites]);
 
   useFocusEffect(
     useCallback(() => {
-      loadInvites();
+      void loadInvites();
     }, [loadInvites]),
   );
-
-  useEffect(() => {
-    if (refreshKey > 0) loadInvites();
-  }, [refreshKey, loadInvites]);
 
   const handleInvite = async () => {
     const trimmed = email.trim();
@@ -66,7 +71,7 @@ export function ClientsSection({ refreshKey = 0 }: { refreshKey?: number }) {
       await coachInviteApi.create(trimmed, durationMonths ?? undefined);
       setEmail('');
       setDurationMonths(null);
-      loadInvites();
+      void loadInvites();
     } catch (error) {
       setFormError(errorMessage(error));
     } finally {

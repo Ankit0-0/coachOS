@@ -1,6 +1,6 @@
-import { router, useFocusEffect } from 'expo-router';
+import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useCallback, useState } from 'react';
+import type { ComponentProps } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
@@ -8,7 +8,22 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Radii, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { getDietProgress, HomePlanCard } from '@/utils/dashboard-data';
+
+type SymbolName = ComponentProps<typeof SymbolView>['name'];
+
+/** A card on Home for one of the client's real, active assignments. */
+export type HomePlanCard = {
+  id: 'workout' | 'diet';
+  title: string;
+  eyebrow: string;
+  summary: string;
+  metric: string;
+  detail: string;
+  route: '/workout' | '/diet';
+  iconName: SymbolName;
+  /** 0–100 from today's check-in. Omitted to show a chevron instead of a ring. */
+  progressPercent?: number;
+};
 
 type PlanCardProps = {
   plan: HomePlanCard;
@@ -16,17 +31,8 @@ type PlanCardProps = {
 
 export function PlanCard({ plan }: PlanCardProps) {
   const theme = useTheme();
-  const [dietProgress, setDietProgress] = useState(() => (plan.id === 'diet' ? getDietProgress() : null));
-
-  useFocusEffect(
-    useCallback(() => {
-      if (plan.id === 'diet') {
-        setDietProgress(getDietProgress());
-      }
-    }, [plan.id]),
-  );
-
-  const progressPercent = dietProgress ? Math.round(dietProgress.percent) : 0;
+  const hasProgress = plan.progressPercent !== undefined;
+  const progressPercent = Math.round(plan.progressPercent ?? 0);
   const radius = 18;
   const circumference = 2 * Math.PI * radius;
   const dashOffset = circumference - (progressPercent / 100) * circumference;
@@ -58,7 +64,7 @@ export function PlanCard({ plan }: PlanCardProps) {
           </View>
         </View>
 
-        {dietProgress ? (
+        {hasProgress ? (
           <View style={styles.progressWrap}>
             <Svg width={46} height={46} viewBox="0 0 46 46">
               <Circle cx={23} cy={23} r={18} stroke={theme.border} strokeWidth={3} fill="none" />

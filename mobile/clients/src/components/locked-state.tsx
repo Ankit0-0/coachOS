@@ -9,15 +9,18 @@ import { useTheme } from '@/hooks/use-theme';
 
 type LockedStateProps = {
   title: string;
+  /** Pull-to-refresh, so a client who has just accepted an invite can unlock without leaving. */
+  refreshing?: boolean;
+  onRefresh?: () => void;
 };
 
 /** Shown in place of a screen's real content when the client has no accepted coach yet. */
-export function LockedState({ title }: LockedStateProps) {
+export function LockedState({ title, refreshing, onRefresh }: LockedStateProps) {
   const theme = useTheme();
   const router = useRouter();
 
   return (
-    <ScreenScaffold includeBottomTabInset>
+    <ScreenScaffold includeBottomTabInset refreshing={refreshing} onRefresh={onRefresh}>
       <View style={styles.header}>
         <ThemedText type="subtitle" style={styles.title}>
           {title}
@@ -27,7 +30,7 @@ export function LockedState({ title }: LockedStateProps) {
       <ThemedView type="backgroundElement" style={[styles.panel, { borderColor: theme.border }]}>
         <ThemedText type="smallBold">You need a coach to unlock this</ThemedText>
         <ThemedText type="small" themeColor="textSecondary" style={styles.copy}>
-          Once you accept a coach's invite, this tab unlocks automatically.
+          Once you accept a coach&apos;s invite, this tab unlocks automatically.
         </ThemedText>
         <Pressable
           style={[styles.button, { backgroundColor: theme.accent }]}

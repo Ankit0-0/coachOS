@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useImperativeHandle, useState, type Ref } from 'react';
 import { ActivityIndicator, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -7,6 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Pill } from '@/components/ui/pill';
 import { Section } from '@/components/ui/section';
 import { Radii, Spacing } from '@/constants/theme';
+import type { RefreshHandle } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { longDateLabel } from '@/lib/dates';
 import { subscriptionApi, type Subscription } from '@/lib/api';
@@ -32,7 +34,7 @@ function statusLabel(subscription: Subscription): string {
     : `${subscription.daysRemaining} ${subscription.daysRemaining === 1 ? 'day' : 'days'} left`;
 }
 
-export function SubscriptionSection({ clientId }: { clientId: string }) {
+export function SubscriptionSection({ clientId, ref }: { clientId: string; ref?: Ref<RefreshHandle> }) {
   const theme = useTheme();
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -43,15 +45,24 @@ export function SubscriptionSection({ clientId }: { clientId: string }) {
   const [notes, setNotes] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
 
-  const load = useCallback(() => {
-    subscriptionApi
-      .list(clientId)
-      .then(setSubscriptions)
-      .catch(() => {})
-      .finally(() => setIsLoading(false));
+  const load = useCallback(async () => {
+    try {
+      setSubscriptions(await subscriptionApi.list(clientId));
+    } catch {
+      // As before: keep whatever is on screen.
+    } finally {
+      setIsLoading(false);
+    }
   }, [clientId]);
 
-  useEffect(load, [load]);
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+    }, [load]),
+  );
+
+  // Lets the client detail screen's pull-to-refresh wait for this section too.
+  useImperativeHandle(ref, () => ({ reload: load }), [load]);
 
   const openForm = () => {
     // Prefilled with the obvious next month so a renewal is one tap.
@@ -81,7 +92,7 @@ export function SubscriptionSection({ clientId }: { clientId: string }) {
         ...(notes.trim() ? { notes: notes.trim() } : {}),
       });
       setIsAdding(false);
-      load();
+      void load();
     } catch (error) {
       setFormError(errorMessage(error));
     } finally {

@@ -1,5 +1,5 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import { clientInviteApi } from '@/lib/api';
 
@@ -8,30 +8,34 @@ import { clientInviteApi } from '@/lib/api';
  * a coach (Home, Workout, Diet, History) should gate on `hasCoach` and show
  * a locked state instead of rendering — Explore Coaches and Profile are
  * always available regardless of this status.
+ *
+ * `reload()` is exposed for pull-to-refresh and never rejects.
  */
 export function useOnboardingStatus() {
   const [hasCoach, setHasCoach] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const isMounted = useRef(true);
+
+  const reload = useCallback(async () => {
+    try {
+      const invites = await clientInviteApi.list('ACCEPTED');
+      if (isMounted.current) setHasCoach(invites.length > 0);
+    } catch {
+      // Network/auth failure: fail closed (locked) rather than crash.
+    } finally {
+      if (isMounted.current) setIsLoading(false);
+    }
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      let active = true;
-      clientInviteApi
-        .list('ACCEPTED')
-        .then((invites) => {
-          if (active) setHasCoach(invites.length > 0);
-        })
-        .catch(() => {
-          // Network/auth failure: fail closed (locked) rather than crash.
-        })
-        .finally(() => {
-          if (active) setIsLoading(false);
-        });
+      isMounted.current = true;
+      void reload();
       return () => {
-        active = false;
+        isMounted.current = false;
       };
-    }, []),
+    }, [reload]),
   );
 
-  return { hasCoach, isLoading };
+  return { hasCoach, isLoading, reload };
 }

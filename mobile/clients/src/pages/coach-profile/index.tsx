@@ -11,6 +11,7 @@ import { Card } from '@/components/ui/card';
 import { Pill } from '@/components/ui/pill';
 import { Section } from '@/components/ui/section';
 import { Radii, Spacing } from '@/constants/theme';
+import { useRefresh } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError, coachRequestApi, exploreApi, type DirectoryCoach } from '@/lib/api';
 import { experienceLabel, relationshipPill } from '@/lib/explore';
@@ -55,6 +56,8 @@ export function CoachProfileScreen({ coachId }: { coachId: string }) {
       void load();
     }, [load]),
   );
+
+  const { isRefreshing, refresh } = useRefresh(load);
 
   /**
    * The API answers a stale action with a bare 409 or 404, and the directory
@@ -134,7 +137,7 @@ export function CoachProfileScreen({ coachId }: { coachId: string }) {
   const experience = experienceLabel(coach.yearsExperience);
 
   return (
-    <ScreenScaffold includeBottomTabInset>
+    <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh}>
       <DetailHeader title="Coach profile" subtitle="Explore" />
 
       <View style={styles.identity}>

@@ -1,5 +1,5 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { ClientPhotos } from '@/components/client-detail/ClientPhotos';
@@ -16,6 +16,7 @@ import { FieldRow } from '@/components/ui/field-row';
 import { Pill } from '@/components/ui/pill';
 import { Section } from '@/components/ui/section';
 import { Spacing } from '@/constants/theme';
+import { useRefresh, type RefreshHandle } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import {
   assignmentApi,
@@ -123,9 +124,13 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
 
   useFocusEffect(
     useCallback(() => {
-      loadAll();
+      void loadAll();
     }, [loadAll]),
   );
+
+  const subscriptionSection = useRef<RefreshHandle>(null);
+  // Profile, plans, weights and check-ins, plus the subscription section's own load.
+  const { isRefreshing, refresh } = useRefresh(loadAll, () => subscriptionSection.current?.reload());
 
   const activeWorkout = assignments.find((a) => a.status === 'ACTIVE' && a.plan.type === 'WORKOUT');
   const activeDiet = assignments.find((a) => a.status === 'ACTIVE' && a.plan.type === 'DIET');
@@ -248,7 +253,7 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
   };
 
   return (
-    <ScreenScaffold includeBottomTabInset>
+    <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh}>
       <DetailHeader title={name} subtitle={email} />
 
       {isLoading ? (
@@ -400,7 +405,7 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
             )}
           </Section>
 
-          <SubscriptionSection clientId={clientId} />
+          <SubscriptionSection ref={subscriptionSection} clientId={clientId} />
 
           <Section title="Payment">
             <Card>
