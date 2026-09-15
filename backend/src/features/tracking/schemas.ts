@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { MAX_WEIGHT_KG } from "../../utils/weight.js";
+
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 /** An S3 object key from POST /uploads/presign, never a URL or a raw path. */
@@ -21,7 +23,7 @@ export const checkInSchema = z.object({
 
 export const weightSchema = z.object({
   date: z.string().regex(DATE_PATTERN, "date must be formatted YYYY-MM-DD"),
-  weightKg: z.number().positive(),
+  weightKg: z.number().positive().max(MAX_WEIGHT_KG),
   photoKey: photoKeySchema.nullable().optional(),
 });
 

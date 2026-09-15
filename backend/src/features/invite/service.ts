@@ -1,4 +1,4 @@
-import type { CoachClientInvite, InviteStatus } from "@prisma/client";
+import type { CoachClientInvite, CoachProfile, InviteStatus } from "@prisma/client";
 
 import { logger } from "../../config/logger.js";
 import { prisma } from "../../config/prisma.config.js";
@@ -10,7 +10,15 @@ import { normalizeEmail } from "../../utils/email.js";
 type PersonSummary = { id: string; name: string; email: string };
 
 type InviteRow = CoachClientInvite & {
-  coach?: (PersonSummary & { phone?: string | null; avatarUrl?: string | null }) | null;
+  coach?:
+    | (PersonSummary & {
+        phone?: string | null;
+        avatarUrl?: string | null;
+        bio?: string | null;
+        specialties?: string[];
+        yearsExperience?: number | null;
+      })
+    | null;
   client?: (PersonSummary & { avatarUrl?: string | null }) | null;
 };
 
@@ -114,15 +122,17 @@ export async function listCoachInvites(coachId: string, status?: InviteStatus) {
 }
 
 /**
- * The coach's phone and photo ride along only on an ACCEPTED invite — they are
- * what the client's Home strip and My Coach screen show and call. A pending or
- * declined invite is not a relationship, so it gets name and email only. Gated
- * on each row's own status rather than the query filter, so a change to the
- * filter can't leak them.
+ * The coach's phone, photo and profile ride along only on an ACCEPTED invite —
+ * they are what the client's Home strip and Your Coach page show and call. A
+ * pending or declined invite is not a relationship, so it gets name and email
+ * only. Gated on each row's own status rather than the query filter, so a
+ * change to the filter can't leak them.
  */
 async function serializeClientInvite(
   row: CoachClientInvite & {
-    coach: PersonSummary & { coachProfile: { phone: string | null; avatarKey: string | null } | null };
+    coach: PersonSummary & {
+      coachProfile: Pick<CoachProfile, "phone" | "avatarKey" | "bio" | "specialties" | "yearsExperience"> | null;
+    };
   },
 ) {
   const { coachProfile, ...coach } = row.coach;
@@ -134,6 +144,9 @@ async function serializeClientInvite(
             ...coach,
             phone: coachProfile?.phone ?? null,
             avatarUrl: await getSignedReadUrl(coachProfile?.avatarKey ?? null),
+            bio: coachProfile?.bio ?? null,
+            specialties: coachProfile?.specialties ?? [],
+            yearsExperience: coachProfile?.yearsExperience ?? null,
           }
         : coach,
   });
@@ -145,7 +158,14 @@ export async function listClientInvites(clientId: string, email: string, status:
     where: { status, OR: [{ clientId }, { clientEmail }] },
     include: {
       coach: {
-        select: { id: true, name: true, email: true, coachProfile: { select: { phone: true, avatarKey: true } } },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          coachProfile: {
+            select: { phone: true, avatarKey: true, bio: true, specialties: true, yearsExperience: true },
+          },
+        },
       },
     },
     orderBy: { createdAt: "desc" },

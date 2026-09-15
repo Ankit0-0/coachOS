@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { MAX_WEIGHT_KG } from "../../utils/weight.js";
+
 /** An S3 object key from POST /uploads/presign. Null removes the avatar. */
 const avatarKeySchema = z.string().min(1).max(512).nullable();
 
@@ -26,7 +28,7 @@ export const updateClientProfileSchema = z
      * Self-reported. Distinct from WeightEntry, which is the day-by-day
      * tracked history — this is a single value the client sets themselves.
      */
-    weightKg: z.number().min(20).max(500).nullable().optional(),
+    weightKg: z.number().min(20).max(MAX_WEIGHT_KG).nullable().optional(),
     goals: z.string().max(1000).optional(),
     phone: z.string().max(40).optional(),
     avatarKey: avatarKeySchema.optional(),

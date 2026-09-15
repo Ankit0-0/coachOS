@@ -18,6 +18,7 @@ import { trackingApi, type WeightEntry } from '@/lib/api';
 import { todayKey } from '@/lib/dates';
 import { pickAndUploadImage } from '@/lib/image-upload';
 import { dietContentOf, workoutContentOf } from '@/lib/plan-content';
+import { parseWeightInput } from '@/lib/weight';
 
 export function HomeScreen() {
   const theme = useTheme();
@@ -140,16 +141,17 @@ export function HomeScreen() {
   };
 
   const handleSaveUpdate = async () => {
-    const kg = Number.parseFloat(shownWeight);
-    if (!Number.isFinite(kg) || kg <= 0) {
-      setSavedMessage('Enter a weight in kg before saving.');
+    // Checked here so an out-of-range weight gets a reason, not the API's bare 400.
+    const weight = parseWeightInput(shownWeight);
+    if (weight.status === 'invalid') {
+      setSavedMessage(weight.message);
       return;
     }
     try {
       setIsSaving(true);
       const entry = await trackingApi.saveWeight({
         date: todayKey(),
-        weightKg: kg,
+        weightKg: weight.kg,
         // Only sent when a photo was picked, so saving a weight on its own
         // never clears a photo added earlier in the day.
         ...(physiqueKey ? { photoKey: physiqueKey } : {}),

@@ -1,10 +1,11 @@
 import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { type ComponentProps, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Avatar } from '@/components/ui/avatar';
+import { CALL_ICON, IconButton, MESSAGE_ICON } from '@/components/ui/icon-button';
 import { Radii, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { InvitePerson } from '@/lib/api';
@@ -14,26 +15,6 @@ import { buildWhatsAppUrl, openWhatsApp } from '@/lib/whatsapp';
 type CoachStripProps = {
   coach: InvitePerson;
 };
-
-type IconButtonProps = {
-  icon: ComponentProps<typeof SymbolView>['name'];
-  label: string;
-  onPress: () => void;
-};
-
-function IconButton({ icon, label, onPress }: IconButtonProps) {
-  const theme = useTheme();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      onPress={onPress}
-      hitSlop={4}
-      style={({ pressed }) => [styles.iconButton, { borderColor: theme.border }, pressed && styles.pressed]}>
-      <SymbolView name={icon} size={18} tintColor={theme.text} />
-    </Pressable>
-  );
-}
 
 /**
  * Who the client is working with, one tap from calling or messaging them. Slim
@@ -84,13 +65,9 @@ export function CoachStrip({ coach }: CoachStripProps) {
           </View>
           {hasNumber ? (
             <View style={styles.actions}>
+              <IconButton icon={CALL_ICON} label={`Call ${coach.name}`} onPress={() => void call()} />
               <IconButton
-                icon={{ ios: 'phone', android: 'call', web: 'call' }}
-                label={`Call ${coach.name}`}
-                onPress={() => void call()}
-              />
-              <IconButton
-                icon={{ ios: 'message', android: 'chat', web: 'chat' }}
+                icon={MESSAGE_ICON}
                 label={`Message ${coach.name} on WhatsApp`}
                 onPress={() => void chat()}
               />
@@ -146,16 +123,5 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     gap: Spacing.two,
-  },
-  iconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: Radii.pill,
-    borderWidth: StyleSheet.hairlineWidth,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pressed: {
-    opacity: 0.7,
   },
 });

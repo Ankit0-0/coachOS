@@ -3,16 +3,24 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { DetailHeader } from '@/components/detail-header';
+import { EXPERIENCE_ICON, StatChip } from '@/components/explore/StatChip';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Avatar } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { FieldRow } from '@/components/ui/field-row';
+import { Pill } from '@/components/ui/pill';
+import { Section } from '@/components/ui/section';
 import { Spacing } from '@/constants/theme';
 import { useRefresh } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { buildTelUrl, startCall } from '@/lib/call';
 import { longDateLabel } from '@/lib/dates';
+import { experienceLabel } from '@/lib/explore';
 import { formatPhone } from '@/lib/phone';
+import { summariseSubscription } from '@/lib/subscription';
 import { buildWhatsAppUrl, openWhatsApp } from '@/lib/whatsapp';
 import {
   clientInviteApi,
@@ -75,6 +83,11 @@ export function MyCoachScreen() {
 
   // Same loader as the initial load, so a failed refresh reports the same way.
   const { isRefreshing, refresh } = useRefresh(loadData);
+
+  const coachExperience = coach ? experienceLabel(coach.yearsExperience ?? null) : null;
+  // The API returns the client's latest period with any coach; only one with this coach belongs here.
+  const subscriptionSummary =
+    coach && subscription && subscription.coachId === coach.id ? summariseSubscription(subscription) : null;
 
   const handleCall = async () => {
     setContactError(null);
@@ -139,11 +152,17 @@ export function MyCoachScreen() {
       {isLoading ? (
         <ActivityIndicator color={theme.textSecondary} />
       ) : coach ? (
-        <ThemedView type="backgroundElement" style={[styles.panel, { borderColor: theme.border }]}>
-          <View style={styles.identity}>
-            <Avatar name={coach.name} size="md" imageUrl={coach.avatarUrl ?? null} />
-            <View style={styles.identityCopy}>
-              <ThemedText type="smallBold">{coach.name}</ThemedText>
+        <>
+          <Card style={styles.coachCard}>
+            <View style={styles.identity}>
+              <Avatar name={coach.name} size="lg" imageUrl={coach.avatarUrl ?? null} />
+              <View style={styles.identityCopy}>
+                <ThemedText type="heading">{coach.name}</ThemedText>
+                {coachExperience ? <StatChip icon={EXPERIENCE_ICON} label={coachExperience} /> : null}
+              </View>
+            </View>
+
+            <View style={styles.contactLines}>
               <ThemedText type="small" themeColor="textSecondary">
                 {coach.email}
               </ThemedText>
@@ -153,47 +172,55 @@ export function MyCoachScreen() {
                 </ThemedText>
               ) : null}
             </View>
-          </View>
 
-          {/* Nothing renders when there is no record: an open-ended
-              relationship is normal, not a missing value. */}
-          {subscription ? (
-            <ThemedText type="small" themeColor={subscription.status === 'ACTIVE' ? 'textSecondary' : 'warning'}>
-              {subscription.status === 'ACTIVE'
-                ? `Active until ${longDateLabel(subscription.endDate)}`
-                : subscription.status === 'CANCELLED'
-                  ? `Cancelled on ${longDateLabel(subscription.endDate)}`
-                  : `Expired on ${longDateLabel(subscription.endDate)}`}
-            </ThemedText>
-          ) : null}
+            {/* Hidden, not disabled, when the coach has no usable number. */}
+            {buildTelUrl(coach.phone) && buildWhatsAppUrl(coach.phone) ? (
+              <View style={styles.actionRow}>
+                <View style={styles.action}>
+                  <Button label="Call" onPress={() => void handleCall()} fullWidth />
+                </View>
+                <View style={styles.action}>
+                  <Button label="WhatsApp" variant="secondary" onPress={() => void handleWhatsApp()} fullWidth />
+                </View>
+              </View>
+            ) : null}
+            {contactError ? (
+              <ThemedText type="small" themeColor="danger">
+                {contactError}
+              </ThemedText>
+            ) : null}
+          </Card>
 
-          {/* Hidden, not disabled, when the coach has no usable number. */}
-          {buildTelUrl(coach.phone) && buildWhatsAppUrl(coach.phone) ? (
-            <View style={styles.actionRow}>
-              <Pressable
-                accessibilityRole="button"
-                style={[styles.actionButton, { backgroundColor: theme.accent }]}
-                onPress={() => void handleCall()}>
-                <ThemedText type="smallBold" themeColor="onAccent">
-                  Call
-                </ThemedText>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                style={[styles.actionButton, { borderColor: theme.border, borderWidth: 1 }]}
-                onPress={() => void handleWhatsApp()}>
-                <ThemedText type="smallBold" themeColor="text">
-                  Message on WhatsApp
-                </ThemedText>
-              </Pressable>
-            </View>
+          <Section title="About">
+            <Card style={styles.aboutCard}>
+              <ThemedText type="small" themeColor={coach.bio ? 'text' : 'textSecondary'}>
+                {coach.bio ?? `${coach.name} hasn’t written a bio yet.`}
+              </ThemedText>
+              {coach.specialties && coach.specialties.length > 0 ? (
+                <View style={styles.specialties}>
+                  {coach.specialties.map((specialty) => (
+                    <Pill key={specialty} label={specialty} />
+                  ))}
+                </View>
+              ) : null}
+            </Card>
+          </Section>
+
+          {/* Only a period with this coach, and nothing at all without one: an
+              open-ended relationship is normal, not a missing value. */}
+          {subscriptionSummary ? (
+            <Section title="Subscription">
+              <Card padded={false} style={styles.subscriptionCard}>
+                <View style={styles.subscriptionHead}>
+                  <ThemedText type="smallBold">{subscriptionSummary.detail}</ThemedText>
+                  <Pill label={subscriptionSummary.label} tone={subscriptionSummary.tone} />
+                </View>
+                <FieldRow label="Started" value={subscriptionSummary.startLabel} />
+                <FieldRow label={subscriptionSummary.endHeading} value={subscriptionSummary.endLabel} divider={false} />
+              </Card>
+            </Section>
           ) : null}
-          {contactError ? (
-            <ThemedText type="small" themeColor="danger">
-              {contactError}
-            </ThemedText>
-          ) : null}
-        </ThemedView>
+        </>
       ) : pendingInvites.length > 0 ? (
         <View style={styles.section}>
           <ThemedText type="smallBold">Pending invites</ThemedText>
@@ -280,6 +307,9 @@ export function MyCoachScreen() {
 }
 
 const styles = StyleSheet.create({
+  coachCard: {
+    gap: Spacing.three,
+  },
   identity: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -287,7 +317,32 @@ const styles = StyleSheet.create({
   },
   identityCopy: {
     flex: 1,
+    gap: Spacing.two,
+    alignItems: 'flex-start',
+  },
+  contactLines: {
     gap: Spacing.half,
+  },
+  action: {
+    flex: 1,
+  },
+  aboutCard: {
+    gap: Spacing.three,
+  },
+  specialties: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+  },
+  subscriptionCard: {
+    paddingHorizontal: Spacing.four,
+  },
+  subscriptionHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.two,
+    paddingVertical: Spacing.three,
   },
   panel: {
     borderRadius: Spacing.two,

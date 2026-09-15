@@ -4,6 +4,7 @@ import { logger } from "../../config/logger.js";
 import { prisma } from "../../config/prisma.config.js";
 import { assertCoachApproved } from "../../utils/coach-approval.js";
 import { normalizeEmail } from "../../utils/email.js";
+import { effectiveStatus } from "../subscription/service.js";
 import { getSignedReadUrl } from "../upload/service.js";
 
 /**
@@ -27,15 +28,63 @@ const LISTED_COACH_WHERE = {
 
 type ListedCoach = User & { coachProfile: CoachProfile | null };
 
+type ClientCounts = { activeClientCount: number; totalClientCount: number };
+
+/**
+ * How many clients each coach has, in two queries whatever the number of coaches.
+ *
+ * - total:  every client this coach has ever had an ACCEPTED invite with.
+ * - active: those whose relationship is still running — their latest
+ *   subscription with this coach is ACTIVE (expiry derived as everywhere else),
+ *   or they have none at all, which is an open-ended relationship, not a lapse.
+ *
+ * Counted per distinct client, so a re-invite can't count someone twice.
+ */
+async function clientCountsFor(coachIds: string[]): Promise<Map<string, ClientCounts>> {
+  const [accepted, subscriptions] = await Promise.all([
+    prisma.coachClientInvite.findMany({
+      where: { coachId: { in: coachIds }, status: "ACCEPTED", clientId: { not: null } },
+      select: { coachId: true, clientId: true },
+      distinct: ["coachId", "clientId"],
+    }),
+    prisma.subscription.findMany({
+      where: { coachId: { in: coachIds } },
+      select: { coachId: true, clientId: true, status: true, endDate: true },
+      orderBy: { startDate: "desc" },
+    }),
+  ]);
+
+  // Ordered newest first, so the first period seen for a pair is its current one.
+  const latestByPair = new Map<string, (typeof subscriptions)[number]>();
+  for (const subscription of subscriptions) {
+    const pair = `${subscription.coachId}:${subscription.clientId}`;
+    if (!latestByPair.has(pair)) latestByPair.set(pair, subscription);
+  }
+
+  const counts = new Map<string, ClientCounts>(
+    coachIds.map((id) => [id, { activeClientCount: 0, totalClientCount: 0 }]),
+  );
+  for (const { coachId, clientId } of accepted) {
+    const count = counts.get(coachId)!;
+    count.totalClientCount += 1;
+    const latest = latestByPair.get(`${coachId}:${clientId}`);
+    if (!latest || effectiveStatus(latest) === "ACTIVE") count.activeClientCount += 1;
+  }
+  return counts;
+}
+
 /**
  * Deliberately excludes email and phone: listing yourself in Explore makes your
  * profile browsable, not your contact details. A client reaches a coach by
  * sending a request.
+ *
+ * CoachProfile has no headline, city or languages, so there are none to show.
  */
 async function serializeDirectoryCoach(
   coach: ListedCoach,
   relationship: ExploreRelationship,
   pendingRequestId: string | null,
+  counts: ClientCounts,
 ) {
   return {
     id: coach.id,
@@ -44,6 +93,12 @@ async function serializeDirectoryCoach(
     specialties: coach.coachProfile?.specialties ?? [],
     yearsExperience: coach.coachProfile?.yearsExperience ?? null,
     avatarUrl: await getSignedReadUrl(coach.coachProfile?.avatarKey ?? null),
+    /**
+     * Raw counts. The app decides how low is too low to show — a new coach's
+     * "0 clients" reads worse than saying nothing.
+     */
+    activeClientCount: counts.activeClientCount,
+    totalClientCount: counts.totalClientCount,
     relationship,
     /** Set when relationship is REQUESTED, so the app can offer to cancel. */
     pendingRequestId,
@@ -100,11 +155,12 @@ export async function listDirectory(clientId: string) {
     include: { coachProfile: true },
     orderBy: { name: "asc" },
   });
-  const relationships = await relationshipsFor(client, coaches.map((coach) => coach.id));
+  const coachIds = coaches.map((coach) => coach.id);
+  const [relationships, counts] = await Promise.all([relationshipsFor(client, coachIds), clientCountsFor(coachIds)]);
   return Promise.all(
     coaches.map((coach) => {
       const status = relationships.get(coach.id)!;
-      return serializeDirectoryCoach(coach, status.relationship, status.pendingRequestId);
+      return serializeDirectoryCoach(coach, status.relationship, status.pendingRequestId, counts.get(coach.id)!);
     }),
   );
 }
@@ -120,8 +176,12 @@ export async function getDirectoryCoach(clientId: string, coachId: string) {
     logger.debug({ clientId, coachId }, "getDirectoryCoach: rejected — coach not listed in Explore");
     throw new Error("COACH_NOT_FOUND");
   }
-  const status = (await relationshipsFor(client, [coach.id])).get(coach.id)!;
-  return serializeDirectoryCoach(coach, status.relationship, status.pendingRequestId);
+  const [relationships, counts] = await Promise.all([
+    relationshipsFor(client, [coach.id]),
+    clientCountsFor([coach.id]),
+  ]);
+  const status = relationships.get(coach.id)!;
+  return serializeDirectoryCoach(coach, status.relationship, status.pendingRequestId, counts.get(coach.id)!);
 }
 
 type PersonSummary = { id: string; name: string; email: string };
