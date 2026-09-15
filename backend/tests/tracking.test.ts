@@ -207,6 +207,19 @@ describe("tracking: check-ins and weight entries", () => {
       expect(res.status).toBe(400);
     });
 
+    it("rejects a negative weight and one above 150 kg, and accepts 150 itself", async () => {
+      expect((await saveWeight({ date: inRange, weightKg: -5 })).status).toBe(400);
+      expect((await saveWeight({ date: inRange, weightKg: 150.1 })).status).toBe(400);
+      expect((await saveWeight({ date: inRange, weightKg: 200 })).status).toBe(400);
+
+      // Nothing rejected was stored: the day still holds the last valid weigh-in.
+      const res = await listWeights(inRange, inRange);
+      expect(res.body.weightEntries[0].weightKg).toBe(79.2);
+
+      expect((await saveWeight({ date: inRange, weightKg: 150 })).status).toBe(200);
+      expect((await saveWeight({ date: inRange, weightKg: 75.5 })).status).toBe(200);
+    });
+
     it("returns 401 without a token", async () => {
       const res = await api.post("/v1/tracking/weight").send({ date: inRange, weightKg: 75 });
       expect(res.status).toBe(401);

@@ -17,6 +17,10 @@ import { useTheme } from '@/hooks/use-theme';
 import { clientProfileApi, trackingApi, type ClientProfile } from '@/lib/api';
 import { pickAndUploadImage } from '@/lib/image-upload';
 import { formatPhone, INVALID_PHONE_MESSAGE, parsePhone, phoneFieldHint, phoneForEditing } from '@/lib/phone';
+import { MAX_WEIGHT_KG } from '@/lib/weight';
+
+/** The profile's starting weight has a floor the API also enforces; weigh-ins only need to be above 0. */
+const MIN_PROFILE_WEIGHT_KG = 20;
 
 type Draft = {
   name: string;
@@ -157,6 +161,11 @@ export function ProfileScreen() {
     const weightKg = parseOptionalNumber(draft.weightKg);
     if (weightKg === undefined) {
       setFormError('Enter your weight in kilograms, or leave it blank.');
+      return;
+    }
+    // The same range the API holds a profile weight to, so the reason is shown here.
+    if (weightKg !== null && (weightKg < MIN_PROFILE_WEIGHT_KG || weightKg > MAX_WEIGHT_KG)) {
+      setFormError(`Enter a weight between ${MIN_PROFILE_WEIGHT_KG} and ${MAX_WEIGHT_KG} kg, or leave it blank.`);
       return;
     }
 

@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet, TextInput, View } from 'react-native';
 
 import { DetailHeader } from '@/components/detail-header';
+import { CLIENTS_ICON, EXPERIENCE_ICON, StatChip } from '@/components/explore/StatChip';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
 import { Avatar } from '@/components/ui/avatar';
@@ -14,7 +15,7 @@ import { Radii, Spacing } from '@/constants/theme';
 import { useRefresh } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError, coachRequestApi, exploreApi, type DirectoryCoach } from '@/lib/api';
-import { experienceLabel, relationshipPill } from '@/lib/explore';
+import { clientCountLabel, experienceLabel, relationshipPill } from '@/lib/explore';
 
 const MAX_MESSAGE_LENGTH = 500;
 
@@ -135,6 +136,7 @@ export function CoachProfileScreen({ coachId }: { coachId: string }) {
 
   const pill = relationshipPill(coach.relationship);
   const experience = experienceLabel(coach.yearsExperience);
+  const clients = clientCountLabel(coach);
 
   return (
     <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh}>
@@ -144,8 +146,13 @@ export function CoachProfileScreen({ coachId }: { coachId: string }) {
         <Avatar name={coach.name} size="lg" imageUrl={coach.avatarUrl} />
         <View style={styles.identityCopy}>
           <ThemedText type="heading">{coach.name}</ThemedText>
-          {experience ? <ThemedText type="meta">{experience}</ThemedText> : null}
           {pill ? <Pill label={pill.label} tone={pill.tone} /> : null}
+          {experience || clients ? (
+            <View style={styles.stats}>
+              {experience ? <StatChip icon={EXPERIENCE_ICON} label={experience} /> : null}
+              {clients ? <StatChip icon={CLIENTS_ICON} label={clients} /> : null}
+            </View>
+          ) : null}
         </View>
       </View>
 
@@ -256,6 +263,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   specialties: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+  },
+  stats: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.two,

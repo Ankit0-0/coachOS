@@ -59,7 +59,10 @@ describe("avatars on invites", () => {
 
     await api.patch("/v1/client/profile").set(auth(client)).send({ avatarKey: clientKey() });
     await api.patch("/v1/client/profile").set(auth(invitedOnly)).send({ avatarKey: invitedKey() });
-    await api.patch("/v1/coach/profile").set(auth(coach)).send({ avatarKey: coachKey() });
+    await api
+      .patch("/v1/coach/profile")
+      .set(auth(coach))
+      .send({ avatarKey: coachKey(), bio: "Lifting for longevity.", specialties: ["Strength", "Mobility"], yearsExperience: 7 });
 
     await createAcceptedInvite(coach, client);
     await createAcceptedInvite(coach, noPhotoClient);
@@ -98,11 +101,24 @@ describe("avatars on invites", () => {
     expect(row?.coach.avatarUrl).toBe(`https://signed.test.invalid/${coachKey()}`);
   });
 
-  it("keeps the coach's photo off an invite the client hasn't accepted", async () => {
+  it("gives the client their accepted coach's profile for the Your Coach page", async () => {
+    const res = await api.get("/v1/client/invites").query({ status: "ACCEPTED" }).set(auth(client));
+    const row = (res.body.invites as ClientInviteRow[]).find((invite) => invite.coachId === coach.id);
+    expect(row?.coach).toMatchObject({
+      bio: "Lifting for longevity.",
+      specialties: ["Strength", "Mobility"],
+      yearsExperience: 7,
+    });
+  });
+
+  it("keeps the coach's photo and profile off an invite the client hasn't accepted", async () => {
     const res = await api.get("/v1/client/invites").query({ status: "PENDING" }).set(auth(invitedOnly));
     const row = (res.body.invites as ClientInviteRow[]).find((invite) => invite.coachId === coach.id);
     expect(row?.coach).toMatchObject({ id: coach.id });
-    expect(row?.coach).not.toHaveProperty("avatarUrl");
+    for (const field of ["avatarUrl", "bio", "specialties", "yearsExperience"]) {
+      expect(row?.coach).not.toHaveProperty(field);
+    }
     expect(JSON.stringify(res.body)).not.toContain(coachKey());
+    expect(JSON.stringify(res.body)).not.toContain("Lifting for longevity.");
   });
 });

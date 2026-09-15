@@ -19,6 +19,7 @@ import { useRefresh } from '@/hooks/use-refresh';
 import { trackingApi, type CheckIn, type TrackingAssignment, type WeightEntry } from '@/lib/api';
 import { dayOfMonth, monthRange, todayKey } from '@/lib/dates';
 import { pickAndUploadImage } from '@/lib/image-upload';
+import { parseWeightInput } from '@/lib/weight';
 import { DEFAULT_WEIGHT_RANGE, weightRangeDates, type WeightRangeKey } from '@/lib/weight-range';
 
 type WorkoutPlanContent = { exercises: { id: string; sets: number }[] };
@@ -197,9 +198,10 @@ export function HistoryScreen() {
   };
 
   const handleLogWeight = async () => {
-    const kg = Number.parseFloat(weightInput);
-    if (!Number.isFinite(kg) || kg <= 0) {
-      setWeightMessage('Enter a weight in kilograms (e.g. 70.5).');
+    // Checked here so an out-of-range weight gets a reason, not the API's bare 400.
+    const weight = parseWeightInput(weightInput);
+    if (weight.status === 'invalid') {
+      setWeightMessage(weight.message);
       return;
     }
     try {
@@ -207,7 +209,7 @@ export function HistoryScreen() {
       setWeightMessage(null);
       const entry = await trackingApi.saveWeight({
         date: todayKey(),
-        weightKg: kg,
+        weightKg: weight.kg,
         // Only sent when a photo was picked this session, so logging a weight
         // on its own never clears a photo added earlier.
         ...(photoKey ? { photoKey } : {}),
