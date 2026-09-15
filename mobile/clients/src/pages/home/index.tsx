@@ -2,6 +2,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
+import { CoachStrip } from '@/components/home/CoachStrip';
 import { LockedState } from '@/components/locked-state';
 import { PlanCard, type HomePlanCard } from '@/components/plan-card';
 import { PlanStateCard } from '@/components/plan-state-card';
@@ -13,7 +14,7 @@ import { useTrackingAssignments } from '@/hooks/use-assignments';
 import { useOnboardingStatus } from '@/hooks/use-onboarding-status';
 import { useRefresh } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
-import { trackingApi } from '@/lib/api';
+import { trackingApi, type WeightEntry } from '@/lib/api';
 import { todayKey } from '@/lib/dates';
 import { pickAndUploadImage } from '@/lib/image-upload';
 import { dietContentOf, workoutContentOf } from '@/lib/plan-content';
@@ -27,12 +28,19 @@ export function HomeScreen() {
   const dietAssignmentId = dietAssignment?.id;
   /** Meal ids ticked in today's diet check-in, for the progress ring. */
   const [dietCheckedIds, setDietCheckedIds] = useState<string[]>([]);
-  /** The local file, shown as a preview until the entry is saved. */
+  /**
+   * What's already saved for today, read back from the API. Without it the card
+   * only knew what had been typed since it mounted, so a saved weight showed as
+   * an empty box and a saved photo vanished on the next launch.
+   */
+  const [todayEntry, setTodayEntry] = useState<WeightEntry | null>(null);
+  /** A freshly picked local file, previewed until it's saved. */
   const [physiqueImage, setPhysiqueImage] = useState<string | null>(null);
   /** The S3 key behind it — this is what the weight entry actually stores. */
   const [physiqueKey, setPhysiqueKey] = useState<string | null>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
-  const [weightValue, setWeightValue] = useState('');
+  /** What the client has typed; null until they edit, so the field shows today's saved weight. */
+  const [weightValue, setWeightValue] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
 
@@ -53,14 +61,28 @@ export function HomeScreen() {
     }
   }, [dietAssignmentId]);
 
-  // Refetched on focus so the ring reflects meals ticked on the diet screen.
+  const loadTodayUpdate = useCallback(async () => {
+    try {
+      const [entry] = await trackingApi.listWeights({ from: todayKey(), to: todayKey() });
+      setTodayEntry(entry ?? null);
+    } catch {
+      // Secondary: the card still lets the client log today's update.
+    }
+  }, []);
+
+  // Refetched on focus so the ring reflects meals ticked on the diet screen,
+  // and today's update reflects a weigh-in logged from History.
   useFocusEffect(
     useCallback(() => {
       void loadDietProgress();
-    }, [loadDietProgress]),
+      void loadTodayUpdate();
+    }, [loadDietProgress, loadTodayUpdate]),
   );
 
-  const { isRefreshing, refresh } = useRefresh(onboarding.reload, tracking.reload, loadDietProgress);
+  const { isRefreshing, refresh } = useRefresh(onboarding.reload, tracking.reload, loadDietProgress, loadTodayUpdate);
+
+  const shownWeight = weightValue ?? (todayEntry ? String(todayEntry.weightKg) : '');
+  const shownPhoto = physiqueImage ?? todayEntry?.photoUrl ?? null;
 
   // Cards only for assignments that actually exist — never sample plans.
   const planCards: HomePlanCard[] = [];
@@ -118,7 +140,7 @@ export function HomeScreen() {
   };
 
   const handleSaveUpdate = async () => {
-    const kg = Number.parseFloat(weightValue);
+    const kg = Number.parseFloat(shownWeight);
     if (!Number.isFinite(kg) || kg <= 0) {
       setSavedMessage('Enter a weight in kg before saving.');
       return;
@@ -132,9 +154,12 @@ export function HomeScreen() {
         // never clears a photo added earlier in the day.
         ...(physiqueKey ? { photoKey: physiqueKey } : {}),
       });
-      setWeightValue('');
-      // Swap the local file for the signed URL the API hands back.
-      if (entry.photoUrl) setPhysiqueImage(entry.photoUrl);
+      // The saved entry is now what the card shows: its weight in the field and
+      // its photo as a signed URL, so the local preview and the draft can go.
+      setTodayEntry(entry);
+      setWeightValue(null);
+      setPhysiqueImage(null);
+      setPhysiqueKey(null);
       setSavedMessage('Saved to today\u2019s update.');
     } catch (error) {
       setSavedMessage(
@@ -158,7 +183,11 @@ export function HomeScreen() {
   }
 
   return (
-    <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh}>
+    <ScreenScaffold
+      includeBottomTabInset
+      refreshing={isRefreshing}
+      onRefresh={refresh}
+      pinnedHeader={onboarding.coach ? <CoachStrip coach={onboarding.coach} /> : null}>
       <View style={styles.header}>
         <ThemedText type="smallBold" themeColor="accent">
           Coach OS
@@ -217,21 +246,21 @@ export function HomeScreen() {
 
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={physiqueImage ? 'Change physique photo' : 'Upload physique photo'}
+            accessibilityLabel={shownPhoto ? 'Change physique photo' : 'Upload physique photo'}
             onPress={() => void pickPhysiquePhoto()}
             disabled={isUploadingPhoto}
             style={[styles.uploadButton, { borderColor: theme.border }]}>
             {isUploadingPhoto ? (
               <ActivityIndicator size="small" color={theme.textSecondary} />
             ) : (
-              <ThemedText type="meta">{physiqueImage ? 'Change image' : 'Upload'}</ThemedText>
+              <ThemedText type="meta">{shownPhoto ? 'Change image' : 'Upload'}</ThemedText>
             )}
           </Pressable>
         </View>
 
-        {physiqueImage ? (
+        {shownPhoto ? (
           <Image
-            source={{ uri: physiqueImage }}
+            source={{ uri: shownPhoto }}
             accessibilityLabel="Physique photo for today"
             style={[styles.previewImage, { backgroundColor: theme.surfaceSunken }]}
           />
@@ -242,7 +271,7 @@ export function HomeScreen() {
             Weight update
           </ThemedText>
           <TextInput
-            value={weightValue}
+            value={shownWeight}
             onChangeText={setWeightValue}
             placeholder="Add value"
             keyboardType="decimal-pad"

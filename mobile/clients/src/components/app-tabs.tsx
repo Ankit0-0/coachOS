@@ -24,14 +24,6 @@ export default function AppTabs() {
         />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="my-coach">
-        <NativeTabs.Trigger.Label>My Coach</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          sf={{ default: 'person.crop.circle', selected: 'person.crop.circle.fill' }}
-          md={{ default: 'support_agent', selected: 'support_agent' }}
-        />
-      </NativeTabs.Trigger>
-
       {/* A group with its own Stack, so a coach's profile opens inside this tab. */}
       <NativeTabs.Trigger name="(explore)">
         <NativeTabs.Trigger.Label>Explore</NativeTabs.Trigger.Label>

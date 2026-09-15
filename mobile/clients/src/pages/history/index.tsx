@@ -4,7 +4,8 @@ import { ActivityIndicator, Image, Pressable, StyleSheet, TextInput, View } from
 
 import { MonthNavigator } from '@/components/history/MonthNavigator';
 import { MonthlyActivityCalendar, type DailyActivity } from '@/components/history/MonthlyActivityCalendar';
-import { WeightChart, type WeightPoint } from '@/components/history/WeightChart';
+import { WeightChart } from '@/components/history/WeightChart';
+import { WeightRangeSelector } from '@/components/history/WeightRangeSelector';
 import { LockedState } from '@/components/locked-state';
 import { PlanStateCard } from '@/components/plan-state-card';
 import { ScreenScaffold } from '@/components/screen-scaffold';
@@ -16,8 +17,9 @@ import { useTheme } from '@/hooks/use-theme';
 import { useTrackingAssignments } from '@/hooks/use-assignments';
 import { useRefresh } from '@/hooks/use-refresh';
 import { trackingApi, type CheckIn, type TrackingAssignment, type WeightEntry } from '@/lib/api';
-import { dayOfMonth, lastNDaysRange, monthRange, todayKey, weekdayLabel } from '@/lib/dates';
+import { dayOfMonth, monthRange, todayKey } from '@/lib/dates';
 import { pickAndUploadImage } from '@/lib/image-upload';
+import { DEFAULT_WEIGHT_RANGE, weightRangeDates, type WeightRangeKey } from '@/lib/weight-range';
 
 type WorkoutPlanContent = { exercises: { id: string; sets: number }[] };
 type DietPlanContent = { meals: { id: string }[] };
@@ -52,8 +54,10 @@ export function HistoryScreen() {
 
   const [workoutCheckIns, setWorkoutCheckIns] = useState<CheckIn[]>([]);
   const [dietCheckIns, setDietCheckIns] = useState<CheckIn[]>([]);
+  /** Every weigh-in in the chart's selected range, which always ends today. */
   const [weights, setWeights] = useState<WeightEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [weightRange, setWeightRange] = useState<WeightRangeKey>(DEFAULT_WEIGHT_RANGE);
+  const [isLoadingWeights, setIsLoadingWeights] = useState(true);
   const now = new Date();
   const [viewedMonth, setViewedMonth] = useState({ year: now.getFullYear(), month: now.getMonth() });
   const month = monthRange(viewedMonth.year, viewedMonth.month);
@@ -78,44 +82,65 @@ export function HistoryScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const workoutAssignmentId = workoutAssignment?.id;
   const dietAssignmentId = dietAssignment?.id;
-  // Month changes can overlap: only the latest request is allowed to land.
-  const latestRequest = useRef(0);
+  // Month and range changes can overlap: only the latest request of each kind may land.
+  const latestActivityRequest = useRef(0);
+  const latestWeightRequest = useRef(0);
 
   const loadActivity = useCallback(async () => {
-    const request = ++latestRequest.current;
-    const week = lastNDaysRange(7);
+    const request = ++latestActivityRequest.current;
     try {
-      const [workoutRows, dietRows, weightRows] = await Promise.all([
+      const [workoutRows, dietRows] = await Promise.all([
         workoutAssignmentId
           ? trackingApi.listCheckIns({ assignmentId: workoutAssignmentId, from: month.from, to: month.to })
           : Promise.resolve<CheckIn[]>([]),
         dietAssignmentId
           ? trackingApi.listCheckIns({ assignmentId: dietAssignmentId, from: month.from, to: month.to })
           : Promise.resolve<CheckIn[]>([]),
-        trackingApi.listWeights(week),
       ]);
-      if (request !== latestRequest.current) return;
+      if (request !== latestActivityRequest.current) return;
       setWorkoutCheckIns(workoutRows);
       setDietCheckIns(dietRows);
-      setWeights(weightRows);
       setLoadError(null);
     } catch (error) {
-      if (request !== latestRequest.current) return;
+      if (request !== latestActivityRequest.current) return;
       // Keep what is on screen and say so, on first load and on refresh alike.
       setLoadError(error instanceof Error ? error.message : 'Could not load your history.');
-    } finally {
-      if (request === latestRequest.current) setIsLoading(false);
     }
   }, [workoutAssignmentId, dietAssignmentId, month.from, month.to]);
 
-  // Reloads on focus and whenever the viewed month (and so loadActivity) changes.
+  // The dates are worked out per request, so a screen left open past midnight
+  // still ends its range on the new today.
+  const loadWeights = useCallback(async () => {
+    const request = ++latestWeightRequest.current;
+    try {
+      const rows = await trackingApi.listWeights(weightRangeDates(weightRange));
+      if (request !== latestWeightRequest.current) return;
+      setWeights(rows);
+      setLoadError(null);
+    } catch (error) {
+      if (request !== latestWeightRequest.current) return;
+      setLoadError(error instanceof Error ? error.message : 'Could not load your weight history.');
+    } finally {
+      if (request === latestWeightRequest.current) setIsLoadingWeights(false);
+    }
+  }, [weightRange]);
+
+  // Reloads on focus, and whenever the viewed month or the chart's range changes.
   useFocusEffect(
     useCallback(() => {
       void loadActivity();
     }, [loadActivity]),
   );
+  useFocusEffect(
+    useCallback(() => {
+      void loadWeights();
+    }, [loadWeights]),
+  );
 
-  const { isRefreshing, refresh } = useRefresh(onboarding.reload, tracking.reload, loadActivity);
+  const { isRefreshing, refresh } = useRefresh(onboarding.reload, tracking.reload, loadActivity, loadWeights);
+  const chartRange = weightRangeDates(weightRange);
+  /** Today's saved weigh-in, if any. Every range ends today, so it is always in `weights`. */
+  const todayEntry = weights.find((entry) => entry.date === todayKey());
 
   const workoutIds = workoutItemIds(workoutAssignment);
   const dietIds = dietItemIds(dietAssignment);
@@ -139,21 +164,14 @@ export function HistoryScreen() {
     (entry) => entry.workoutCompleted > 0 || entry.dietCompleted > 0,
   ).length;
 
-  const weightPoints: WeightPoint[] = weights.map((entry) => ({
-    day: weekdayLabel(entry.date),
-    value: entry.weightKg,
-  }));
   const average =
-    weightPoints.length > 0
-      ? weightPoints.reduce((sum, point) => sum + point.value, 0) / weightPoints.length
-      : null;
+    weights.length > 0 ? weights.reduce((sum, entry) => sum + entry.weightKg, 0) / weights.length : null;
 
   /**
    * The local file while one is pending, otherwise whatever today's saved entry
    * already has — so a photo logged earlier in the day is still visible.
    */
-  const photoDisplayUri =
-    photoUri ?? weights.find((entry) => entry.date === todayKey())?.photoUrl ?? null;
+  const photoDisplayUri = photoUri ?? todayEntry?.photoUrl ?? null;
 
   const handlePickPhoto = async () => {
     if (isUploadingPhoto) return;
@@ -195,12 +213,12 @@ export function HistoryScreen() {
         ...(photoKey ? { photoKey } : {}),
       });
       setWeightInput('');
-      // Swap the local file for the signed URL the API hands back.
-      if (entry.photoUrl) setPhotoUri(entry.photoUrl);
+      // Today's entry carries the saved photo as a signed URL now, so the local file can go.
+      setPhotoUri(null);
       setPhotoKey(null);
-      const week = lastNDaysRange(7);
-      const updated = await trackingApi.listWeights(week);
-      setWeights(updated);
+      // On screen straight from the response; the reload after confirms it against the range.
+      setWeights((current) => [...current.filter((row) => row.date !== entry.date), entry]);
+      void loadWeights();
       setWeightMessage('Saved today\u2019s weight.');
     } catch (error) {
       setWeightMessage(
@@ -244,13 +262,15 @@ export function HistoryScreen() {
 
       <ThemedView type="backgroundElement" style={[styles.chartCard, { borderColor: theme.border }]}>
         <View style={styles.chartHeader}>
-          <ThemedText type="smallBold">Weekly weight</ThemedText>
+          <ThemedText type="smallBold">Weight</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
-            {isLoading ? 'Loading…' : average !== null ? `${average.toFixed(1)} kg avg` : 'No data yet'}
+            {isLoadingWeights ? 'Loading…' : average !== null ? `${average.toFixed(1)} kg avg` : 'No data yet'}
           </ThemedText>
         </View>
 
-        <WeightChart data={weightPoints} />
+        <WeightRangeSelector value={weightRange} onChange={setWeightRange} />
+
+        <WeightChart entries={weights} from={chartRange.from} to={chartRange.to} />
 
         <View style={styles.weightForm}>
           <TextInput
@@ -261,7 +281,7 @@ export function HistoryScreen() {
             value={weightInput}
             onChangeText={setWeightInput}
             keyboardType="decimal-pad"
-            placeholder="Today's weight (kg)"
+            placeholder={todayEntry ? `Today: ${todayEntry.weightKg} kg` : "Today's weight (kg)"}
             placeholderTextColor={theme.textSecondary}
             editable={!isLoggingWeight}
           />

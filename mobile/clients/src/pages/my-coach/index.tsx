@@ -2,12 +2,15 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
 
+import { DetailHeader } from '@/components/detail-header';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { Avatar } from '@/components/ui/avatar';
 import { Spacing } from '@/constants/theme';
 import { useRefresh } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
+import { buildTelUrl, startCall } from '@/lib/call';
 import { longDateLabel } from '@/lib/dates';
 import { formatPhone } from '@/lib/phone';
 import { buildWhatsAppUrl, openWhatsApp } from '@/lib/whatsapp';
@@ -25,10 +28,10 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Something went wrong. Please try again.';
 }
 
-function notAvailableYet(action: string) {
-  Alert.alert(action, 'Not available yet.');
-}
-
+/**
+ * The full coach screen, pushed from Home's coach strip — or, before there is
+ * a coach, from the locked state, since pending invites are accepted here.
+ */
 export function MyCoachScreen() {
   const theme = useTheme();
   const router = useRouter();
@@ -40,7 +43,7 @@ export function MyCoachScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [actioningId, setActioningId] = useState<string | null>(null);
   /** Inline, since Alert is a no-op on React Native Web. */
-  const [whatsAppError, setWhatsAppError] = useState<string | null>(null);
+  const [contactError, setContactError] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -73,11 +76,17 @@ export function MyCoachScreen() {
   // Same loader as the initial load, so a failed refresh reports the same way.
   const { isRefreshing, refresh } = useRefresh(loadData);
 
+  const handleCall = async () => {
+    setContactError(null);
+    const result = await startCall(coach?.phone);
+    if (result.status === 'error') setContactError(result.message);
+  };
+
   // Nothing prefilled: this opens a conversation, it doesn't send a message.
   const handleWhatsApp = async () => {
-    setWhatsAppError(null);
+    setContactError(null);
     const result = await openWhatsApp(coach?.phone);
-    if (result.status === 'error') setWhatsAppError(result.message);
+    if (result.status === 'error') setContactError(result.message);
   };
 
   const handleAccept = async (invite: ClientInvite) => {
@@ -119,34 +128,32 @@ export function MyCoachScreen() {
   };
 
   return (
-    <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh}>
-      <View style={styles.header}>
-        <ThemedText type="smallBold" themeColor="accent">
-          My Coach
-        </ThemedText>
-        <ThemedText type="subtitle" style={styles.title}>
-          Your coaching hub
-        </ThemedText>
-        <ThemedText themeColor="textSecondary">
-          {coach
-            ? "Here's the coach you're working with."
-            : 'Once a coach invites you and you accept, they’ll show up here.'}
-        </ThemedText>
-      </View>
+    <ScreenScaffold refreshing={isRefreshing} onRefresh={refresh}>
+      <DetailHeader
+        title="Your coach"
+        subtitle={
+          coach ? "Here's the coach you're working with." : 'Once a coach invites you and you accept, they’ll show up here.'
+        }
+      />
 
       {isLoading ? (
         <ActivityIndicator color={theme.textSecondary} />
       ) : coach ? (
         <ThemedView type="backgroundElement" style={[styles.panel, { borderColor: theme.border }]}>
-          <ThemedText type="smallBold">{coach.name}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {coach.email}
-          </ThemedText>
-          {formatPhone(coach.phone) ? (
-            <ThemedText type="small" themeColor="textSecondary">
-              {formatPhone(coach.phone)}
-            </ThemedText>
-          ) : null}
+          <View style={styles.identity}>
+            <Avatar name={coach.name} size="md" imageUrl={coach.avatarUrl ?? null} />
+            <View style={styles.identityCopy}>
+              <ThemedText type="smallBold">{coach.name}</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                {coach.email}
+              </ThemedText>
+              {formatPhone(coach.phone) ? (
+                <ThemedText type="small" themeColor="textSecondary">
+                  {formatPhone(coach.phone)}
+                </ThemedText>
+              ) : null}
+            </View>
+          </View>
 
           {/* Nothing renders when there is no record: an open-ended
               relationship is normal, not a missing value. */}
@@ -160,16 +167,17 @@ export function MyCoachScreen() {
             </ThemedText>
           ) : null}
 
-          <View style={styles.actionRow}>
-            <Pressable
-              style={[styles.actionButton, { backgroundColor: theme.accent }]}
-              onPress={() => notAvailableYet('Call')}>
-              <ThemedText type="smallBold" themeColor="onAccent">
-                Call
-              </ThemedText>
-            </Pressable>
-            {/* Hidden, not disabled, when the coach has no usable number. */}
-            {buildWhatsAppUrl(coach.phone) ? (
+          {/* Hidden, not disabled, when the coach has no usable number. */}
+          {buildTelUrl(coach.phone) && buildWhatsAppUrl(coach.phone) ? (
+            <View style={styles.actionRow}>
+              <Pressable
+                accessibilityRole="button"
+                style={[styles.actionButton, { backgroundColor: theme.accent }]}
+                onPress={() => void handleCall()}>
+                <ThemedText type="smallBold" themeColor="onAccent">
+                  Call
+                </ThemedText>
+              </Pressable>
               <Pressable
                 accessibilityRole="button"
                 style={[styles.actionButton, { borderColor: theme.border, borderWidth: 1 }]}
@@ -178,11 +186,11 @@ export function MyCoachScreen() {
                   Message on WhatsApp
                 </ThemedText>
               </Pressable>
-            ) : null}
-          </View>
-          {whatsAppError ? (
+            </View>
+          ) : null}
+          {contactError ? (
             <ThemedText type="small" themeColor="danger">
-              {whatsAppError}
+              {contactError}
             </ThemedText>
           ) : null}
         </ThemedView>
@@ -272,12 +280,14 @@ export function MyCoachScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    gap: Spacing.one,
+  identity: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
   },
-  title: {
-    fontSize: 32,
-    lineHeight: 38,
+  identityCopy: {
+    flex: 1,
+    gap: Spacing.half,
   },
   panel: {
     borderRadius: Spacing.two,

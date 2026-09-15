@@ -4,13 +4,14 @@ import { logger } from "../../config/logger.js";
 import { prisma } from "../../config/prisma.config.js";
 import { assertCoachApproved } from "../../utils/coach-approval.js";
 import { createSubscriptionFromInvite, effectiveStatus } from "../subscription/service.js";
+import { getSignedReadUrl } from "../upload/service.js";
 import { normalizeEmail } from "../../utils/email.js";
 
 type PersonSummary = { id: string; name: string; email: string };
 
 type InviteRow = CoachClientInvite & {
-  coach?: (PersonSummary & { phone?: string | null }) | null;
-  client?: PersonSummary | null;
+  coach?: (PersonSummary & { phone?: string | null; avatarUrl?: string | null }) | null;
+  client?: (PersonSummary & { avatarUrl?: string | null }) | null;
 };
 
 function serializeInvite(row: InviteRow) {
@@ -56,12 +57,36 @@ export async function createInvite(
   return serializeInvite(invite);
 }
 
+/**
+ * The client's photo rides along only once they've accepted. Before that, the
+ * coach has typed an email address, nothing more — and showing the photo of
+ * whoever owns it would turn an invite into a way to look people up.
+ */
+async function withClientAvatar(
+  row: CoachClientInvite & {
+    client: (PersonSummary & { clientProfile: { avatarKey: string | null } | null }) | null;
+  },
+) {
+  if (!row.client) return { ...row, client: null };
+  const { clientProfile, ...client } = row.client;
+  return {
+    ...row,
+    client:
+      row.status === "ACCEPTED"
+        ? { ...client, avatarUrl: await getSignedReadUrl(clientProfile?.avatarKey ?? null) }
+        : client,
+  };
+}
+
 export async function listCoachInvites(coachId: string, status?: InviteStatus) {
-  const rows = await prisma.coachClientInvite.findMany({
+  const found = await prisma.coachClientInvite.findMany({
     where: { coachId, ...(status ? { status } : {}) },
-    include: { client: { select: { id: true, name: true, email: true } } },
+    include: {
+      client: { select: { id: true, name: true, email: true, clientProfile: { select: { avatarKey: true } } } },
+    },
     orderBy: { createdAt: "desc" },
   });
+  const rows = await Promise.all(found.map(withClientAvatar));
 
   // The roster screen needs a lapsed marker per row. Fetching it here in one
   // query beats one request per client from the app, and this route is
@@ -89,18 +114,28 @@ export async function listCoachInvites(coachId: string, status?: InviteStatus) {
 }
 
 /**
- * The coach's phone rides along only on an ACCEPTED invite — it is what the
- * client's My Coach screen messages them on. A pending or declined invite is
- * not a relationship, so it gets name and email only. Gated on each row's own
- * status rather than the query filter, so a change to the filter can't leak it.
+ * The coach's phone and photo ride along only on an ACCEPTED invite — they are
+ * what the client's Home strip and My Coach screen show and call. A pending or
+ * declined invite is not a relationship, so it gets name and email only. Gated
+ * on each row's own status rather than the query filter, so a change to the
+ * filter can't leak them.
  */
-function serializeClientInvite(
-  row: CoachClientInvite & { coach: PersonSummary & { coachProfile: { phone: string | null } | null } },
+async function serializeClientInvite(
+  row: CoachClientInvite & {
+    coach: PersonSummary & { coachProfile: { phone: string | null; avatarKey: string | null } | null };
+  },
 ) {
   const { coachProfile, ...coach } = row.coach;
   return serializeInvite({
     ...row,
-    coach: row.status === "ACCEPTED" ? { ...coach, phone: coachProfile?.phone ?? null } : coach,
+    coach:
+      row.status === "ACCEPTED"
+        ? {
+            ...coach,
+            phone: coachProfile?.phone ?? null,
+            avatarUrl: await getSignedReadUrl(coachProfile?.avatarKey ?? null),
+          }
+        : coach,
   });
 }
 
@@ -109,11 +144,13 @@ export async function listClientInvites(clientId: string, email: string, status:
   const rows = await prisma.coachClientInvite.findMany({
     where: { status, OR: [{ clientId }, { clientEmail }] },
     include: {
-      coach: { select: { id: true, name: true, email: true, coachProfile: { select: { phone: true } } } },
+      coach: {
+        select: { id: true, name: true, email: true, coachProfile: { select: { phone: true, avatarKey: true } } },
+      },
     },
     orderBy: { createdAt: "desc" },
   });
-  return rows.map(serializeClientInvite);
+  return Promise.all(rows.map(serializeClientInvite));
 }
 
 async function respondToInvite(inviteId: string, userId: string, email: string, status: "ACCEPTED" | "DECLINED") {

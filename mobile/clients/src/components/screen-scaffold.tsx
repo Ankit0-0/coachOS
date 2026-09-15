@@ -1,5 +1,5 @@
-import { PropsWithChildren } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, ViewStyle } from 'react-native';
+import { PropsWithChildren, ReactNode } from 'react';
+import { RefreshControl, ScrollView, StyleSheet, View, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedView } from '@/components/themed-view';
@@ -16,6 +16,8 @@ type ScreenScaffoldProps = PropsWithChildren<{
    */
   refreshing?: boolean;
   onRefresh?: () => void;
+  /** Stays put above the scrolling content, e.g. Home's coach strip. */
+  pinnedHeader?: ReactNode;
 }>;
 
 export function ScreenScaffold({
@@ -24,12 +26,14 @@ export function ScreenScaffold({
   includeBottomTabInset = false,
   refreshing = false,
   onRefresh,
+  pinnedHeader,
 }: ScreenScaffoldProps) {
   const theme = useTheme();
 
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+        {pinnedHeader ? <View style={styles.pinnedHeader}>{pinnedHeader}</View> : null}
         <ScrollView
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -74,5 +78,9 @@ const styles = StyleSheet.create({
   },
   contentWithTabs: {
     paddingBottom: BottomTabInset + Spacing.four,
+  },
+  pinnedHeader: {
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.two,
   },
 });

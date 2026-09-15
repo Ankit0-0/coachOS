@@ -228,6 +228,8 @@ export interface InvitePerson {
    * ACCEPTED invite, and null when the coach hasn't added one.
    */
   phone?: string | null;
+  /** The coach's photo as a signed URL. Present only on an ACCEPTED invite; null without a photo. */
+  avatarUrl?: string | null;
 }
 
 export interface ClientInvite {

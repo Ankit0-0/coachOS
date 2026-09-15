@@ -11,6 +11,8 @@ type ClientListItemProps = {
   clientId: string;
   name: string;
   email: string;
+  /** A signed URL for the client's photo; initials show when it's null or missing. */
+  avatarUrl?: string | null;
   /**
    * Null for an open-ended relationship, which is not a lapse and shows
    * nothing. A marker appears only once a period has actually run out.
@@ -24,6 +26,7 @@ export function ClientListItem({
   clientId,
   name,
   email,
+  avatarUrl = null,
   subscriptionStatus = null,
   divider = false,
 }: ClientListItemProps) {
@@ -40,7 +43,7 @@ export function ClientListItem({
         divider && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border },
         pressed && styles.pressed,
       ]}>
-      <Avatar name={name} size="sm" />
+      <Avatar name={name} size="sm" imageUrl={avatarUrl} />
       <View style={styles.copy}>
         <ThemedText type="smallBold" numberOfLines={1}>
           {name}
