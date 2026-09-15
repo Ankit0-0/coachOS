@@ -376,7 +376,13 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
             </Card>
           </Section>
 
-          <ClientPhotos weights={weights} checkIns={checkIns} />
+          <ClientPhotos
+            weights={weights}
+            checkIns={checkIns}
+            planByAssignmentId={planByAssignmentId}
+            weightLookbackDays={WEIGHT_LOOKBACK_DAYS}
+            monthLabel={month.monthYearLabel}
+          />
 
           <Section title="Recent notes">
             {recentNotes.length === 0 ? (

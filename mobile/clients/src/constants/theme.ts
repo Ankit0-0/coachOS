@@ -15,8 +15,15 @@ export const Colors = {
     backgroundSelected: '#F1F1EF',
     textSecondary: '#60646C',
     border: '#E9E9E7',
-    accent: '#0F8B8D',
-    accentSoft: '#E4F5F4',
+    /**
+     * The landing page's #7ec8ff, darkened along the same hue (206°) until white
+     * text passes WCAG AA: #0a6eb8 is 5.3:1 against white both ways, so it works
+     * as a button fill with white labels and as accent text on light surfaces.
+     * The pale original fails at 1.8:1 behind white text.
+     */
+    accent: '#0a6eb8',
+    /** 22% of #7ec8ff over white; accent text on it is 4.7:1. */
+    accentSoft: '#e3f3ff',
     success: '#2F8F46',
     warning: '#D97904',
     /** Raised card sitting on `background`. */
@@ -29,39 +36,56 @@ export const Colors = {
     textMuted: '#8A9099',
     danger: '#C0362C',
     dangerSoft: '#FDECEA',
-    /** Data-series colours for the progress charts. */
-    chartWorkout: '#3A7BFF',
+    /** Data-series colours for the progress charts. Workout follows the accent. */
+    chartWorkout: '#0a6eb8',
     chartDiet: '#1FA971',
     /** Unfilled portion of a progress ring. */
     chartTrack: '#CBD4E1',
     /** Chart gridlines and axis labels. */
-    chartGrid: '#DDE7FF',
+    chartGrid: '#eaf6ff',
     chartAxis: '#64748B',
+    /** Dims the screen behind a bottom sheet or modal. */
+    scrim: 'rgba(5, 7, 10, 0.32)',
   },
   dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#131416',
-    backgroundSelected: '#26282C',
-    textSecondary: '#B0B4BA',
-    border: '#2A2D31',
-    accent: '#6AD4D6',
-    accentSoft: '#123133',
+    /**
+     * Mirrors the CoachOS landing page (tailwind.config.ts): ink, panel, line,
+     * muted, cream and accent. Tokens it doesn't define are derived from those.
+     */
+    text: '#f4f1ea', // cream
+    background: '#05070a', // ink
+    backgroundElement: '#0f141b', // panel
+    backgroundSelected: '#1c232d', // line
+    textSecondary: '#8b93a4', // muted
+    border: '#1c232d', // line
+    accent: '#7ec8ff',
+    /** 14% of accent over ink; accent text on it is 8.9:1. */
+    accentSoft: '#16222c',
     success: '#7CD992',
     warning: '#F5B04C',
-    surface: '#131416',
-    surfaceSunken: '#1B1D21',
-    onAccent: '#04211F',
-    textMuted: '#787E87',
+    surface: '#0f141b', // panel
+    /** Between panel and line, so a nested row still reads as inset. */
+    surfaceSunken: '#151b23',
+    /** Ink on the pale accent (11.1:1); white would be 1.8:1. */
+    onAccent: '#05070a',
+    textMuted: '#8b93a4', // muted
     danger: '#FF7A6E',
     dangerSoft: '#2A1512',
-    chartWorkout: '#6E9BFF',
+    chartWorkout: '#7ec8ff',
     chartDiet: '#4ADE9B',
-    chartTrack: '#343841',
-    chartGrid: '#23262D',
-    chartAxis: '#8A9199',
+    chartTrack: '#2a3039',
+    chartGrid: '#1c232d', // line
+    chartAxis: '#8b93a4', // muted
+    scrim: 'rgba(0, 0, 0, 0.6)',
   },
 } as const;
+
+/**
+ * The launch colour behind the app's wordmark — the landing page accent, with an ink wordmark. Fixed rather
+ * than themed: it must match the native splash in app.json, which is shown
+ * before the app knows whether the device is in light or dark mode.
+ */
+export const SplashBackground = '#7ec8ff';
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 

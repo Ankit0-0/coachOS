@@ -5,79 +5,156 @@ import { Card } from '@/components/ui/card';
 import { Section } from '@/components/ui/section';
 import { Radii, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { longDateLabel } from '@/lib/dates';
-import type { CheckIn, WeightEntry } from '@/lib/api';
+import { shortDateLabel } from '@/lib/dates';
+import type { CheckIn, DietContent, Plan, WeightEntry } from '@/lib/api';
 
-type ClientPhoto = {
+type Photo = {
   id: string;
   /** A signed URL from the API, good for about an hour. */
   url: string;
   date: string;
-  kind: 'Progress' | 'Meal';
+  /** First caption line: the weight for a physique update, the meal for a meal photo. */
+  title: string;
+  accessibilityLabel: string;
 };
 
-/**
- * Flattens the client's photos out of the two records that can carry them.
- * Newest first, so the most recent check-in is the first thing a coach sees.
- */
-function collectPhotos(weights: WeightEntry[], checkIns: CheckIn[]): ClientPhoto[] {
-  const photos: ClientPhoto[] = [];
+type ClientPhotosProps = {
+  weights: WeightEntry[];
+  checkIns: CheckIn[];
+  /**
+   * Every plan the client has been assigned, keyed by assignment id. A meal
+   * photo is stored under the meal's id, and the meal's label lives in the plan
+   * that check-in was logged against — which may be an older plan than today's.
+   */
+  planByAssignmentId: Map<string, Plan>;
+  /** How far back `weights` reaches, for the physique empty state. */
+  weightLookbackDays: number;
+  /** The month `checkIns` covers (it follows the calendar), e.g. "September 2026". */
+  monthLabel: string;
+};
 
-  for (const entry of weights) {
-    if (entry.photoUrl) {
-      photos.push({ id: `weight-${entry.id}`, url: entry.photoUrl, date: entry.date, kind: 'Progress' });
-    }
-  }
+const newestFirst = (a: Photo, b: Photo) => b.date.localeCompare(a.date);
 
+function physiquePhotos(weights: WeightEntry[]): Photo[] {
+  return weights
+    .filter((entry) => entry.photoUrl)
+    .map((entry) => {
+      const day = shortDateLabel(entry.date);
+      return {
+        id: `weight-${entry.id}`,
+        url: entry.photoUrl as string,
+        date: entry.date,
+        title: `${entry.weightKg} kg`,
+        accessibilityLabel: `Physique update from ${day}, ${entry.weightKg} kilograms`,
+      };
+    })
+    .sort(newestFirst);
+}
+
+/** The label of a meal in a diet plan, e.g. "Breakfast", or null if it can't be found. */
+function mealLabel(plan: Plan | undefined, mealId: string): string | null {
+  if (!plan || plan.type !== 'DIET') return null;
+  const meals = (plan.content as DietContent).meals ?? [];
+  return meals.find((meal) => meal.id === mealId)?.label ?? null;
+}
+
+function mealPhotos(checkIns: CheckIn[], planByAssignmentId: Map<string, Plan>): Photo[] {
+  const photos: Photo[] = [];
   for (const checkIn of checkIns) {
-    for (const [itemId, url] of Object.entries(checkIn.photoUrls ?? {})) {
-      photos.push({ id: `checkin-${checkIn.id}-${itemId}`, url, date: checkIn.date, kind: 'Meal' });
+    const plan = planByAssignmentId.get(checkIn.assignmentId);
+    for (const [mealId, url] of Object.entries(checkIn.photoUrls ?? {})) {
+      // A meal edited out of the plan since keeps its photo, just not its name.
+      const label = mealLabel(plan, mealId) ?? 'Meal';
+      const day = shortDateLabel(checkIn.date);
+      photos.push({
+        id: `checkin-${checkIn.id}-${mealId}`,
+        url,
+        date: checkIn.date,
+        title: label,
+        accessibilityLabel: `${label}, ${day}`,
+      });
     }
   }
+  return photos.sort(newestFirst);
+}
 
-  return photos.sort((a, b) => b.date.localeCompare(a.date));
+function PhotoGroup({ title, emptyMessage, photos }: { title: string; emptyMessage: string; photos: Photo[] }) {
+  const theme = useTheme();
+
+  return (
+    <View style={styles.group}>
+      <View style={styles.groupHeader}>
+        <ThemedText type="smallBold">{title}</ThemedText>
+        <ThemedText type="meta">{photos.length}</ThemedText>
+      </View>
+
+      {photos.length === 0 ? (
+        <ThemedText type="small" themeColor="textSecondary">
+          {emptyMessage}
+        </ThemedText>
+      ) : (
+        <View style={styles.grid}>
+          {photos.map((photo) => (
+            <View key={photo.id} style={styles.item}>
+              <Image
+                source={{ uri: photo.url }}
+                accessibilityLabel={photo.accessibilityLabel}
+                style={[styles.image, { backgroundColor: theme.surfaceSunken, borderColor: theme.border }]}
+              />
+              <ThemedText type="small" numberOfLines={1}>
+                {photo.title}
+              </ThemedText>
+              <ThemedText type="meta">{shortDateLabel(photo.date)}</ThemedText>
+            </View>
+          ))}
+        </View>
+      )}
+    </View>
+  );
 }
 
 /**
  * Read-only. A coach never uploads against a client's own records, so there is
- * deliberately no picker here — only what the client sent.
+ * deliberately no picker here — only what the client sent. Physique updates and
+ * meal photos are kept apart because they answer different questions.
  */
-export function ClientPhotos({ weights, checkIns }: { weights: WeightEntry[]; checkIns: CheckIn[] }) {
+export function ClientPhotos({ weights, checkIns, planByAssignmentId, weightLookbackDays, monthLabel }: ClientPhotosProps) {
   const theme = useTheme();
-  const photos = collectPhotos(weights, checkIns);
 
   return (
     <Section title="Photos">
-      {photos.length === 0 ? (
-        <Card>
-          <ThemedText type="small" themeColor="textSecondary">
-            Nothing yet. Progress and meal photos your client adds show up here.
-          </ThemedText>
-        </Card>
-      ) : (
-        <Card>
-          <View style={styles.grid}>
-            {photos.map((photo) => (
-              <View key={photo.id} style={styles.item}>
-                <Image
-                  source={{ uri: photo.url }}
-                  accessibilityLabel={`${photo.kind} photo from ${longDateLabel(photo.date)}`}
-                  style={[styles.image, { backgroundColor: theme.surfaceSunken, borderColor: theme.border }]}
-                />
-                <ThemedText type="meta">{longDateLabel(photo.date)}</ThemedText>
-                <ThemedText type="meta" themeColor="textMuted">
-                  {photo.kind}
-                </ThemedText>
-              </View>
-            ))}
-          </View>
-        </Card>
-      )}
+      <Card style={styles.card}>
+        <PhotoGroup
+          title="Physique updates"
+          emptyMessage={`No physique photos in the last ${weightLookbackDays} days.`}
+          photos={physiquePhotos(weights)}
+        />
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+        <PhotoGroup
+          title="Meal photos"
+          emptyMessage={`No meal photos in ${monthLabel}.`}
+          photos={mealPhotos(checkIns, planByAssignmentId)}
+        />
+      </Card>
     </Section>
   );
 }
 
 const styles = StyleSheet.create({
+  card: {
+    gap: Spacing.four,
+  },
+  group: {
+    gap: Spacing.three,
+  },
+  groupHeader: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+  },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+  },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',

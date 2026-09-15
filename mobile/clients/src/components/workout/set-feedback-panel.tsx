@@ -33,10 +33,10 @@ export function SetFeedbackPanel({
 
   return (
     <Modal animationType="slide" transparent visible onRequestClose={onClose}>
-      <View style={styles.backdrop}>
+      <View style={[styles.backdrop, { backgroundColor: theme.scrim }]}>
         <Pressable style={styles.dismissArea} onPress={onClose} />
         <ThemedView type="background" style={[styles.panel, { borderColor: theme.border }]}>
-          <View style={styles.handle} />
+          <View style={[styles.handle, { backgroundColor: theme.textMuted }]} />
           <View style={styles.header}>
             <View style={styles.headerCopy}>
               <ThemedText type="smallBold" themeColor="accent">
@@ -106,8 +106,11 @@ export function SetFeedbackPanel({
               <Pressable
                 accessibilityRole="button"
                 onPress={() => onChange({ ...feedback, videoReference: 'Recorded video captured locally' })}
-                style={({ pressed }) => [styles.videoButton, { borderColor: theme.border, opacity: pressed ? 0.7 : 1 }]}>
-                <ThemedText type="smallBold" style={styles.videoButtonText}>
+                style={({ pressed }) => [
+                  styles.videoButton,
+                  { borderColor: theme.border, backgroundColor: theme.accentSoft, opacity: pressed ? 0.7 : 1 },
+                ]}>
+                <ThemedText type="smallBold" themeColor="accent">
                   Record video
                 </ThemedText>
               </Pressable>
@@ -115,16 +118,19 @@ export function SetFeedbackPanel({
               <Pressable
                 accessibilityRole="button"
                 onPress={() => onChange({ ...feedback, videoReference: 'Video uploaded locally' })}
-                style={({ pressed }) => [styles.videoButton, { borderColor: theme.border, opacity: pressed ? 0.7 : 1 }]}>
-                <ThemedText type="smallBold" style={styles.videoButtonText}>
+                style={({ pressed }) => [
+                  styles.videoButton,
+                  { borderColor: theme.border, backgroundColor: theme.accentSoft, opacity: pressed ? 0.7 : 1 },
+                ]}>
+                <ThemedText type="smallBold" themeColor="accent">
                   Upload video
                 </ThemedText>
               </Pressable>
             </View>
 
             {feedback.videoReference ? (
-              <View style={[styles.videoStatus, { backgroundColor: '#E8FFF6', borderColor: '#99E2B4' }]}>
-                <ThemedText type="smallBold" style={{ color: '#166534' }}>
+              <View style={[styles.videoStatus, { backgroundColor: theme.surfaceSunken, borderColor: theme.border }]}>
+                <ThemedText type="smallBold" themeColor="success">
                   {feedback.videoReference}
                 </ThemedText>
               </View>
@@ -149,7 +155,6 @@ const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.32)',
   },
   dismissArea: {
     flex: 1,
@@ -165,7 +170,6 @@ const styles = StyleSheet.create({
     width: 42,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#A8ADB5',
     alignSelf: 'center',
   },
   header: {
@@ -237,10 +241,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.two,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(58, 123, 255, 0.08)',
-  },
-  videoButtonText: {
-    color: '#3A7BFF',
   },
   videoStatus: {
     borderRadius: Spacing.two,
