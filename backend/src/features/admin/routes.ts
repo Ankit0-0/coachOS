@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
 
-import { logger } from "../../config/logger.js";
+import { getLogger } from "../../config/logger.js";
 import { requireAuth } from "../../middleware/auth.js";
 import { requireRole } from "../../middleware/role.js";
 import { sendError } from "../../utils/http-error.js";
@@ -33,7 +33,7 @@ function respondToAdminError(response: Response, request: Request, error: unknow
   } else if (code === "CONTENT_TYPE_MISMATCH") {
     sendError(response, 400);
   } else {
-    logger.error({ err: error, url: request.originalUrl }, "admin: unexpected error");
+    getLogger().error({ err: error, url: request.originalUrl }, "admin: unexpected error");
     sendError(response, 500);
   }
 }
@@ -51,7 +51,7 @@ adminCoachRouter.get("/", async (request, response) => {
 
   const parsed = listCoachesQuerySchema.safeParse(request.query);
   if (!parsed.success) {
-    logger.debug({ issues: parsed.error.flatten() }, "GET /admin/coaches: rejected — invalid query parameters");
+    getLogger().debug({ issues: parsed.error.flatten() }, "GET /admin/coaches: rejected — invalid query parameters");
     sendError(response, 400);
     return;
   }
@@ -118,7 +118,7 @@ adminPlanRouter.get("/", async (request, response) => {
 
   const parsed = listDefaultPlansQuerySchema.safeParse(request.query);
   if (!parsed.success) {
-    logger.debug({ issues: parsed.error.flatten() }, "GET /admin/plans: rejected — invalid query parameters");
+    getLogger().debug({ issues: parsed.error.flatten() }, "GET /admin/plans: rejected — invalid query parameters");
     sendError(response, 400);
     return;
   }
@@ -153,7 +153,7 @@ adminPlanRouter.post("/", async (request, response) => {
 
   const parsed = createDefaultPlanSchema.safeParse(request.body);
   if (!parsed.success) {
-    logger.debug({ issues: parsed.error.flatten() }, "POST /admin/plans: rejected — invalid request body");
+    getLogger().debug({ issues: parsed.error.flatten() }, "POST /admin/plans: rejected — invalid request body");
     sendError(response, 400);
     return;
   }
@@ -179,7 +179,7 @@ adminPlanRouter.patch("/:id", async (request, response) => {
 
   const parsed = updateDefaultPlanSchema.safeParse(request.body);
   if (!parsed.success) {
-    logger.debug({ issues: parsed.error.flatten() }, "PATCH /admin/plans/:id: rejected — invalid request body");
+    getLogger().debug({ issues: parsed.error.flatten() }, "PATCH /admin/plans/:id: rejected — invalid request body");
     sendError(response, 400);
     return;
   }

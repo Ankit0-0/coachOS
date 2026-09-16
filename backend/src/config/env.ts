@@ -1,10 +1,20 @@
 import "dotenv/config";
+import { createRequire } from "node:module";
+
+/** The running version, for log lines — package.json ships in the image next to src/. */
+const packageJson = createRequire(import.meta.url)("../../package.json") as { version?: string };
 
 const required = (name: string): string => {
   const value = process.env[name];
   if (!value) throw new Error(`Missing required environment variable: ${name}`);
   return value;
 };
+
+/** An on/off switch from the environment. Anything but "false"/"0" keeps the default on. */
+function boolean(value: string | undefined, fallback: boolean): boolean {
+  if (value === undefined) return fallback;
+  return !["false", "0", "no", "off"].includes(value.trim().toLowerCase());
+}
 
 /** A positive integer from the environment, or the fallback when unset or invalid. */
 function positiveInt(value: string | undefined, fallback: number): number {
@@ -37,7 +47,17 @@ export const env = {
     .split(",")
     .map((url) => url.trim())
     .filter(Boolean),
-  logLevel: process.env.LOG_LEVEL ?? (process.env.NODE_ENV === "production" ? "info" : "debug"),
+  /** Unset (or blank) means "info" in production, "debug" anywhere else. */
+  logLevel: process.env.LOG_LEVEL?.trim() || (process.env.NODE_ENV === "production" ? "info" : "debug"),
+  appVersion: process.env.APP_VERSION ?? packageJson.version ?? "unknown",
+  /**
+   * Whether a successful poll of / or /heartbeat is logged. On by default while
+   * it's worth seeing that the service is alive and being polled; set
+   * LOG_HEALTH_CHECKS=false to silence them — Render polls continuously, so
+   * that is tens of thousands of lines a month. Failing polls (4xx/5xx) are
+   * logged either way.
+   */
+  logHealthChecks: boolean(process.env.LOG_HEALTH_CHECKS, true),
   /**
    * Upper bound on the pg pool. Kept small because managed Postgres plans cap
    * total connections (Aiven's free tier allows 20): one instance at 5 leaves

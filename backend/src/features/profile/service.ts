@@ -1,6 +1,6 @@
 import type { ClientProfile, CoachProfile, User } from "@prisma/client";
 
-import { logger } from "../../config/logger.js";
+import { getLogger } from "../../config/logger.js";
 import { prisma } from "../../config/prisma.config.js";
 import { getSignedReadUrl, isOwnedKey } from "../upload/service.js";
 
@@ -37,7 +37,7 @@ export async function getCoachProfile(coachId: string) {
     prisma.coachProfile.findUnique({ where: { userId: coachId } }),
   ]);
   if (!user) {
-    logger.debug({ coachId }, "getCoachProfile: rejected — user record not found");
+    getLogger().debug({ coachId }, "getCoachProfile: rejected — user record not found");
     throw new Error("USER_NOT_FOUND");
   }
   return serializeCoachProfile(user, profile);
@@ -65,7 +65,7 @@ export async function updateCoachProfile(
     : await prisma.user.findUnique({ where: { id: coachId } });
 
   if (!user) {
-    logger.debug({ coachId }, "updateCoachProfile: rejected — user record not found");
+    getLogger().debug({ coachId }, "updateCoachProfile: rejected — user record not found");
     throw new Error("USER_NOT_FOUND");
   }
 
@@ -93,7 +93,7 @@ export async function updateCoachProfile(
       })
     : await prisma.coachProfile.findUnique({ where: { userId: coachId } });
 
-  logger.debug({ coachId, fields: Object.keys(input) }, "updateCoachProfile: profile updated");
+  getLogger().debug({ coachId, fields: Object.keys(input) }, "updateCoachProfile: profile updated");
   return serializeCoachProfile(user, profile);
 }
 
@@ -119,7 +119,7 @@ export async function getClientProfile(clientId: string) {
     prisma.clientProfile.findUnique({ where: { userId: clientId } }),
   ]);
   if (!user) {
-    logger.debug({ clientId }, "getClientProfile: rejected — user record not found");
+    getLogger().debug({ clientId }, "getClientProfile: rejected — user record not found");
     throw new Error("USER_NOT_FOUND");
   }
   return serializeClientProfile(user, profile);
@@ -146,7 +146,7 @@ export async function updateClientProfile(
     : await prisma.user.findUnique({ where: { id: clientId } });
 
   if (!user) {
-    logger.debug({ clientId }, "updateClientProfile: rejected — user record not found");
+    getLogger().debug({ clientId }, "updateClientProfile: rejected — user record not found");
     throw new Error("USER_NOT_FOUND");
   }
 
@@ -172,6 +172,6 @@ export async function updateClientProfile(
       })
     : await prisma.clientProfile.findUnique({ where: { userId: clientId } });
 
-  logger.debug({ clientId, fields: Object.keys(input) }, "updateClientProfile: profile updated");
+  getLogger().debug({ clientId, fields: Object.keys(input) }, "updateClientProfile: profile updated");
   return serializeClientProfile(user, profile);
 }

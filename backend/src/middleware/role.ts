@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import type { Role } from "@prisma/client";
 
-import { logger } from "../config/logger.js";
+import { getLogger } from "../config/logger.js";
 import { sendError } from "../utils/http-error.js";
 
 /**
@@ -12,7 +12,7 @@ import { sendError } from "../utils/http-error.js";
 export function requireRole(request: Request, response: Response, role: Role) {
   const user = request.user;
   if (!user) {
-    logger.debug(
+    getLogger().warn(
       { method: request.method, url: request.originalUrl },
       "requireRole: rejected — no authenticated user on request (requireAuth should have run first)",
     );
@@ -20,7 +20,7 @@ export function requireRole(request: Request, response: Response, role: Role) {
     return null;
   }
   if (user.role !== role) {
-    logger.debug(
+    getLogger().warn(
       { method: request.method, url: request.originalUrl, userId: user.id, userRole: user.role, requiredRole: role },
       "requireRole: rejected — user role does not match required role",
     );

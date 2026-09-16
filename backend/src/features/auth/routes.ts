@@ -1,6 +1,6 @@
 import { Router } from "express";
 
-import { logger } from "../../config/logger.js";
+import { getLogger } from "../../config/logger.js";
 import { sendError } from "../../utils/http-error.js";
 import {
   forgotPasswordSchema,
@@ -16,7 +16,7 @@ export const authRouter: ReturnType<typeof Router> = Router();
 authRouter.post("/register", async (request, response) => {
   const parsed = registerSchema.safeParse(request.body);
   if (!parsed.success) {
-    logger.debug({ issues: parsed.error.flatten() }, "POST /auth/register: rejected — invalid request body");
+    getLogger().debug({ issues: parsed.error.flatten() }, "POST /auth/register: rejected — invalid request body");
     sendError(response, 400);
     return;
   }
@@ -28,7 +28,7 @@ authRouter.post("/register", async (request, response) => {
   } catch (error) {
     const emailInUse = error instanceof Error && error.message === "EMAIL_IN_USE";
     if (!emailInUse) {
-      logger.error({ err: error }, "POST /auth/register: unexpected error");
+      getLogger().error({ err: error }, "POST /auth/register: unexpected error");
     }
     sendError(response, emailInUse ? 409 : 500);
   }
@@ -37,7 +37,7 @@ authRouter.post("/register", async (request, response) => {
 authRouter.post("/login", async (request, response) => {
   const parsed = loginSchema.safeParse(request.body);
   if (!parsed.success) {
-    logger.debug({ issues: parsed.error.flatten() }, "POST /auth/login: rejected — invalid request body");
+    getLogger().debug({ issues: parsed.error.flatten() }, "POST /auth/login: rejected — invalid request body");
     sendError(response, 400);
     return;
   }
@@ -56,7 +56,7 @@ authRouter.post("/login", async (request, response) => {
 authRouter.post("/google", async (request, response) => {
   const parsed = googleSchema.safeParse(request.body);
   if (!parsed.success) {
-    logger.debug({ issues: parsed.error.flatten() }, "POST /auth/google: rejected — invalid request body");
+    getLogger().debug({ issues: parsed.error.flatten() }, "POST /auth/google: rejected — invalid request body");
     sendError(response, 400);
     return;
   }
@@ -74,7 +74,7 @@ authRouter.post("/google", async (request, response) => {
     const notConfigured = code === "GOOGLE_NOT_CONFIGURED";
     const invalidToken = code === "INVALID_GOOGLE_TOKEN";
     if (!notConfigured && !invalidToken) {
-      logger.error({ err: error }, "POST /auth/google: unexpected error");
+      getLogger().error({ err: error }, "POST /auth/google: unexpected error");
     }
     sendError(response, notConfigured ? 503 : 401);
   }
@@ -83,7 +83,7 @@ authRouter.post("/google", async (request, response) => {
 authRouter.post("/forgot-password", async (request, response) => {
   const parsed = forgotPasswordSchema.safeParse(request.body);
   if (!parsed.success) {
-    logger.debug({ issues: parsed.error.flatten() }, "POST /auth/forgot-password: rejected — invalid request body");
+    getLogger().debug({ issues: parsed.error.flatten() }, "POST /auth/forgot-password: rejected — invalid request body");
     sendError(response, 400);
     return;
   }
@@ -93,7 +93,7 @@ authRouter.post("/forgot-password", async (request, response) => {
   } catch (error) {
     // Swallow: the response must not differ based on what happened server-side,
     // or it becomes a way to test which addresses have accounts.
-    logger.error({ err: error }, "POST /auth/forgot-password: unexpected error");
+    getLogger().error({ err: error }, "POST /auth/forgot-password: unexpected error");
   }
 
   response.json({
@@ -104,7 +104,7 @@ authRouter.post("/forgot-password", async (request, response) => {
 authRouter.post("/reset-password", async (request, response) => {
   const parsed = resetPasswordSchema.safeParse(request.body);
   if (!parsed.success) {
-    logger.debug({ issues: parsed.error.flatten() }, "POST /auth/reset-password: rejected — invalid request body");
+    getLogger().debug({ issues: parsed.error.flatten() }, "POST /auth/reset-password: rejected — invalid request body");
     sendError(response, 400);
     return;
   }
@@ -120,7 +120,7 @@ authRouter.post("/reset-password", async (request, response) => {
       sendError(response, 400);
       return;
     }
-    logger.error({ err: error }, "POST /auth/reset-password: unexpected error");
+    getLogger().error({ err: error }, "POST /auth/reset-password: unexpected error");
     sendError(response, 500);
   }
 });

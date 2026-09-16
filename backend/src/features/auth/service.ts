@@ -3,7 +3,7 @@ import type { Role, User } from "@prisma/client";
 
 import { env } from "../../config/env.js";
 import { GOOGLE_PROVIDER } from "../../constants/auth.js";
-import { logger } from "../../config/logger.js";
+import { getLogger } from "../../config/logger.js";
 import { prisma } from "../../config/prisma.config.js";
 import { normalizeEmail } from "../../utils/email.js";
 import { sendPasswordResetEmail } from "../../utils/mailer.js";
@@ -47,7 +47,7 @@ export async function register(input: {
   const email = normalizeEmail(input.email);
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
-    logger.debug({ email }, "register: rejected — email already in use");
+    getLogger().debug({ email }, "register: rejected — email already in use");
     throw new Error("EMAIL_IN_USE");
   }
 
@@ -62,7 +62,7 @@ export async function register(input: {
       ...(input.role === "COACH" ? { coachApprovalStatus: "PENDING" as const } : {}),
     },
   });
-  logger.debug({ userId: user.id, email, role: user.role }, "register: new user created");
+  getLogger().info({ userId: user.id, email, role: user.role }, "register: new user created");
   return result(user);
 }
 
@@ -70,24 +70,24 @@ export async function login(input: { email: string; password: string }) {
   const email = normalizeEmail(input.email);
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) {
-    logger.debug({ email }, "login: rejected — no user with this email");
+    getLogger().warn({ email }, "login: rejected — no user with this email");
     throw new Error("INVALID_CREDENTIALS");
   }
   if (!user.password) {
-    logger.debug({ email, userId: user.id }, "login: rejected — account has no password set (Google-only account)");
+    getLogger().warn({ email, userId: user.id }, "login: rejected — account has no password set (Google-only account)");
     throw new Error("INVALID_CREDENTIALS");
   }
   if (!(await verifyPassword(input.password, user.password))) {
-    logger.debug({ email, userId: user.id }, "login: rejected — password did not match");
+    getLogger().warn({ email, userId: user.id }, "login: rejected — password did not match");
     throw new Error("INVALID_CREDENTIALS");
   }
-  logger.debug({ email, userId: user.id }, "login: successful");
+  getLogger().info({ email, userId: user.id }, "login: successful");
   return result(user);
 }
 
 export async function loginWithGoogle(input: { idToken: string; role?: Role }) {
   if (!env.googleClientId) {
-    logger.debug("loginWithGoogle: rejected — GOOGLE_CLIENT_ID is not configured on the server");
+    getLogger().error("loginWithGoogle: rejected — GOOGLE_CLIENT_ID is not configured on the server");
     throw new Error("GOOGLE_NOT_CONFIGURED");
   }
   const ticket = await googleClient.verifyIdToken({
@@ -96,7 +96,7 @@ export async function loginWithGoogle(input: { idToken: string; role?: Role }) {
   });
   const payload = ticket.getPayload();
   if (!payload?.sub || !payload.email || payload.email_verified !== true) {
-    logger.debug(
+    getLogger().warn(
       { hasSub: !!payload?.sub, hasEmail: !!payload?.email, emailVerified: payload?.email_verified },
       "loginWithGoogle: rejected — Google token payload missing sub/email or email unverified",
     );
@@ -136,7 +136,7 @@ export async function requestPasswordReset(input: { email: string }) {
   const email = normalizeEmail(input.email);
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) {
-    logger.debug({ email }, "requestPasswordReset: no account for this email — responding generically anyway");
+    getLogger().debug({ email }, "requestPasswordReset: no account for this email — responding generically anyway");
     return;
   }
 
@@ -150,14 +150,14 @@ export async function requestPasswordReset(input: { email: string }) {
   });
 
   await sendPasswordResetEmail(user.email, code);
-  logger.debug({ email, userId: user.id }, "requestPasswordReset: reset code issued");
+  getLogger().info({ email, userId: user.id }, "requestPasswordReset: reset code issued");
 }
 
 export async function resetPassword(input: { email: string; code: string; newPassword: string }) {
   const email = normalizeEmail(input.email);
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) {
-    logger.debug({ email }, "resetPassword: rejected — no account for this email");
+    getLogger().warn({ email }, "resetPassword: rejected — no account for this email");
     throw new Error("INVALID_RESET_CODE");
   }
 
@@ -166,12 +166,12 @@ export async function resetPassword(input: { email: string; code: string; newPas
     orderBy: { createdAt: "desc" },
   });
   if (!token) {
-    logger.debug({ email, userId: user.id }, "resetPassword: rejected — no unused, unexpired code outstanding");
+    getLogger().warn({ email, userId: user.id }, "resetPassword: rejected — no unused, unexpired code outstanding");
     throw new Error("INVALID_RESET_CODE");
   }
 
   if (token.attempts >= RESET_MAX_ATTEMPTS) {
-    logger.debug(
+    getLogger().warn(
       { email, userId: user.id, tokenId: token.id, attempts: token.attempts },
       "resetPassword: rejected — too many failed attempts against this code",
     );
@@ -183,7 +183,7 @@ export async function resetPassword(input: { email: string; code: string; newPas
       where: { id: token.id },
       data: { attempts: { increment: 1 } },
     });
-    logger.debug(
+    getLogger().warn(
       { email, userId: user.id, tokenId: token.id, attempts: updated.attempts },
       "resetPassword: rejected — code did not match",
     );
@@ -203,5 +203,5 @@ export async function resetPassword(input: { email: string; code: string; newPas
     }),
   ]);
 
-  logger.debug({ email, userId: user.id }, "resetPassword: password changed and outstanding codes invalidated");
+  getLogger().info({ email, userId: user.id }, "resetPassword: password changed and outstanding codes invalidated");
 }

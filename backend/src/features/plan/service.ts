@@ -1,6 +1,6 @@
 import type { Plan, PlanAssignment, PlanType, Prisma } from "@prisma/client";
 
-import { logger } from "../../config/logger.js";
+import { getLogger } from "../../config/logger.js";
 import { prisma } from "../../config/prisma.config.js";
 import { assertCoachApproved } from "../../utils/coach-approval.js";
 import { findAcceptedInvite } from "../../utils/coach-access.js";
@@ -59,7 +59,7 @@ export async function createPlan(
 
   const count = await prisma.plan.count({ where: { createdById: coachId, type: input.type, isDefault: false } });
   if (count >= PLAN_LIMIT_PER_TYPE) {
-    logger.debug({ coachId, type: input.type, count, limit: PLAN_LIMIT_PER_TYPE }, "createPlan: rejected — plan limit reached");
+    getLogger().debug({ coachId, type: input.type, count, limit: PLAN_LIMIT_PER_TYPE }, "createPlan: rejected — plan limit reached");
     throw new Error("PLAN_LIMIT_REACHED");
   }
 
@@ -72,7 +72,7 @@ export async function createPlan(
       createdById: coachId,
     },
   });
-  logger.debug({ coachId, planId: plan.id, type: plan.type }, "createPlan: plan created");
+  getLogger().info({ coachId, planId: plan.id, type: plan.type }, "createPlan: plan created");
   return serializePlan(plan);
 }
 
@@ -87,7 +87,7 @@ export async function listCoachPlans(coachId: string, type: PlanType) {
 export async function getPlan(coachId: string, planId: string) {
   const plan = await findAccessiblePlan(coachId, planId);
   if (!plan) {
-    logger.debug({ coachId, planId }, "getPlan: rejected — not found or not accessible to this coach");
+    getLogger().debug({ coachId, planId }, "getPlan: rejected — not found or not accessible to this coach");
     throw new Error("PLAN_NOT_FOUND");
   }
   return serializePlan(plan);
@@ -100,11 +100,11 @@ export async function updatePlan(
 ) {
   const plan = await prisma.plan.findUnique({ where: { id: planId } });
   if (!plan) {
-    logger.debug({ coachId, planId }, "updatePlan: rejected — plan not found");
+    getLogger().debug({ coachId, planId }, "updatePlan: rejected — plan not found");
     throw new Error("PLAN_NOT_FOUND");
   }
   if (plan.isDefault || plan.createdById !== coachId) {
-    logger.debug(
+    getLogger().warn(
       { coachId, planId, isDefault: plan.isDefault, ownerId: plan.createdById },
       "updatePlan: rejected — not the owner, or plan is a default",
     );
@@ -114,7 +114,7 @@ export async function updatePlan(
   if (input.content !== undefined) {
     const contentType = contentTypeOf(input.content);
     if (contentType !== plan.type) {
-      logger.debug(
+      getLogger().debug(
         { coachId, planId, planType: plan.type, contentType },
         "updatePlan: rejected — content shape does not match the plan's type",
       );
@@ -130,18 +130,18 @@ export async function updatePlan(
       ...(input.content !== undefined ? { content: input.content } : {}),
     },
   });
-  logger.debug({ coachId, planId }, "updatePlan: plan updated");
+  getLogger().info({ coachId, planId }, "updatePlan: plan updated");
   return serializePlan(updated);
 }
 
 export async function deletePlan(coachId: string, planId: string) {
   const plan = await prisma.plan.findUnique({ where: { id: planId } });
   if (!plan) {
-    logger.debug({ coachId, planId }, "deletePlan: rejected — plan not found");
+    getLogger().debug({ coachId, planId }, "deletePlan: rejected — plan not found");
     throw new Error("PLAN_NOT_FOUND");
   }
   if (plan.isDefault || plan.createdById !== coachId) {
-    logger.debug(
+    getLogger().warn(
       { coachId, planId, isDefault: plan.isDefault, ownerId: plan.createdById },
       "deletePlan: rejected — not the owner, or plan is a default",
     );
@@ -150,7 +150,7 @@ export async function deletePlan(coachId: string, planId: string) {
 
   const activeAssignment = await prisma.planAssignment.findFirst({ where: { planId, status: "ACTIVE" } });
   if (activeAssignment) {
-    logger.debug(
+    getLogger().debug(
       { coachId, planId, assignmentId: activeAssignment.id },
       "deletePlan: rejected — a client is currently active on this plan",
     );
@@ -158,7 +158,7 @@ export async function deletePlan(coachId: string, planId: string) {
   }
 
   await prisma.plan.delete({ where: { id: planId } });
-  logger.debug({ coachId, planId }, "deletePlan: plan deleted");
+  getLogger().info({ coachId, planId }, "deletePlan: plan deleted");
 }
 
 export async function createAssignment(coachId: string, input: { clientId: string; planId: string }) {
@@ -166,7 +166,7 @@ export async function createAssignment(coachId: string, input: { clientId: strin
 
   const invite = await findAcceptedInvite(coachId, input.clientId);
   if (!invite) {
-    logger.debug(
+    getLogger().warn(
       { coachId, clientId: input.clientId },
       "createAssignment: rejected — no accepted invite between this coach and client",
     );
@@ -175,7 +175,7 @@ export async function createAssignment(coachId: string, input: { clientId: strin
 
   const plan = await findAccessiblePlan(coachId, input.planId);
   if (!plan) {
-    logger.debug({ coachId, planId: input.planId }, "createAssignment: rejected — plan not found or not accessible");
+    getLogger().debug({ coachId, planId: input.planId }, "createAssignment: rejected — plan not found or not accessible");
     throw new Error("PLAN_NOT_FOUND");
   }
 
@@ -196,7 +196,7 @@ export async function createAssignment(coachId: string, input: { clientId: strin
     },
     include: { plan: true },
   });
-  logger.debug(
+  getLogger().info(
     { coachId, clientId: input.clientId, planId: plan.id, assignmentId: assignment.id },
     "createAssignment: plan assigned, any prior active assignment of the same type was completed",
   );
@@ -206,7 +206,7 @@ export async function createAssignment(coachId: string, input: { clientId: strin
 export async function listClientAssignments(coachId: string, clientId: string) {
   const invite = await findAcceptedInvite(coachId, clientId);
   if (!invite) {
-    logger.debug({ coachId, clientId }, "listClientAssignments: rejected — no accepted invite between this coach and client");
+    getLogger().warn({ coachId, clientId }, "listClientAssignments: rejected — no accepted invite between this coach and client");
     throw new Error("NOT_YOUR_CLIENT");
   }
 

@@ -1,6 +1,6 @@
 import type { Subscription, SubscriptionStatus } from "@prisma/client";
 
-import { logger } from "../../config/logger.js";
+import { getLogger } from "../../config/logger.js";
 import { prisma } from "../../config/prisma.config.js";
 import { findAcceptedInvite } from "../../utils/coach-access.js";
 
@@ -59,7 +59,7 @@ function serialize(subscription: Subscription) {
 async function assertAccess(coachId: string, clientId: string, action: string) {
   const invite = await findAcceptedInvite(coachId, clientId);
   if (!invite) {
-    logger.debug({ coachId, clientId, action }, `${action}: rejected — no accepted invite between this coach and client`);
+    getLogger().warn({ coachId, clientId, action }, `${action}: rejected — no accepted invite between this coach and client`);
     throw new Error("NOT_YOUR_CLIENT");
   }
   return invite;
@@ -85,7 +85,7 @@ export async function createSubscription(
   const startDate = parseDateOnly(input.startDate);
   const endDate = parseDateOnly(input.endDate);
   if (endDate <= startDate) {
-    logger.debug({ coachId, clientId, startDate, endDate }, "createSubscription: rejected — endDate is not after startDate");
+    getLogger().debug({ coachId, clientId, startDate, endDate }, "createSubscription: rejected — endDate is not after startDate");
     throw new Error("INVALID_DATE_RANGE");
   }
 
@@ -109,7 +109,7 @@ export async function createSubscription(
     }),
   ]);
 
-  logger.debug({ coachId, clientId, subscriptionId: created.id }, "createSubscription: period created");
+  getLogger().info({ coachId, clientId, subscriptionId: created.id }, "createSubscription: period created");
   return serialize(created);
 }
 
@@ -128,7 +128,7 @@ export async function updateSubscription(
 
   const existing = await prisma.subscription.findUnique({ where: { id: subscriptionId } });
   if (!existing || existing.coachId !== coachId || existing.clientId !== clientId) {
-    logger.debug({ coachId, clientId, subscriptionId }, "updateSubscription: rejected — subscription not found for this pair");
+    getLogger().debug({ coachId, clientId, subscriptionId }, "updateSubscription: rejected — subscription not found for this pair");
     throw new Error("SUBSCRIPTION_NOT_FOUND");
   }
 
@@ -137,7 +137,7 @@ export async function updateSubscription(
   const startDate = input.startDate ? parseDateOnly(input.startDate) : existing.startDate;
   const endDate = input.endDate ? parseDateOnly(input.endDate) : existing.endDate;
   if (endDate <= startDate) {
-    logger.debug({ subscriptionId, startDate, endDate }, "updateSubscription: rejected — endDate is not after startDate");
+    getLogger().debug({ subscriptionId, startDate, endDate }, "updateSubscription: rejected — endDate is not after startDate");
     throw new Error("INVALID_DATE_RANGE");
   }
 
@@ -150,7 +150,7 @@ export async function updateSubscription(
       ...(input.notes === undefined ? {} : { notes: input.notes }),
     },
   });
-  logger.debug({ subscriptionId }, "updateSubscription: period updated");
+  getLogger().info({ subscriptionId }, "updateSubscription: period updated");
   return serialize(updated);
 }
 
@@ -192,7 +192,7 @@ export async function createSubscriptionFromInvite(
   const created = await prisma.subscription.create({
     data: { coachId, clientId, startDate, endDate, status: "ACTIVE" },
   });
-  logger.debug(
+  getLogger().info(
     { coachId, clientId, durationMonths, subscriptionId: created.id },
     "createSubscriptionFromInvite: first period created on invite acceptance",
   );

@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
 
-import { logger } from "../../config/logger.js";
+import { getLogger } from "../../config/logger.js";
 import { requireAuth } from "../../middleware/auth.js";
 import { requireRole } from "../../middleware/role.js";
 import { sendError } from "../../utils/http-error.js";
@@ -27,7 +27,7 @@ function respondToSubscriptionError(response: Response, request: Request, error:
   } else if (code === "INVALID_DATE_RANGE") {
     sendError(response, 400);
   } else {
-    logger.error({ err: error, url: request.originalUrl }, "subscription: unexpected error");
+    getLogger().error({ err: error, url: request.originalUrl }, "subscription: unexpected error");
     sendError(response, 500);
   }
 }
@@ -52,7 +52,7 @@ coachSubscriptionRouter.post("/:clientId/subscriptions", async (request, respons
 
   const parsed = createSubscriptionSchema.safeParse(request.body);
   if (!parsed.success) {
-    logger.debug(
+    getLogger().debug(
       { issues: parsed.error.flatten() },
       "POST /coach/clients/:clientId/subscriptions: rejected — invalid request body",
     );
@@ -80,7 +80,7 @@ coachSubscriptionRouter.patch("/:clientId/subscriptions/:id", async (request, re
 
   const parsed = updateSubscriptionSchema.safeParse(request.body);
   if (!parsed.success) {
-    logger.debug(
+    getLogger().debug(
       { issues: parsed.error.flatten() },
       "PATCH /coach/clients/:clientId/subscriptions/:id: rejected — invalid request body",
     );

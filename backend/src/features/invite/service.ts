@@ -1,6 +1,6 @@
 import type { CoachClientInvite, CoachProfile, InviteStatus } from "@prisma/client";
 
-import { logger } from "../../config/logger.js";
+import { getLogger } from "../../config/logger.js";
 import { prisma } from "../../config/prisma.config.js";
 import { assertCoachApproved } from "../../utils/coach-approval.js";
 import { createSubscriptionFromInvite, effectiveStatus } from "../subscription/service.js";
@@ -50,7 +50,7 @@ export async function createInvite(
     where: { coachId, clientEmail, status: { in: ["PENDING", "ACCEPTED"] } },
   });
   if (existing) {
-    logger.debug({ coachId, clientEmail, existingInviteId: existing.id, existingStatus: existing.status }, "createInvite: rejected — active invite already exists");
+    getLogger().debug({ coachId, clientEmail, existingInviteId: existing.id, existingStatus: existing.status }, "createInvite: rejected — active invite already exists");
     throw new Error("INVITE_ALREADY_EXISTS");
   }
 
@@ -61,7 +61,7 @@ export async function createInvite(
     data: { coachId, clientEmail, clientId, durationMonths: durationMonths ?? null },
     include: { client: { select: { id: true, name: true, email: true } } },
   });
-  logger.debug({ coachId, clientEmail, inviteId: invite.id, autoMatchedClientId: clientId }, "createInvite: invite created");
+  getLogger().info({ coachId, clientEmail, inviteId: invite.id, autoMatchedClientId: clientId }, "createInvite: invite created");
   return serializeInvite(invite);
 }
 
@@ -176,21 +176,21 @@ export async function listClientInvites(clientId: string, email: string, status:
 async function respondToInvite(inviteId: string, userId: string, email: string, status: "ACCEPTED" | "DECLINED") {
   const invite = await prisma.coachClientInvite.findUnique({ where: { id: inviteId } });
   if (!invite) {
-    logger.debug({ inviteId, userId }, "respondToInvite: rejected — invite not found");
+    getLogger().debug({ inviteId, userId }, "respondToInvite: rejected — invite not found");
     throw new Error("INVITE_NOT_FOUND");
   }
 
   const normalizedEmail = normalizeEmail(email);
   const isRecipient = invite.clientId === userId || invite.clientEmail === normalizedEmail;
   if (!isRecipient) {
-    logger.debug(
+    getLogger().warn(
       { inviteId, userId, email: normalizedEmail, inviteClientId: invite.clientId, inviteClientEmail: invite.clientEmail },
       "respondToInvite: rejected — caller is not the invite recipient",
     );
     throw new Error("FORBIDDEN");
   }
   if (invite.status !== "PENDING") {
-    logger.debug({ inviteId, userId, currentStatus: invite.status }, "respondToInvite: rejected — invite already responded to");
+    getLogger().debug({ inviteId, userId, currentStatus: invite.status }, "respondToInvite: rejected — invite already responded to");
     throw new Error("INVALID_STATUS");
   }
 
@@ -203,7 +203,7 @@ async function respondToInvite(inviteId: string, userId: string, email: string, 
     },
     include: { coach: { select: { id: true, name: true, email: true } } },
   });
-  logger.debug({ inviteId, userId, status }, "respondToInvite: invite updated");
+  getLogger().info({ inviteId, userId, status }, "respondToInvite: invite updated");
 
   // The relationship itself is already formed by the ACCEPTED invite above.
   // A subscription is the commercial record on top of it, and only exists

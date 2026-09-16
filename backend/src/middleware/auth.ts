@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 
-import { logger } from "../config/logger.js";
+import { getLogger } from "../config/logger.js";
+import { requestContext } from "../config/request-context.js";
 import { sendError } from "../utils/http-error.js";
 import { verifyAccessToken } from "../utils/jwt.js";
 
@@ -9,7 +10,7 @@ export function requireAuth(request: Request, response: Response, next: NextFunc
   const token = header?.startsWith("Bearer ") ? header.slice(7) : undefined;
 
   if (!token) {
-    logger.debug(
+    getLogger().warn(
       { method: request.method, url: request.originalUrl, hasAuthHeader: !!header },
       "requireAuth: rejected — no Bearer token in Authorization header",
     );
@@ -20,9 +21,15 @@ export function requireAuth(request: Request, response: Response, next: NextFunc
   try {
     const payload = verifyAccessToken(token);
     request.user = { id: payload.sub, email: payload.email, name: payload.name, role: payload.role };
+    // From here on, every line from this request says who it was — including
+    // the completion line, which pino-http writes through response.log.
+    request.log = request.log.child({ userId: payload.sub });
+    response.log = request.log;
+    const context = requestContext.getStore();
+    if (context) context.log = request.log;
     next();
   } catch (error) {
-    logger.debug(
+    getLogger().warn(
       {
         method: request.method,
         url: request.originalUrl,

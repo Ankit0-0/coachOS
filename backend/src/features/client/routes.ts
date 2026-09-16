@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
 
-import { logger } from "../../config/logger.js";
+import { getLogger } from "../../config/logger.js";
 import { requireAuth } from "../../middleware/auth.js";
 import { requireRole } from "../../middleware/role.js";
 import { sendError } from "../../utils/http-error.js";
@@ -18,7 +18,7 @@ function respondToClientError(response: Response, request: Request, error: unkno
   } else if (code === "ASSIGNMENT_NOT_FOUND" || code === "CLIENT_NOT_FOUND") {
     sendError(response, 404);
   } else {
-    logger.error({ err: error, url: request.originalUrl }, "coach/clients: unexpected error");
+    getLogger().error({ err: error, url: request.originalUrl }, "coach/clients: unexpected error");
     sendError(response, 500);
   }
 }
@@ -29,7 +29,7 @@ coachClientRouter.get("/:clientId/checkins", async (request, response) => {
 
   const parsed = checkInsQuerySchema.safeParse(request.query);
   if (!parsed.success) {
-    logger.debug({ issues: parsed.error.flatten() }, "GET /coach/clients/:clientId/checkins: rejected — invalid query parameters");
+    getLogger().debug({ issues: parsed.error.flatten() }, "GET /coach/clients/:clientId/checkins: rejected — invalid query parameters");
     sendError(response, 400);
     return;
   }
@@ -50,7 +50,7 @@ coachClientRouter.get("/:clientId/weight", async (request, response) => {
 
   const parsed = weightQuerySchema.safeParse(request.query);
   if (!parsed.success) {
-    logger.debug({ issues: parsed.error.flatten() }, "GET /coach/clients/:clientId/weight: rejected — invalid query parameters");
+    getLogger().debug({ issues: parsed.error.flatten() }, "GET /coach/clients/:clientId/weight: rejected — invalid query parameters");
     sendError(response, 400);
     return;
   }

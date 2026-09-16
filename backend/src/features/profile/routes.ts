@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
 
-import { logger } from "../../config/logger.js";
+import { getLogger } from "../../config/logger.js";
 import { requireAuth } from "../../middleware/auth.js";
 import { requireRole } from "../../middleware/role.js";
 import { sendError } from "../../utils/http-error.js";
@@ -23,10 +23,10 @@ function respondToProfileError(response: Response, request: Request, error: unkn
   if (code === "USER_NOT_FOUND") {
     sendError(response, 404);
   } else if (code === "FORBIDDEN_KEY") {
-    logger.debug({ url: request.originalUrl, userId: request.user?.id }, "profile: rejected — avatar key is not namespaced to the caller");
+    getLogger().warn({ url: request.originalUrl, userId: request.user?.id }, "profile: rejected — avatar key is not namespaced to the caller");
     sendError(response, 403);
   } else {
-    logger.error({ err: error, url: request.originalUrl }, "coach/profile: unexpected error");
+    getLogger().error({ err: error, url: request.originalUrl }, "coach/profile: unexpected error");
     sendError(response, 500);
   }
 }
@@ -51,7 +51,7 @@ coachProfileRouter.patch("/", async (request, response) => {
 
   const parsed = updateCoachProfileSchema.safeParse(request.body);
   if (!parsed.success) {
-    logger.debug({ issues: parsed.error.flatten() }, "PATCH /coach/profile: rejected — invalid request body");
+    getLogger().debug({ issues: parsed.error.flatten() }, "PATCH /coach/profile: rejected — invalid request body");
     sendError(response, 400);
     return;
   }
@@ -86,7 +86,7 @@ clientProfileRouter.patch("/", async (request, response) => {
 
   const parsed = updateClientProfileSchema.safeParse(request.body);
   if (!parsed.success) {
-    logger.debug({ issues: parsed.error.flatten() }, "PATCH /client/profile: rejected — invalid request body");
+    getLogger().debug({ issues: parsed.error.flatten() }, "PATCH /client/profile: rejected — invalid request body");
     sendError(response, 400);
     return;
   }
