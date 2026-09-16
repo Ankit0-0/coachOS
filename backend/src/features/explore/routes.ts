@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
 
-import { logger } from "../../config/logger.js";
+import { getLogger } from "../../config/logger.js";
 import { requireAuth } from "../../middleware/auth.js";
 import { requireRole } from "../../middleware/role.js";
 import { COACH_NOT_APPROVED_STATUS } from "../../utils/coach-approval.js";
@@ -35,12 +35,13 @@ function respondToExploreError(response: Response, request: Request, error: unkn
   } else if (code === "RELATIONSHIP_EXISTS" || code === "INVALID_STATUS") {
     // Bare 409 either way: the directory already reports the relationship, so
     // the app's answer to a conflict is simply to reload and show the new state.
-    logger.debug({ url: request.originalUrl, code }, "explore: rejected — conflicting state");
+    // Logged as `reason`, not `code`: `code` is redacted (it's the password reset code).
+    getLogger().debug({ url: request.originalUrl, reason: code }, "explore: rejected — conflicting state");
     sendError(response, 409);
   } else if (code === "COACH_NOT_APPROVED") {
     sendError(response, COACH_NOT_APPROVED_STATUS);
   } else {
-    logger.error({ err: error, url: request.originalUrl }, "explore: unexpected error");
+    getLogger().error({ err: error, url: request.originalUrl }, "explore: unexpected error");
     sendError(response, 500);
   }
 }
@@ -74,7 +75,7 @@ clientCoachRequestRouter.post("/", async (request, response) => {
 
   const parsed = createCoachRequestSchema.safeParse(request.body);
   if (!parsed.success) {
-    logger.debug({ issues: parsed.error.flatten() }, "POST /client/coach-requests: rejected — invalid request body");
+    getLogger().debug({ issues: parsed.error.flatten() }, "POST /client/coach-requests: rejected — invalid request body");
     sendError(response, 400);
     return;
   }

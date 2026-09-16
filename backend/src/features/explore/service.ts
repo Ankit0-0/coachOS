@@ -1,6 +1,6 @@
 import type { CoachProfile, CoachRequest, InviteStatus, User } from "@prisma/client";
 
-import { logger } from "../../config/logger.js";
+import { getLogger } from "../../config/logger.js";
 import { prisma } from "../../config/prisma.config.js";
 import { assertCoachApproved } from "../../utils/coach-approval.js";
 import { normalizeEmail } from "../../utils/email.js";
@@ -173,7 +173,7 @@ export async function getDirectoryCoach(clientId: string, coachId: string) {
   });
   if (!coach) {
     // Unlisted, unapproved, not a coach, or no such user: all look the same.
-    logger.debug({ clientId, coachId }, "getDirectoryCoach: rejected — coach not listed in Explore");
+    getLogger().debug({ clientId, coachId }, "getDirectoryCoach: rejected — coach not listed in Explore");
     throw new Error("COACH_NOT_FOUND");
   }
   const [relationships, counts] = await Promise.all([
@@ -208,13 +208,13 @@ export async function createCoachRequest(clientId: string, coachId: string, mess
 
   const coach = await prisma.user.findFirst({ where: { id: coachId, ...LISTED_COACH_WHERE }, select: { id: true } });
   if (!coach) {
-    logger.debug({ clientId, coachId }, "createCoachRequest: rejected — coach not listed in Explore");
+    getLogger().debug({ clientId, coachId }, "createCoachRequest: rejected — coach not listed in Explore");
     throw new Error("COACH_NOT_FOUND");
   }
 
   const status = (await relationshipsFor(client, [coachId])).get(coachId)!;
   if (status.relationship !== "NONE") {
-    logger.debug({ clientId, coachId, relationship: status.relationship }, "createCoachRequest: rejected — relationship already exists");
+    getLogger().debug({ clientId, coachId, relationship: status.relationship }, "createCoachRequest: rejected — relationship already exists");
     throw new Error("RELATIONSHIP_EXISTS");
   }
 
@@ -222,7 +222,7 @@ export async function createCoachRequest(clientId: string, coachId: string, mess
     data: { clientId, coachId, message: message ? message : null },
     include: { coach: { select: { id: true, name: true } } },
   });
-  logger.debug({ clientId, coachId, requestId: request.id }, "createCoachRequest: request created");
+  getLogger().info({ clientId, coachId, requestId: request.id }, "createCoachRequest: request created");
   return serializeRequest(request);
 }
 
@@ -302,7 +302,7 @@ export async function acceptCoachRequest(coachId: string, requestId: string) {
     });
   });
 
-  logger.debug({ coachId, clientId, requestId }, "acceptCoachRequest: relationship formed");
+  getLogger().info({ coachId, clientId, requestId }, "acceptCoachRequest: relationship formed");
   return serializeRequest(updated);
 }
 

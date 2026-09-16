@@ -1,6 +1,6 @@
 import type { CoachApprovalStatus, Plan, Prisma } from "@prisma/client";
 
-import { logger } from "../../config/logger.js";
+import { getLogger } from "../../config/logger.js";
 import { prisma } from "../../config/prisma.config.js";
 
 function serializePlan(plan: Plan) {
@@ -61,7 +61,7 @@ export async function getCoach(coachId: string) {
   });
 
   if (!coach || coach.role !== "COACH") {
-    logger.debug({ coachId, found: Boolean(coach) }, "getCoach: rejected — no coach with this id");
+    getLogger().debug({ coachId, found: Boolean(coach) }, "getCoach: rejected — no coach with this id");
     throw new Error("COACH_NOT_FOUND");
   }
 
@@ -91,7 +91,7 @@ export async function getCoach(coachId: string) {
 export async function setCoachApproval(coachId: string, status: CoachApprovalStatus) {
   const coach = await prisma.user.findUnique({ where: { id: coachId }, select: { role: true } });
   if (!coach || coach.role !== "COACH") {
-    logger.debug({ coachId }, "setCoachApproval: rejected — no coach with this id");
+    getLogger().debug({ coachId }, "setCoachApproval: rejected — no coach with this id");
     throw new Error("COACH_NOT_FOUND");
   }
 
@@ -100,7 +100,7 @@ export async function setCoachApproval(coachId: string, status: CoachApprovalSta
     data: { coachApprovalStatus: status },
     select: { id: true, name: true, email: true, coachApprovalStatus: true },
   });
-  logger.debug({ coachId, status }, "setCoachApproval: approval status changed");
+  getLogger().info({ coachId, status }, "setCoachApproval: approval status changed");
 
   return {
     id: updated.id,
@@ -125,7 +125,7 @@ export async function listDefaultPlans(type: "WORKOUT" | "DIET") {
 export async function getDefaultPlan(planId: string) {
   const plan = await prisma.plan.findUnique({ where: { id: planId } });
   if (!plan || !plan.isDefault) {
-    logger.debug({ planId, isDefault: plan?.isDefault }, "getDefaultPlan: rejected — not a default plan");
+    getLogger().debug({ planId, isDefault: plan?.isDefault }, "getDefaultPlan: rejected — not a default plan");
     throw new Error("PLAN_NOT_FOUND");
   }
   return serializePlan(plan);
@@ -150,7 +150,7 @@ export async function createDefaultPlan(input: {
       createdById: null,
     },
   });
-  logger.debug({ planId: plan.id, type: plan.type }, "createDefaultPlan: default plan created");
+  getLogger().info({ planId: plan.id, type: plan.type }, "createDefaultPlan: default plan created");
   // The 10-per-type cap is a coach limit. The shared library is curated by
   // admins and is not bounded by it.
   return serializePlan(plan);
@@ -162,7 +162,7 @@ export async function updateDefaultPlan(
 ) {
   const existing = await prisma.plan.findUnique({ where: { id: planId } });
   if (!existing || !existing.isDefault) {
-    logger.debug({ planId }, "updateDefaultPlan: rejected — not a default plan");
+    getLogger().debug({ planId }, "updateDefaultPlan: rejected — not a default plan");
     throw new Error("PLAN_NOT_FOUND");
   }
 
@@ -172,7 +172,7 @@ export async function updateDefaultPlan(
     const looksLikeWorkout = typeof input.content === "object" && input.content !== null && "exercises" in input.content;
     const contentType = looksLikeWorkout ? "WORKOUT" : "DIET";
     if (contentType !== existing.type) {
-      logger.debug({ planId, planType: existing.type, contentType }, "updateDefaultPlan: rejected — content type mismatch");
+      getLogger().debug({ planId, planType: existing.type, contentType }, "updateDefaultPlan: rejected — content type mismatch");
       throw new Error("CONTENT_TYPE_MISMATCH");
     }
   }
@@ -185,14 +185,14 @@ export async function updateDefaultPlan(
       ...(input.content !== undefined ? { content: input.content } : {}),
     },
   });
-  logger.debug({ planId }, "updateDefaultPlan: default plan updated");
+  getLogger().info({ planId }, "updateDefaultPlan: default plan updated");
   return serializePlan(plan);
 }
 
 export async function deleteDefaultPlan(planId: string) {
   const plan = await prisma.plan.findUnique({ where: { id: planId } });
   if (!plan || !plan.isDefault) {
-    logger.debug({ planId }, "deleteDefaultPlan: rejected — not a default plan");
+    getLogger().debug({ planId }, "deleteDefaultPlan: rejected — not a default plan");
     throw new Error("PLAN_NOT_FOUND");
   }
 
@@ -203,10 +203,10 @@ export async function deleteDefaultPlan(planId: string) {
     select: { id: true },
   });
   if (activeAssignment) {
-    logger.debug({ planId, assignmentId: activeAssignment.id }, "deleteDefaultPlan: rejected — a client is active on this plan");
+    getLogger().debug({ planId, assignmentId: activeAssignment.id }, "deleteDefaultPlan: rejected — a client is active on this plan");
     throw new Error("PLAN_IN_USE");
   }
 
   await prisma.plan.delete({ where: { id: planId } });
-  logger.debug({ planId }, "deleteDefaultPlan: default plan deleted");
+  getLogger().info({ planId }, "deleteDefaultPlan: default plan deleted");
 }

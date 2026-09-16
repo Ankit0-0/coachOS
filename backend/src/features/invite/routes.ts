@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
 
-import { logger } from "../../config/logger.js";
+import { getLogger } from "../../config/logger.js";
 import { requireAuth } from "../../middleware/auth.js";
 import { requireRole } from "../../middleware/role.js";
 import { COACH_NOT_APPROVED_STATUS } from "../../utils/coach-approval.js";
@@ -26,7 +26,7 @@ function respondToInviteError(response: Response, request: Request, error: unkno
   } else if (code === "INVALID_STATUS") {
     sendError(response, 409);
   } else {
-    logger.error({ err: error, url: request.originalUrl }, "invite: unexpected error");
+    getLogger().error({ err: error, url: request.originalUrl }, "invite: unexpected error");
     sendError(response, 500);
   }
 }
@@ -40,7 +40,7 @@ coachInviteRouter.post("/", async (request, response) => {
 
   const parsed = createInviteSchema.safeParse(request.body);
   if (!parsed.success) {
-    logger.debug({ issues: parsed.error.flatten() }, "POST /coach/invites: rejected — invalid request body");
+    getLogger().debug({ issues: parsed.error.flatten() }, "POST /coach/invites: rejected — invalid request body");
     sendError(response, 400);
     return;
   }
@@ -57,7 +57,7 @@ coachInviteRouter.post("/", async (request, response) => {
     } else if (code === "INVITE_ALREADY_EXISTS") {
       sendError(response, 409);
     } else {
-      logger.error({ err: error, url: request.originalUrl }, "invite: unexpected error");
+      getLogger().error({ err: error, url: request.originalUrl }, "invite: unexpected error");
       sendError(response, 500);
     }
   }
@@ -69,7 +69,7 @@ coachInviteRouter.get("/", async (request, response) => {
 
   const parsed = listInvitesQuerySchema.safeParse(request.query);
   if (!parsed.success) {
-    logger.debug({ issues: parsed.error.flatten() }, "GET /coach/invites: rejected — invalid query parameters");
+    getLogger().debug({ issues: parsed.error.flatten() }, "GET /coach/invites: rejected — invalid query parameters");
     sendError(response, 400);
     return;
   }
@@ -80,7 +80,7 @@ coachInviteRouter.get("/", async (request, response) => {
       invites: await listCoachInvites(user.id, parsed.data.status),
     });
   } catch (error) {
-    logger.error({ err: error, url: request.originalUrl }, "invite: unexpected error");
+    getLogger().error({ err: error, url: request.originalUrl }, "invite: unexpected error");
     sendError(response, 500);
   }
 });
@@ -91,7 +91,7 @@ clientInviteRouter.get("/", async (request, response) => {
 
   const parsed = listInvitesQuerySchema.safeParse(request.query);
   if (!parsed.success) {
-    logger.debug({ issues: parsed.error.flatten() }, "GET /client/invites: rejected — invalid query parameters");
+    getLogger().debug({ issues: parsed.error.flatten() }, "GET /client/invites: rejected — invalid query parameters");
     sendError(response, 400);
     return;
   }
@@ -102,7 +102,7 @@ clientInviteRouter.get("/", async (request, response) => {
       invites: await listClientInvites(user.id, user.email, parsed.data.status),
     });
   } catch (error) {
-    logger.error({ err: error, url: request.originalUrl }, "invite: unexpected error");
+    getLogger().error({ err: error, url: request.originalUrl }, "invite: unexpected error");
     sendError(response, 500);
   }
 });

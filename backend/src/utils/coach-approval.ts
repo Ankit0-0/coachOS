@@ -1,4 +1,4 @@
-import { logger } from "../config/logger.js";
+import { getLogger } from "../config/logger.js";
 import { prisma } from "../config/prisma.config.js";
 
 /**
@@ -19,7 +19,7 @@ export async function assertCoachApproved(coachId: string): Promise<void> {
 
   if (coach?.coachApprovalStatus === "APPROVED") return;
 
-  logger.debug(
+  getLogger().warn(
     { coachId, status: coach?.coachApprovalStatus ?? null },
     "assertCoachApproved: rejected — coach is not approved",
   );

@@ -1,4 +1,4 @@
-import { logger } from "../../config/logger.js";
+import { getLogger } from "../../config/logger.js";
 import { prisma } from "../../config/prisma.config.js";
 import { findAcceptedInvite } from "../../utils/coach-access.js";
 import { getSignedReadUrl } from "../upload/service.js";
@@ -9,7 +9,7 @@ type DateString = string;
 async function assertAccess(coachId: string, clientId: string, action: string) {
   const invite = await findAcceptedInvite(coachId, clientId);
   if (!invite) {
-    logger.debug({ coachId, clientId, action }, `${action}: rejected — no accepted invite between this coach and client`);
+    getLogger().warn({ coachId, clientId, action }, `${action}: rejected — no accepted invite between this coach and client`);
     throw new Error("NOT_YOUR_CLIENT");
   }
   return invite;
@@ -26,7 +26,7 @@ export async function listClientCheckIns(
   if (input.assignmentId) {
     const assignment = await prisma.planAssignment.findUnique({ where: { id: input.assignmentId } });
     if (!assignment || assignment.clientId !== clientId) {
-      logger.debug(
+      getLogger().debug(
         { coachId, clientId, assignmentId: input.assignmentId },
         "listClientCheckIns: rejected — assignment not found or does not belong to this client",
       );
@@ -75,7 +75,7 @@ export async function getClientProfile(coachId: string, clientId: string) {
     prisma.clientProfile.findUnique({ where: { userId: clientId } }),
   ]);
   if (!user) {
-    logger.debug({ coachId, clientId }, "getClientProfile: rejected — client user record not found");
+    getLogger().debug({ coachId, clientId }, "getClientProfile: rejected — client user record not found");
     throw new Error("CLIENT_NOT_FOUND");
   }
 

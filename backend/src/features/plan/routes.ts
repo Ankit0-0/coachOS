@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
 
-import { logger } from "../../config/logger.js";
+import { getLogger } from "../../config/logger.js";
 import { requireAuth } from "../../middleware/auth.js";
 import { requireRole } from "../../middleware/role.js";
 import { COACH_NOT_APPROVED_STATUS } from "../../utils/coach-approval.js";
@@ -41,7 +41,7 @@ function respondToPlanError(response: Response, request: Request, error: unknown
   } else if (code === "CONTENT_TYPE_MISMATCH") {
     sendError(response, 400);
   } else {
-    logger.error({ err: error, url: request.originalUrl }, logMessage);
+    getLogger().error({ err: error, url: request.originalUrl }, logMessage);
     sendError(response, 500);
   }
 }
@@ -55,7 +55,7 @@ function respondToAssignmentError(response: Response, request: Request, error: u
   } else if (code === "PLAN_NOT_FOUND") {
     sendError(response, 404);
   } else {
-    logger.error({ err: error, url: request.originalUrl }, "assignment: unexpected error");
+    getLogger().error({ err: error, url: request.originalUrl }, "assignment: unexpected error");
     sendError(response, 500);
   }
 }
@@ -66,7 +66,7 @@ coachPlanRouter.post("/", async (request, response) => {
 
   const parsed = createPlanSchema.safeParse(request.body);
   if (!parsed.success) {
-    logger.debug({ issues: parsed.error.flatten() }, "POST /coach/plans: rejected — invalid request body");
+    getLogger().debug({ issues: parsed.error.flatten() }, "POST /coach/plans: rejected — invalid request body");
     sendError(response, 400);
     return;
   }
@@ -87,7 +87,7 @@ coachPlanRouter.get("/", async (request, response) => {
 
   const parsed = listPlansQuerySchema.safeParse(request.query);
   if (!parsed.success) {
-    logger.debug({ issues: parsed.error.flatten() }, "GET /coach/plans: rejected — invalid query parameters");
+    getLogger().debug({ issues: parsed.error.flatten() }, "GET /coach/plans: rejected — invalid query parameters");
     sendError(response, 400);
     return;
   }
@@ -98,7 +98,7 @@ coachPlanRouter.get("/", async (request, response) => {
       ...(await listCoachPlans(user.id, parsed.data.type)),
     });
   } catch (error) {
-    logger.error({ err: error, url: request.originalUrl }, "plan: unexpected error listing plans");
+    getLogger().error({ err: error, url: request.originalUrl }, "plan: unexpected error listing plans");
     sendError(response, 500);
   }
 });
@@ -123,7 +123,7 @@ coachPlanRouter.patch("/:id", async (request, response) => {
 
   const parsed = updatePlanSchema.safeParse(request.body);
   if (!parsed.success) {
-    logger.debug({ issues: parsed.error.flatten() }, "PATCH /coach/plans/:id: rejected — invalid request body");
+    getLogger().debug({ issues: parsed.error.flatten() }, "PATCH /coach/plans/:id: rejected — invalid request body");
     sendError(response, 400);
     return;
   }
@@ -156,7 +156,7 @@ coachAssignmentRouter.post("/", async (request, response) => {
 
   const parsed = createAssignmentSchema.safeParse(request.body);
   if (!parsed.success) {
-    logger.debug({ issues: parsed.error.flatten() }, "POST /coach/assignments: rejected — invalid request body");
+    getLogger().debug({ issues: parsed.error.flatten() }, "POST /coach/assignments: rejected — invalid request body");
     sendError(response, 400);
     return;
   }
@@ -177,7 +177,7 @@ coachAssignmentRouter.get("/", async (request, response) => {
 
   const parsed = listAssignmentsQuerySchema.safeParse(request.query);
   if (!parsed.success) {
-    logger.debug({ issues: parsed.error.flatten() }, "GET /coach/assignments: rejected — invalid query parameters");
+    getLogger().debug({ issues: parsed.error.flatten() }, "GET /coach/assignments: rejected — invalid query parameters");
     sendError(response, 400);
     return;
   }

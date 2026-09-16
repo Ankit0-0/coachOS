@@ -3,7 +3,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { createId } from "@paralleldrive/cuid2";
 
 import { env } from "../../config/env.js";
-import { logger } from "../../config/logger.js";
+import { getLogger } from "../../config/logger.js";
 import { ALLOWED_CONTENT_TYPES, type AllowedContentType, type UploadPurpose } from "./schemas.js";
 
 /** Long enough for a phone on a slow connection, short enough to be useless if leaked. */
@@ -38,7 +38,7 @@ function readConfig(): S3Config | null {
     .map(([name]) => name);
 
   if (missing.length > 0) {
-    logger.error(
+    getLogger().error(
       { missing },
       `S3 is not configured: set ${missing.join(", ")}. Image uploads are unavailable until then.`,
     );
@@ -111,7 +111,7 @@ export async function createPresignedUpload(
     signableHeaders: new Set(["content-type"]),
   });
 
-  logger.debug({ userId, purpose: input.purpose, key }, "createPresignedUpload: issued upload URL");
+  getLogger().debug({ userId, purpose: input.purpose, key }, "createPresignedUpload: issued upload URL");
   return { uploadUrl, key };
 }
 
@@ -148,7 +148,7 @@ export async function getSignedReadUrl(key: string | null): Promise<string | nul
     const command = new GetObjectCommand({ Bucket: config.bucket, Key: key });
     return await getSignedUrl(s3Client(config), command, { expiresIn: READ_URL_TTL_SECONDS });
   } catch (error) {
-    logger.error({ err: error, key }, "getSignedReadUrl: failed to sign a read URL");
+    getLogger().error({ err: error, key }, "getSignedReadUrl: failed to sign a read URL");
     return null;
   }
 }
