@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { DetailHeader } from '@/components/detail-header';
 import { LockedState } from '@/components/locked-state';
 import { PlanStateCard } from '@/components/plan-state-card';
+import { RestDayCard } from '@/components/rest-day-card';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -13,13 +14,15 @@ import { SetFeedbackPanel } from '@/components/workout/set-feedback-panel';
 import { Spacing } from '@/constants/theme';
 import { useTrackingAssignments } from '@/hooks/use-assignments';
 import { useOnboardingStatus } from '@/hooks/use-onboarding-status';
+import { useTodaySchedule } from '@/hooks/use-schedule';
 import { useRefresh } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { trackingApi } from '@/lib/api';
 import { todayKey } from '@/lib/dates';
 import { formatDuration } from '@/lib/plan-units';
 import {
-  workoutContentOf,
+  cycleDayLabel,
+  workoutDayOf,
   workoutExercisesFrom,
   type SetFeedback,
   type WorkoutExercise,
@@ -41,9 +44,13 @@ export function WorkoutDetailsScreen() {
   const theme = useTheme();
   const onboarding = useOnboardingStatus();
   const tracking = useTrackingAssignments();
+  // Which day of the cycle today is comes from the backend, never from a date
+  // calculation here.
+  const schedule = useTodaySchedule();
+  const today = schedule.workout;
   const workoutAssignment = tracking.workout;
   const assignmentId = workoutAssignment?.id;
-  const content = useMemo(() => workoutContentOf(workoutAssignment), [workoutAssignment]);
+  const day = useMemo(() => workoutDayOf(today), [today]);
 
   // Keyed by set id, which is also the check-in item id (`{exerciseId}-set{n}`).
   const [feedbackBySet, setFeedbackBySet] = useState<Record<string, SetFeedback>>({});
@@ -51,7 +58,7 @@ export function WorkoutDetailsScreen() {
   const [isSavingLog, setIsSavingLog] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
-  const exercises = useMemo(() => (content ? workoutExercisesFrom(content) : []), [content]);
+  const exercises = useMemo(() => (day ? workoutExercisesFrom(day) : []), [day]);
   const totalSets = exercises.reduce((total, exercise) => total + exercise.sets.length, 0);
   const completedSets = exercises
     .flatMap((exercise) => exercise.sets)
@@ -93,7 +100,7 @@ export function WorkoutDetailsScreen() {
     }, [loadToday]),
   );
 
-  const { isRefreshing, refresh } = useRefresh(onboarding.reload, tracking.reload, loadToday);
+  const { isRefreshing, refresh } = useRefresh(onboarding.reload, tracking.reload, schedule.reload, loadToday);
 
   function buildCompletedItemIds(next: Record<string, SetFeedback>): string[] {
     return exercises
@@ -162,7 +169,7 @@ export function WorkoutDetailsScreen() {
     return <LockedState title="Workout" refreshing={isRefreshing} onRefresh={refresh} />;
   }
 
-  if (tracking.isLoading) {
+  if (tracking.isLoading || schedule.isLoading) {
     return (
       <ScreenScaffold>
         <DetailHeader title="Workout" subtitle="Loading your plan…" />
@@ -171,8 +178,18 @@ export function WorkoutDetailsScreen() {
     );
   }
 
+  // A rest day is scheduled, not missing: it gets its own state.
+  if (today?.isRestDay) {
+    return (
+      <ScreenScaffold refreshing={isRefreshing} onRefresh={refresh}>
+        <DetailHeader title="Workout" subtitle={today.title} />
+        <RestDayCard cycleLabel={cycleDayLabel(today)} />
+      </ScreenScaffold>
+    );
+  }
+
   // Only fall through to the plan when there is a real, readable one.
-  if (!workoutAssignment || !content || exercises.length === 0) {
+  if (!workoutAssignment || !today || exercises.length === 0) {
     const failed = !workoutAssignment && tracking.error;
     return (
       <ScreenScaffold refreshing={isRefreshing} onRefresh={refresh}>
@@ -197,6 +214,8 @@ export function WorkoutDetailsScreen() {
     <ScreenScaffold refreshing={isRefreshing} onRefresh={refresh}>
       <DetailHeader title="Workout" subtitle={workoutAssignment.title} />
 
+      <ThemedText type="meta">{cycleDayLabel(today)}</ThemedText>
+
       {tracking.error ? (
         <PlanStateCard
           tone="danger"
@@ -208,13 +227,13 @@ export function WorkoutDetailsScreen() {
       <ThemedView type="backgroundElement" style={[styles.summary, { borderColor: theme.border }]}>
         <View style={styles.summaryHeader}>
           <ThemedText type="smallBold" themeColor="accent">
-            {formatDuration(content.duration)}
+            {formatDuration(day?.duration ?? '')}
           </ThemedText>
           <ThemedText type="smallBold" themeColor="textSecondary">
             {completedSets}/{totalSets} sets checked
           </ThemedText>
         </View>
-        {content.focus ? <ThemedText>{content.focus}</ThemedText> : null}
+        {day?.label ? <ThemedText>{day.label}</ThemedText> : null}
         <ThemedText type="small" themeColor="textSecondary">
           Tap a set row to add temporary comments or a video reference for your coach.
         </ThemedText>

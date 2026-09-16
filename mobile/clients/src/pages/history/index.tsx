@@ -13,38 +13,15 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useOnboardingStatus } from '@/hooks/use-onboarding-status';
+import { useScheduleRange } from '@/hooks/use-schedule';
 import { useTheme } from '@/hooks/use-theme';
 import { useTrackingAssignments } from '@/hooks/use-assignments';
 import { useRefresh } from '@/hooks/use-refresh';
-import { trackingApi, type CheckIn, type TrackingAssignment, type WeightEntry } from '@/lib/api';
+import { trackingApi, type CheckIn, type WeightEntry } from '@/lib/api';
 import { dayOfMonth, monthRange, todayKey } from '@/lib/dates';
 import { pickAndUploadImage } from '@/lib/image-upload';
 import { parseWeightInput } from '@/lib/weight';
 import { DEFAULT_WEIGHT_RANGE, weightRangeDates, type WeightRangeKey } from '@/lib/weight-range';
-
-type WorkoutPlanContent = { exercises: { id: string; sets: number }[] };
-type DietPlanContent = { meals: { id: string }[] };
-
-function workoutItemIds(assignment?: TrackingAssignment): Set<string> {
-  const content = assignment?.content as unknown as WorkoutPlanContent | undefined;
-  const ids = new Set<string>();
-  for (const exercise of content?.exercises ?? []) {
-    for (let n = 1; n <= exercise.sets; n += 1) {
-      ids.add(`${exercise.id}-set${n}`);
-    }
-  }
-  return ids;
-}
-
-function dietItemIds(assignment?: TrackingAssignment): Set<string> {
-  const content = assignment?.content as unknown as DietPlanContent | undefined;
-  return new Set((content?.meals ?? []).map((meal) => meal.id));
-}
-
-function completedMatches(checkIn: CheckIn | undefined, validIds: Set<string>): number {
-  if (!checkIn) return 0;
-  return checkIn.completedItemIds.filter((id) => validIds.has(id)).length;
-}
 
 export function HistoryScreen() {
   const theme = useTheme();
@@ -138,32 +115,76 @@ export function HistoryScreen() {
     }, [loadWeights]),
   );
 
-  const { isRefreshing, refresh } = useRefresh(onboarding.reload, tracking.reload, loadActivity, loadWeights);
+  // What was scheduled on each date of the month, resolved by the backend — a
+  // rotating plan has a different item count (and rest days) per date.
+  const schedule = useScheduleRange(month.from, month.to);
+
+  const { isRefreshing, refresh } = useRefresh(
+    onboarding.reload,
+    tracking.reload,
+    schedule.reload,
+    loadActivity,
+    loadWeights,
+  );
   const chartRange = weightRangeDates(weightRange);
   /** Today's saved weigh-in, if any. Every range ends today, so it is always in `weights`. */
   const todayEntry = weights.find((entry) => entry.date === todayKey());
 
-  const workoutIds = workoutItemIds(workoutAssignment);
-  const dietIds = dietItemIds(dietAssignment);
+  const scheduleByDate = new Map<string, { workoutTotal: number; dietTotal: number; isRestDay: boolean; workoutIds: string[]; dietIds: string[] }>();
+  for (const entry of schedule.entries) {
+    const row = scheduleByDate.get(entry.date) ?? {
+      workoutTotal: 0,
+      dietTotal: 0,
+      isRestDay: false,
+      workoutIds: [] as string[],
+      dietIds: [] as string[],
+    };
+    if (entry.type === 'WORKOUT') {
+      row.workoutTotal = entry.itemCount;
+      row.isRestDay = entry.isRestDay;
+      row.workoutIds = entry.itemIds;
+    } else {
+      row.dietTotal = entry.itemCount;
+      row.dietIds = entry.itemIds;
+    }
+    scheduleByDate.set(entry.date, row);
+  }
+
+  /**
+   * Only ids that were scheduled that day count. A plan edited since may no
+   * longer contain an id an old check-in holds; those are ignored rather than
+   * counted against a total they do not belong to.
+   */
+  function countScheduled(checkIn: CheckIn | undefined, ids: string[]): number {
+    if (!checkIn) return 0;
+    const scheduled = new Set(ids);
+    return checkIn.completedItemIds.filter((id) => scheduled.has(id)).length;
+  }
 
   const dailyActivity: DailyActivity[] = Array.from(
     { length: month.daysInMonth },
     (_, index) => index + 1,
   ).map((day) => {
+    const dateKey = `${month.from.slice(0, 8)}${String(day).padStart(2, '0')}`;
+    const scheduled = scheduleByDate.get(dateKey);
     const workoutCheckIn = workoutCheckIns.find((checkIn) => dayOfMonth(checkIn.date) === day);
     const dietCheckIn = dietCheckIns.find((checkIn) => dayOfMonth(checkIn.date) === day);
     return {
       date: day,
-      workoutCompleted: completedMatches(workoutCheckIn, workoutIds),
-      workoutTotal: workoutIds.size,
-      dietCompleted: completedMatches(dietCheckIn, dietIds),
-      dietTotal: dietIds.size,
+      workoutCompleted: countScheduled(workoutCheckIn, scheduled?.workoutIds ?? []),
+      workoutTotal: scheduled?.workoutTotal ?? 0,
+      dietCompleted: countScheduled(dietCheckIn, scheduled?.dietIds ?? []),
+      dietTotal: scheduled?.dietTotal ?? 0,
+      isRestDay: scheduled?.isRestDay ?? false,
     };
   });
 
-  const completedDays = dailyActivity.filter(
+  // Rest days are not misses, so they are out of both sides of the ratio.
+  const trainingDays = dailyActivity.filter((entry) => !entry.isRestDay);
+  const completedDays = trainingDays.filter(
     (entry) => entry.workoutCompleted > 0 || entry.dietCompleted > 0,
   ).length;
+  const restDays = dailyActivity.length - trainingDays.length;
 
   const average =
     weights.length > 0 ? weights.reduce((sum, entry) => sum + entry.weightKg, 0) / weights.length : null;
@@ -356,7 +377,8 @@ export function HistoryScreen() {
         ) : (
           <>
             <ThemedText type="small" themeColor="textSecondary" style={styles.summaryText}>
-              Target achieved {completedDays}/{month.daysInMonth} days
+              Target achieved {completedDays}/{trainingDays.length} training days
+              {restDays > 0 ? ` · ${restDays} rest ${restDays === 1 ? 'day' : 'days'}` : ''}
             </ThemedText>
 
             {/* Only the plan types this client actually has. */}

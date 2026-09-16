@@ -182,7 +182,34 @@ export interface TrackingAssignment {
   planId: string;
   type: PlanType;
   title: string;
+  /** Cycle-shaped: `{ focus, summary, days: [...] }`. Which day applies today comes from the schedule. */
   content: Record<string, unknown>;
+  cycleLengthDays: number;
+  /** The date the cycle counts from, YYYY-MM-DD. */
+  startDate: string;
+}
+
+/**
+ * What the client is scheduled to do on one date, for one plan. The backend
+ * resolves the rotation — the app never works out which day of a cycle a date
+ * lands on.
+ */
+export interface ScheduleEntry {
+  date: string;
+  assignmentId: string;
+  planId: string;
+  type: PlanType;
+  title: string;
+  /** 0-based, with the cycle length beside it, so a screen can say "Day 3 of 7". */
+  dayIndex: number;
+  cycleLengthDays: number;
+  label: string;
+  isRestDay: boolean;
+  /** Sets for a workout day, meals for a diet day: the denominator for that date. */
+  itemCount: number;
+  itemIds: string[];
+  /** That day of the plan, ready to render. Null if the plan has no such day. */
+  content: Record<string, unknown> | null;
 }
 
 export interface CheckIn {
@@ -448,6 +475,15 @@ export interface ClientSubscription {
   notes: string | null;
   coach: { id: string; name: string; email: string };
 }
+
+export const scheduleApi = {
+  /** Every active plan's day for each date in the range, inclusive. */
+  list(params: { from: string; to: string }): Promise<ScheduleEntry[]> {
+    return apiRequest<{ schedule: ScheduleEntry[] }>(`/client/schedule?${queryString(params)}`).then(
+      (data) => data.schedule,
+    );
+  },
+};
 
 export const clientSubscriptionApi = {
   /** Null when the relationship is open-ended — a normal state, not an error. */

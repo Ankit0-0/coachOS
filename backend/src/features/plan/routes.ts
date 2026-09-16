@@ -5,11 +5,13 @@ import { requireAuth } from "../../middleware/auth.js";
 import { requireRole } from "../../middleware/role.js";
 import { COACH_NOT_APPROVED_STATUS } from "../../utils/coach-approval.js";
 import { sendError } from "../../utils/http-error.js";
+import { getClientSchedule } from "./schedule.js";
 import {
   createAssignmentSchema,
   createPlanSchema,
   listAssignmentsQuerySchema,
   listPlansQuerySchema,
+  scheduleQuerySchema,
   updatePlanSchema,
 } from "./schemas.js";
 import {
@@ -24,9 +26,34 @@ import {
 
 export const coachPlanRouter: ReturnType<typeof Router> = Router();
 export const coachAssignmentRouter: ReturnType<typeof Router> = Router();
+/** GET /client/schedule — what this client does on each date in a range. */
+export const clientScheduleRouter: ReturnType<typeof Router> = Router();
 
 coachPlanRouter.use(requireAuth);
 coachAssignmentRouter.use(requireAuth);
+clientScheduleRouter.use(requireAuth);
+
+clientScheduleRouter.get("/", async (request, response) => {
+  const user = requireRole(request, response, "CLIENT");
+  if (!user) return;
+
+  const parsed = scheduleQuerySchema.safeParse(request.query);
+  if (!parsed.success) {
+    getLogger().debug({ issues: parsed.error.flatten() }, "GET /client/schedule: rejected — invalid query parameters");
+    sendError(response, 400);
+    return;
+  }
+
+  try {
+    response.json({
+      message: "Schedule retrieved successfully.",
+      schedule: await getClientSchedule(user.id, parsed.data),
+    });
+  } catch (error) {
+    getLogger().error({ err: error, url: request.originalUrl }, "schedule: unexpected error");
+    sendError(response, 500);
+  }
+});
 
 function respondToPlanError(response: Response, request: Request, error: unknown, logMessage: string) {
   const code = error instanceof Error ? error.message : "INTERNAL_ERROR";

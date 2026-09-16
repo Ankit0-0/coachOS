@@ -165,6 +165,7 @@ adminPlanRouter.post("/", async (request, response) => {
         type: parsed.data.type,
         title: parsed.data.title,
         ...(parsed.data.description === undefined ? {} : { description: parsed.data.description }),
+        cycleLengthDays: parsed.data.cycleLengthDays,
         content: parsed.data.content,
       }),
     });
@@ -191,6 +192,7 @@ adminPlanRouter.patch("/:id", async (request, response) => {
         ...(parsed.data.title === undefined ? {} : { title: parsed.data.title }),
         ...(parsed.data.description === undefined ? {} : { description: parsed.data.description }),
         ...(parsed.data.content === undefined ? {} : { content: parsed.data.content }),
+        ...(parsed.data.cycleLengthDays === undefined ? {} : { cycleLengthDays: parsed.data.cycleLengthDays }),
       }),
     });
   } catch (error) {

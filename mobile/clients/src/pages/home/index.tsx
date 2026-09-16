@@ -12,12 +12,13 @@ import { ThemedView } from '@/components/themed-view';
 import { Radii, Spacing } from '@/constants/theme';
 import { useTrackingAssignments } from '@/hooks/use-assignments';
 import { useOnboardingStatus } from '@/hooks/use-onboarding-status';
+import { useTodaySchedule } from '@/hooks/use-schedule';
 import { useRefresh } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { trackingApi, type WeightEntry } from '@/lib/api';
 import { todayKey } from '@/lib/dates';
 import { pickAndUploadImage } from '@/lib/image-upload';
-import { dietContentOf, workoutContentOf, workoutExercisesFrom } from '@/lib/plan-content';
+import { cycleDayLabel, dietDayOf, parseDietContent, parseWorkoutContent, workoutDayOf } from '@/lib/plan-content';
 import { formatCalories, formatDuration } from '@/lib/plan-units';
 import { parseWeightInput } from '@/lib/weight';
 
@@ -26,6 +27,8 @@ export function HomeScreen() {
   const router = useRouter();
   const onboarding = useOnboardingStatus();
   const tracking = useTrackingAssignments();
+  // Today's day of each cycle, resolved by the backend.
+  const schedule = useTodaySchedule();
   const { workout: workoutAssignment, diet: dietAssignment } = tracking;
   const workoutAssignmentId = workoutAssignment?.id;
   const dietAssignmentId = dietAssignment?.id;
@@ -87,51 +90,70 @@ export function HomeScreen() {
     }, [loadTodayProgress, loadTodayUpdate]),
   );
 
-  const { isRefreshing, refresh } = useRefresh(onboarding.reload, tracking.reload, loadTodayProgress, loadTodayUpdate);
+  const { isRefreshing, refresh } = useRefresh(
+    onboarding.reload,
+    tracking.reload,
+    schedule.reload,
+    loadTodayProgress,
+    loadTodayUpdate,
+  );
 
   const shownWeight = weightValue ?? (todayEntry ? String(todayEntry.weightKg) : '');
   const shownPhoto = physiqueImage ?? todayEntry?.photoUrl ?? null;
 
-  // Cards only for assignments that actually exist — never sample plans.
+  // Cards only for plans the client is actually on, showing the day of the
+  // cycle that falls today — never a sample plan, never a fixed day.
   const planCards: HomePlanCard[] = [];
-  const workoutContent = workoutContentOf(workoutAssignment);
-  if (workoutAssignment && workoutContent) {
-    const setIds = new Set(workoutExercisesFrom(workoutContent).flatMap((exercise) => exercise.sets.map((set) => set.id)));
-    const setsDone = workoutCheckedIds.filter((id) => setIds.has(id)).length;
-    const exerciseCount = workoutContent.exercises.length;
+  const workoutToday = schedule.workout;
+  const workoutDay = workoutDayOf(workoutToday);
+  if (workoutAssignment && workoutToday) {
+    const setsDone = workoutCheckedIds.filter((id) => workoutToday.itemIds.includes(id)).length;
+    const exerciseCount = workoutDay?.exercises.length ?? 0;
     planCards.push({
       id: 'workout',
       kind: 'Workout',
-      title: workoutAssignment.title,
-      summary: workoutContent.summary,
-      chips: [
-        formatDuration(workoutContent.duration),
-        `${exerciseCount} ${exerciseCount === 1 ? 'exercise' : 'exercises'}`,
-        `${setIds.size} ${setIds.size === 1 ? 'set' : 'sets'}`,
-      ].filter(Boolean),
+      title: workoutToday.title,
+      dayLabel: cycleDayLabel(workoutToday),
+      isRestDay: workoutToday.isRestDay,
+      // The day's label is already in `dayLabel`; the plan's own summary says what it is for.
+      summary: parseWorkoutContent(workoutAssignment.content)?.summary ?? '',
+      chips: workoutToday.isRestDay
+        ? []
+        : [
+            formatDuration(workoutDay?.duration ?? ''),
+            `${exerciseCount} ${exerciseCount === 1 ? 'exercise' : 'exercises'}`,
+            `${workoutToday.itemCount} ${workoutToday.itemCount === 1 ? 'set' : 'sets'}`,
+          ].filter(Boolean),
       route: '/workout',
       iconName: { ios: 'figure.strengthtraining.traditional', android: 'fitness_center', web: 'fitness_center' },
-      progressPercent: setIds.size > 0 ? (setsDone / setIds.size) * 100 : 0,
-      progressLabel: `${setsDone} of ${setIds.size} sets done today`,
+      progressPercent: workoutToday.itemCount > 0 ? (setsDone / workoutToday.itemCount) * 100 : 0,
+      progressLabel: workoutToday.isRestDay
+        ? 'Rest day — nothing to do'
+        : `${setsDone} of ${workoutToday.itemCount} sets done today`,
     });
   }
-  const dietContent = dietContentOf(dietAssignment);
-  if (dietAssignment && dietContent) {
-    const mealIds = new Set(dietContent.meals.map((meal) => meal.id));
-    const mealsDone = dietCheckedIds.filter((id) => mealIds.has(id)).length;
+
+  const dietToday = schedule.diet;
+  const dietDay = dietDayOf(dietToday);
+  if (dietAssignment && dietToday) {
+    const mealsDone = dietCheckedIds.filter((id) => dietToday.itemIds.includes(id)).length;
     planCards.push({
       id: 'diet',
       kind: 'Diet',
-      title: dietAssignment.title,
-      summary: dietContent.summary,
-      chips: [
-        formatCalories(dietContent.calories),
-        `${mealIds.size} ${mealIds.size === 1 ? 'meal' : 'meals'}`,
-      ].filter(Boolean),
+      title: dietToday.title,
+      dayLabel: cycleDayLabel(dietToday),
+      isRestDay: dietToday.isRestDay,
+      summary: parseDietContent(dietAssignment.content)?.summary ?? '',
+      chips: dietToday.isRestDay
+        ? []
+        : [
+            formatCalories(dietDay?.calories ?? ''),
+            `${dietToday.itemCount} ${dietToday.itemCount === 1 ? 'meal' : 'meals'}`,
+          ].filter(Boolean),
       route: '/diet',
       iconName: { ios: 'fork.knife.circle', android: 'restaurant', web: 'restaurant' },
-      progressPercent: mealIds.size > 0 ? (mealsDone / mealIds.size) * 100 : 0,
-      progressLabel: `${mealsDone} of ${mealIds.size} meals done today`,
+      progressPercent: dietToday.itemCount > 0 ? (mealsDone / dietToday.itemCount) * 100 : 0,
+      progressLabel: `${mealsDone} of ${dietToday.itemCount} meals done today`,
     });
   }
 
@@ -228,7 +250,7 @@ export function HomeScreen() {
         </ThemedText>
       </View>
 
-      {tracking.isLoading ? (
+      {tracking.isLoading || schedule.isLoading ? (
         <ActivityIndicator color={theme.textSecondary} />
       ) : planCards.length > 0 ? (
         <View style={styles.cards}>

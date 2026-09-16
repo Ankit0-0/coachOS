@@ -27,12 +27,10 @@ import {
   coachClientApi,
   type CheckIn,
   type ClientProfile,
-  type DietContent,
-  type Plan,
   type PlanAssignment,
   type PlanType,
+  type ScheduleEntry,
   type WeightEntry,
-  type WorkoutContent,
 } from '@/lib/api';
 import { buildTelUrl, startCall } from '@/lib/call';
 import { dayOfMonth, lastNDaysRange, longDateLabel, monthRange } from '@/lib/dates';
@@ -51,27 +49,15 @@ type ClientDetailScreenProps = {
   email: string;
 };
 
-function workoutItemIds(plan: Plan | undefined): Set<string> {
-  const ids = new Set<string>();
-  if (!plan || plan.type !== 'WORKOUT') return ids;
-  const content = plan.content as WorkoutContent;
-  for (const exercise of content.exercises ?? []) {
-    for (let set = 1; set <= exercise.sets; set += 1) {
-      ids.add(`${exercise.id}-set${set}`);
-    }
-  }
-  return ids;
-}
-
-function dietItemIds(plan: Plan | undefined): Set<string> {
-  if (!plan || plan.type !== 'DIET') return new Set<string>();
-  const content = plan.content as DietContent;
-  return new Set((content.meals ?? []).map((meal) => meal.id));
-}
-
-function completedMatches(checkIn: CheckIn | undefined, validIds: Set<string>): number {
+/**
+ * Only ids the backend says were scheduled that day count. A plan edited since
+ * may no longer hold an id an old check-in has; those are ignored rather than
+ * counted against a total they are not part of.
+ */
+function countScheduled(checkIn: CheckIn | undefined, ids: string[]): number {
   if (!checkIn) return 0;
-  return checkIn.completedItemIds.filter((id) => validIds.has(id)).length;
+  const scheduled = new Set(ids);
+  return checkIn.completedItemIds.filter((id) => scheduled.has(id)).length;
 }
 
 export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreenProps) {
@@ -82,6 +68,8 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
   // Every check-in in the month, across all assignments — not just the active
   // ones, so switching a client's plan doesn't erase their history here.
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
+  /** What the client was scheduled to do on each date of the month, resolved by the backend. */
+  const [schedule, setSchedule] = useState<ScheduleEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   /** Which plan type the assign sheet is open for; null when it's closed. */
   const [pickerType, setPickerType] = useState<PlanType | null>(null);
@@ -109,16 +97,18 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
   const loadAll = useCallback(async () => {
     const weightRange = lastNDaysRange(WEIGHT_LOOKBACK_DAYS);
     try {
-      const [assignmentRows, profileRow, weightRows, checkInRows] = await Promise.all([
+      const [assignmentRows, profileRow, weightRows, checkInRows, scheduleRows] = await Promise.all([
         assignmentApi.listForClient(clientId),
         coachClientApi.getProfile(clientId),
         coachClientApi.listWeights(clientId, weightRange),
         coachClientApi.listCheckIns(clientId, { from: month.from, to: month.to }),
+        coachClientApi.listSchedule(clientId, { from: month.from, to: month.to }),
       ]);
       setAssignments(assignmentRows);
       setProfile(profileRow);
       setWeights(weightRows);
       setCheckIns(checkInRows);
+      setSchedule(scheduleRows);
     } catch {
       // Leave whatever loaded; the screen renders its empty states.
     } finally {
@@ -174,24 +164,50 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
   const workoutCheckIns = checkInsOfType('WORKOUT');
   const dietCheckIns = checkInsOfType('DIET');
 
+  // A rotating plan has a different item count — and rest days — per date, so
+  // each day's denominator comes from the schedule rather than from the plan.
+  const scheduleByDate = new Map<
+    string,
+    { workoutTotal: number; dietTotal: number; isRestDay: boolean; workoutIds: string[]; dietIds: string[] }
+  >();
+  for (const entry of schedule) {
+    const row = scheduleByDate.get(entry.date) ?? {
+      workoutTotal: 0,
+      dietTotal: 0,
+      isRestDay: false,
+      workoutIds: [] as string[],
+      dietIds: [] as string[],
+    };
+    if (entry.type === 'WORKOUT') {
+      row.workoutTotal = entry.itemCount;
+      row.isRestDay = entry.isRestDay;
+      row.workoutIds = entry.itemIds;
+    } else {
+      row.dietTotal = entry.itemCount;
+      row.dietIds = entry.itemIds;
+    }
+    scheduleByDate.set(entry.date, row);
+  }
+
   const dailyActivity: DailyActivity[] = Array.from({ length: month.daysInMonth }, (_, index) => index + 1).map(
     (day) => {
+      const dateKey = `${month.from.slice(0, 8)}${String(day).padStart(2, '0')}`;
+      const scheduled = scheduleByDate.get(dateKey);
       const workoutCheckIn = workoutCheckIns.find((checkIn) => dayOfMonth(checkIn.date) === day);
       const dietCheckIn = dietCheckIns.find((checkIn) => dayOfMonth(checkIn.date) === day);
-      const workoutIds = workoutItemIds(
-        workoutCheckIn ? planByAssignmentId.get(workoutCheckIn.assignmentId) : undefined,
-      );
-      const dietIds = dietItemIds(dietCheckIn ? planByAssignmentId.get(dietCheckIn.assignmentId) : undefined);
       return {
         date: day,
-        workoutCompleted: completedMatches(workoutCheckIn, workoutIds),
-        workoutTotal: workoutIds.size,
-        dietCompleted: completedMatches(dietCheckIn, dietIds),
-        dietTotal: dietIds.size,
+        workoutCompleted: countScheduled(workoutCheckIn, scheduled?.workoutIds ?? []),
+        workoutTotal: scheduled?.workoutTotal ?? 0,
+        dietCompleted: countScheduled(dietCheckIn, scheduled?.dietIds ?? []),
+        dietTotal: scheduled?.dietTotal ?? 0,
+        isRestDay: scheduled?.isRestDay ?? false,
       };
     },
   );
-  const completedDays = dailyActivity.filter(
+  // Rest days are not misses, so they are out of both sides of the ratio.
+  const trainingDays = dailyActivity.filter((entry) => !entry.isRestDay);
+  const completedDays = trainingDays.filter(
     (entry) => entry.workoutCompleted > 0 || entry.dietCompleted > 0,
   ).length;
 
@@ -342,7 +358,7 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
                 isAtCurrentMonth={isAtCurrentMonth}
               />
               <ThemedText type="meta" style={styles.monthSummary}>
-                {completedDays} of {month.daysInMonth} days logged
+                {completedDays} of {trainingDays.length} training days logged
               </ThemedText>
               <View style={styles.legendRow}>
                 <View style={styles.legendItem}>

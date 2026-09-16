@@ -306,3 +306,38 @@ select {
   border-bottom-color: var(--ink);
   font-weight: 600;
 }
+
+/* Cycle day tabs: many of them, so tighter, with a marker for whether each day is filled in. */
+.dayTabs {
+  gap: var(--s3);
+  flex-wrap: wrap;
+}
+
+.dayTab {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s1);
+  min-width: 20px;
+}
+
+.dayMarker {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 1px solid var(--rule-strong);
+}
+
+.dayMarkerFilled {
+  background: var(--ink-muted);
+  border-color: var(--ink-muted);
+}
+
+/* A rest day is scheduled, not missing: a flat dash rather than a dot. */
+.dayMarkerRest {
+  width: 10px;
+  height: 2px;
+  border-radius: 0;
+  border: 0;
+  background: var(--ink-muted);
+}

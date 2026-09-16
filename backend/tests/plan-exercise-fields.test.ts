@@ -13,6 +13,14 @@ describe("workout exercise reps and rest", () => {
     await cleanupUser(coach.id);
   });
 
+  /** One day of the cycle, holding whichever exercises a test is checking. */
+  function contentWith(exercises: unknown[]) {
+    return {
+      ...VALID_WORKOUT_CONTENT,
+      days: [{ ...VALID_WORKOUT_CONTENT.days[0], exercises }],
+    };
+  }
+
   async function createPlan(exercises: unknown[]) {
     return api
       .post("/v1/coach/plans")
@@ -20,8 +28,14 @@ describe("workout exercise reps and rest", () => {
       .send({
         type: "WORKOUT",
         title: `Plan ${Math.random().toString(36).slice(2, 8)}`,
-        content: { ...VALID_WORKOUT_CONTENT, exercises },
+        cycleLengthDays: 1,
+        content: contentWith(exercises),
       });
+  }
+
+  /** The first day's exercises, which is where a one-day plan keeps them. */
+  function exercisesOf(plan: { content: { days: { exercises: Record<string, unknown>[] }[] } }) {
+    return plan.content.days[0]!.exercises;
   }
 
   it("round-trips reps and rest through create and read back", async () => {
@@ -35,16 +49,16 @@ describe("workout exercise reps and rest", () => {
       .set("Authorization", `Bearer ${coach.token}`);
 
     expect(read.status).toBe(200);
-    expect(read.body.plan.content.exercises[0].reps).toBe("8-10");
-    expect(read.body.plan.content.exercises[0].rest).toBe("90s");
+    expect(exercisesOf(read.body.plan)[0]!.reps).toBe("8-10");
+    expect(exercisesOf(read.body.plan)[0]!.rest).toBe("90s");
   });
 
   it("accepts an exercise with neither field, so older plans still validate", async () => {
     const created = await createPlan([{ id: "push-up", name: "Push Up", note: "", sets: 3 }]);
 
     expect(created.status).toBe(201);
-    expect(created.body.plan.content.exercises[0].reps).toBeUndefined();
-    expect(created.body.plan.content.exercises[0].rest).toBeUndefined();
+    expect(exercisesOf(created.body.plan)[0]!.reps).toBeUndefined();
+    expect(exercisesOf(created.body.plan)[0]!.rest).toBeUndefined();
   });
 
   it("persists reps and rest added by a later update", async () => {
@@ -55,17 +69,15 @@ describe("workout exercise reps and rest", () => {
       .patch(`/v1/coach/plans/${planId}`)
       .set("Authorization", `Bearer ${coach.token}`)
       .send({
-        content: {
-          ...VALID_WORKOUT_CONTENT,
-          exercises: [{ id: "row", name: "Row", note: "", sets: 3, reps: "12", rest: "60s" }],
-        },
+        cycleLengthDays: 1,
+        content: contentWith([{ id: "row", name: "Row", note: "", sets: 3, reps: "12", rest: "60s" }]),
       });
 
     expect(updated.status).toBe(200);
 
     const read = await api.get(`/v1/coach/plans/${planId}`).set("Authorization", `Bearer ${coach.token}`);
-    expect(read.body.plan.content.exercises[0].reps).toBe("12");
-    expect(read.body.plan.content.exercises[0].rest).toBe("60s");
+    expect(exercisesOf(read.body.plan)[0]!.reps).toBe("12");
+    expect(exercisesOf(read.body.plan)[0]!.rest).toBe("60s");
   });
 
   it("rejects a reps value longer than the 50-character limit", async () => {
@@ -86,14 +98,12 @@ describe("workout exercise reps and rest", () => {
       .patch(`/v1/coach/plans/${planId}`)
       .set("Authorization", `Bearer ${coach.token}`)
       .send({
-        content: {
-          ...VALID_WORKOUT_CONTENT,
-          exercises: [{ id: "original-id", name: "A Completely New Name", note: "", sets: 3, reps: "5" }],
-        },
+        cycleLengthDays: 1,
+        content: contentWith([{ id: "original-id", name: "A Completely New Name", note: "", sets: 3, reps: "5" }]),
       });
 
     const read = await api.get(`/v1/coach/plans/${planId}`).set("Authorization", `Bearer ${coach.token}`);
-    expect(read.body.plan.content.exercises[0].id).toBe("original-id");
-    expect(read.body.plan.content.exercises[0].name).toBe("A Completely New Name");
+    expect(exercisesOf(read.body.plan)[0]!.id).toBe("original-id");
+    expect(exercisesOf(read.body.plan)[0]!.name).toBe("A Completely New Name");
   });
 });

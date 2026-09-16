@@ -54,8 +54,13 @@ function physiquePhotos(weights: WeightEntry[]): Photo[] {
 /** The label of a meal in a diet plan, e.g. "Breakfast", or null if it can't be found. */
 function mealLabel(plan: Plan | undefined, mealId: string): string | null {
   if (!plan || plan.type !== 'DIET') return null;
-  const meals = (plan.content as DietContent).meals ?? [];
-  return meals.find((meal) => meal.id === mealId)?.label ?? null;
+  // Any day of the cycle may own the id, and a photo outlives the day it was
+  // taken on, so the whole plan is searched rather than one day of it.
+  for (const day of (plan.content as DietContent).days ?? []) {
+    const match = day.meals.find((meal) => meal.id === mealId);
+    if (match) return match.label;
+  }
+  return null;
 }
 
 function mealPhotos(checkIns: CheckIn[], planByAssignmentId: Map<string, Plan>): Photo[] {

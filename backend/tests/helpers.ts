@@ -91,19 +91,33 @@ export async function createAcceptedInvite(coach: TestUser, client: TestUser): P
   return inviteId;
 }
 
+/** A one-day cycle: the smallest valid plan, and what most tests need. */
 export const VALID_WORKOUT_CONTENT = {
-  duration: "30 min",
   focus: "Full body strength",
   summary: "A short full body session.",
   difficulty: "Beginner",
-  exercises: [{ id: "push-up", name: "Push Up", note: "Go slow", sets: 3 }],
+  days: [
+    {
+      dayIndex: 0,
+      label: "Every day",
+      isRestDay: false,
+      duration: "30 min",
+      exercises: [{ id: "push-up", name: "Push Up", note: "Go slow", sets: 3 }],
+    },
+  ],
 };
 
 export const VALID_DIET_CONTENT = {
-  calories: "2,000 kcal",
   focus: "Balanced macros",
   summary: "An everyday maintenance split.",
-  meals: [{ id: "breakfast", label: "Breakfast: eggs, toast, fruit" }],
+  days: [
+    {
+      dayIndex: 0,
+      label: "Every day",
+      calories: "2,000 kcal",
+      meals: [{ id: "breakfast", label: "Breakfast: eggs, toast, fruit" }],
+    },
+  ],
 };
 
 /** Deletes a test user and everything that references it, in FK-safe order. */

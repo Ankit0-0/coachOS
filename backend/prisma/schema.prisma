@@ -160,6 +160,10 @@ model Plan {
   title       String
   description String?
   content     Json
+  /// How many days the plan's `content.days` rotate through, 1-31. A column
+  /// rather than part of the Json: it is validated, and it is the one part of a
+  /// plan worth querying. Existing single-day plans default to 1.
+  cycleLengthDays Int @default(1)
   isDefault   Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

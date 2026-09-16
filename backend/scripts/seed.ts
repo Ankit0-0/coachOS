@@ -10,35 +10,129 @@ const PASSWORD = "password123";
 // WORKOUT / DIET content contracts exactly.
 // ---------------------------------------------------------------------------
 
+type WorkoutDay = {
+  dayIndex: number;
+  label: string;
+  isRestDay: boolean;
+  duration: string;
+  exercises: { id: string; name: string; note: string; sets: number }[];
+};
+
 type WorkoutContent = {
+  focus: string;
+  summary: string;
+  difficulty: string;
+  days: WorkoutDay[];
+};
+
+type DietDay = { dayIndex: number; label: string; calories: string; meals: { id: string; label: string }[] };
+
+type DietContent = {
+  focus: string;
+  summary: string;
+  days: DietDay[];
+};
+
+/** A single-day plan in cycle shape: one day, item ids left exactly as they were. */
+function oneDayWorkout(input: {
   duration: string;
   focus: string;
   summary: string;
   difficulty: string;
-  exercises: { id: string; name: string; note: string; sets: number }[];
-};
+  exercises: WorkoutDay["exercises"];
+}): WorkoutContent {
+  return {
+    focus: input.focus,
+    summary: input.summary,
+    difficulty: input.difficulty,
+    days: [{ dayIndex: 0, label: "Every day", isRestDay: false, duration: input.duration, exercises: input.exercises }],
+  };
+}
 
-type DietContent = {
+function oneDayDiet(input: {
   calories: string;
   focus: string;
   summary: string;
-  meals: { id: string; label: string }[];
-};
+  meals: DietDay["meals"];
+}): DietContent {
+  return {
+    focus: input.focus,
+    summary: input.summary,
+    days: [{ dayIndex: 0, label: "Every day", calories: input.calories, meals: input.meals }],
+  };
+}
 
+/**
+ * The default coaches copy from: a genuine 7-day split with two rest days, so
+ * the shape of a real cycle is obvious the first time someone opens it. Item
+ * ids carry their day, which is what keeps a check-in unambiguous when the same
+ * lift appears twice in a week.
+ */
 const DEFAULT_WORKOUT: WorkoutContent = {
-  duration: "42 min",
-  focus: "Build controlled strength through legs, glutes, and trunk.",
-  summary: "Strength-focused lower-body work with controlled tempo and short recovery blocks.",
+  focus: "A full week: two lower days, two upper days, one conditioning day, two rests.",
+  summary: "Strength-focused week with controlled tempo and two full rest days.",
   difficulty: "Intermediate",
-  exercises: [
-    { id: "goblet-squat", name: "Goblet squat", note: "Keep ribs stacked and pause at the bottom.", sets: 4 },
-    { id: "reverse-lunge", name: "Reverse lunge", note: "Step back softly, front knee over toes.", sets: 3 },
-    { id: "hip-bridge", name: "Hip bridge", note: "Drive through heels, hold the top for one second.", sets: 3 },
-    { id: "core-finisher", name: "Core finisher", note: "Move slowly, stop if the lower back takes over.", sets: 2 },
+  days: [
+    {
+      dayIndex: 0,
+      label: "Lower push",
+      isRestDay: false,
+      duration: "42 min",
+      exercises: [
+        { id: "d0-goblet-squat", name: "Goblet squat", note: "Keep ribs stacked and pause at the bottom.", sets: 4 },
+        { id: "d0-reverse-lunge", name: "Reverse lunge", note: "Step back softly, front knee over toes.", sets: 3 },
+        { id: "d0-calf-raise", name: "Calf raise", note: "Full stretch at the bottom.", sets: 3 },
+      ],
+    },
+    {
+      dayIndex: 1,
+      label: "Upper push",
+      isRestDay: false,
+      duration: "38 min",
+      exercises: [
+        { id: "d1-bench-press", name: "Barbell bench press", note: "Elbows at 45 degrees, full lockout.", sets: 4 },
+        { id: "d1-shoulder-press", name: "Shoulder press", note: "Squeeze the glutes, no leaning back.", sets: 3 },
+        { id: "d1-tricep-pushdown", name: "Tricep pushdown", note: "Lock the elbows to your sides.", sets: 3 },
+      ],
+    },
+    { dayIndex: 2, label: "Rest", isRestDay: true, duration: "", exercises: [] },
+    {
+      dayIndex: 3,
+      label: "Lower pull",
+      isRestDay: false,
+      duration: "40 min",
+      exercises: [
+        { id: "d3-romanian-deadlift", name: "Romanian deadlift", note: "Push the hips back, bar close.", sets: 4 },
+        { id: "d3-hip-bridge", name: "Hip bridge", note: "Drive through heels, hold the top for one second.", sets: 3 },
+        { id: "d3-core-finisher", name: "Core finisher", note: "Move slowly, stop if the lower back takes over.", sets: 2 },
+      ],
+    },
+    {
+      dayIndex: 4,
+      label: "Upper pull",
+      isRestDay: false,
+      duration: "38 min",
+      exercises: [
+        { id: "d4-pull-up", name: "Pull-up", note: "Band-assisted is fine, full hang each rep.", sets: 4 },
+        { id: "d4-seated-row", name: "Seated row", note: "Shoulders down, pause at the chest.", sets: 3 },
+        { id: "d4-face-pull", name: "Face pull", note: "High elbows, light weight.", sets: 3 },
+      ],
+    },
+    {
+      dayIndex: 5,
+      label: "Conditioning",
+      isRestDay: false,
+      duration: "24 min",
+      exercises: [
+        { id: "d5-row-intervals", name: "Rower intervals", note: "250m hard, 90 seconds easy.", sets: 6 },
+        { id: "d5-carry", name: "Farmer carry", note: "Tall posture, 40m per trip.", sets: 3 },
+      ],
+    },
+    { dayIndex: 6, label: "Rest", isRestDay: true, duration: "", exercises: [] },
   ],
 };
 
-const DEFAULT_DIET: DietContent = {
+const DEFAULT_DIET: DietContent = oneDayDiet({
   calories: "1,950 kcal",
   focus: "Keep protein high and place most carbs around the workout.",
   summary: "A high-protein split with steady carbs and recovery-friendly fats.",
@@ -49,9 +143,9 @@ const DEFAULT_DIET: DietContent = {
     { id: "dinner", label: "Dinner: salmon, potatoes, greens" },
     { id: "hydration", label: "Hydration: 2.5L water" },
   ],
-};
+});
 
-const UPPER_PUSH: WorkoutContent = {
+const UPPER_PUSH: WorkoutContent = oneDayWorkout({
   duration: "38 min",
   focus: "Press strength through chest, shoulders, and triceps.",
   summary: "Compound pressing followed by shoulder health accessories.",
@@ -62,9 +156,9 @@ const UPPER_PUSH: WorkoutContent = {
     { id: "lateral-raise", name: "Lateral raise", note: "Lead with the elbow, no swinging.", sets: 3 },
     { id: "tricep-pushdown", name: "Tricep pushdown", note: "Lock the elbows to your sides.", sets: 3 },
   ],
-};
+});
 
-const CONDITIONING: WorkoutContent = {
+const CONDITIONING: WorkoutContent = oneDayWorkout({
   duration: "24 min",
   focus: "Raise work capacity without wrecking tomorrow's session.",
   summary: "Short intervals with strict rest — quality over grinding.",
@@ -74,9 +168,9 @@ const CONDITIONING: WorkoutContent = {
     { id: "kb-swing", name: "Kettlebell swing", note: "Snap the hips, the arms are just hooks.", sets: 4 },
     { id: "carry", name: "Farmer carry", note: "Tall posture, 40m per trip.", sets: 3 },
   ],
-};
+});
 
-const CUTTING_DIET: DietContent = {
+const CUTTING_DIET: DietContent = oneDayDiet({
   calories: "1,700 kcal",
   focus: "Protect muscle in a deficit by keeping protein and steps high.",
   summary: "Lean protein at every meal with vegetables for volume.",
@@ -86,9 +180,9 @@ const CUTTING_DIET: DietContent = {
     { id: "snack", label: "Snack: cottage cheese and an apple" },
     { id: "dinner", label: "Dinner: white fish, quinoa, broccoli" },
   ],
-};
+});
 
-const MAINTENANCE_DIET: DietContent = {
+const MAINTENANCE_DIET: DietContent = oneDayDiet({
   calories: "2,400 kcal",
   focus: "Hold weight steady while training hard four days a week.",
   summary: "Balanced plates with carbs timed around training.",
@@ -99,9 +193,9 @@ const MAINTENANCE_DIET: DietContent = {
     { id: "dinner", label: "Dinner: chicken pasta, side salad" },
     { id: "supper", label: "Before bed: casein or milk" },
   ],
-};
+});
 
-const VEGETARIAN_DIET: DietContent = {
+const VEGETARIAN_DIET: DietContent = oneDayDiet({
   calories: "2,100 kcal",
   focus: "Hit protein targets on a meat-free plan.",
   summary: "Legume- and dairy-forward meals with complete protein pairings.",
@@ -111,7 +205,7 @@ const VEGETARIAN_DIET: DietContent = {
     { id: "snack", label: "Snack: edamame and a pear" },
     { id: "dinner", label: "Dinner: chickpea curry, brown rice" },
   ],
-};
+});
 
 // ---------------------------------------------------------------------------
 // Helpers — every step is idempotent so the script can be re-run safely.
@@ -166,10 +260,17 @@ async function ensurePlan(
   },
 ) {
   const { isDefault = false, ...rest } = input;
+  const cycleLengthDays = rest.content.days.length;
   return prisma.plan.upsert({
     where: { id },
-    update: { title: rest.title, description: rest.description, content: rest.content, createdById: rest.createdById },
-    create: { id, ...rest, isDefault },
+    update: {
+      title: rest.title,
+      description: rest.description,
+      content: rest.content,
+      cycleLengthDays,
+      createdById: rest.createdById,
+    },
+    create: { id, ...rest, cycleLengthDays, isDefault },
   });
 }
 
@@ -228,8 +329,11 @@ async function ensureCheckIn(
   });
 }
 
-function workoutItemIds(content: WorkoutContent, exercisesDone: number): string[] {
-  return content.exercises.slice(0, exercisesDone).flatMap((exercise) =>
+/** The set ids for one day of a plan: the first `exercisesDone` exercises of it. */
+function workoutItemIds(content: WorkoutContent, exercisesDone: number, dayIndex = 0): string[] {
+  const day = content.days[dayIndex];
+  if (!day) return [];
+  return day.exercises.slice(0, exercisesDone).flatMap((exercise) =>
     Array.from({ length: exercise.sets }, (_, index) => `${exercise.id}-set${index + 1}`),
   );
 }

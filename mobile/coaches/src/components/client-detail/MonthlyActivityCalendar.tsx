@@ -11,6 +11,8 @@ export type DailyActivity = {
   workoutTotal: number;
   dietCompleted: number;
   dietTotal: number;
+  /** A scheduled rest day: marked as rest, never as an unfilled ring. */
+  isRestDay?: boolean;
 };
 
 type MonthlyActivityCalendarProps = {
@@ -65,6 +67,9 @@ export function MonthlyActivityCalendar({
           const workoutPct = entry ? entry.workoutCompleted / Math.max(entry.workoutTotal, 1) : 0;
           const dietPct = entry ? entry.dietCompleted / Math.max(entry.dietTotal, 1) : 0;
           const isActive = workoutPct > 0 || dietPct > 0;
+          // Rest is a plan state, not a miss — unless something was logged
+          // anyway, in which case show what was done.
+          const isRest = Boolean(entry?.isRestDay) && !isActive;
 
           const ringRadius = 9;
           const ringCircumference = 2 * Math.PI * ringRadius;
@@ -74,7 +79,9 @@ export function MonthlyActivityCalendar({
           return (
             <View key={dayNumber} style={styles.dayCell}>
               <View style={styles.dayIndicatorWrap}>
-                {isActive ? (
+                {isRest ? (
+                  <View style={[styles.restDayMark, { backgroundColor: theme.chartTrack }]} />
+                ) : isActive ? (
                   <Svg width={28} height={28} viewBox="0 0 28 28">
                     <Circle cx={14} cy={14} r={9} fill="none" stroke={theme.chartTrack} strokeWidth={2} />
                     <Circle
@@ -147,6 +154,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 24,
+  },
+  /** A short neutral dash: clearly "nothing scheduled", clearly not a failed ring. */
+  restDayMark: {
+    width: 14,
+    height: 3,
+    borderRadius: Radii.sm,
   },
   emptyDayCircle: {
     width: 20,

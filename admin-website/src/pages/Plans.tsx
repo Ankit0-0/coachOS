@@ -8,16 +8,31 @@ const TYPES: { label: string; value: PlanType }[] = [
   { label: 'Diet', value: 'DIET' },
 ];
 
-/** The two figures that describe a plan at a glance. */
-function stats(plan: Plan): { items: string; measure: string } {
+function plural(count: number, noun: string): string {
+  return `${count} ${count === 1 ? noun : `${noun}s`}`;
+}
+
+/**
+ * The figures that describe a plan at a glance. A rotating plan's duration or
+ * calories differ day to day, so the measure column shows day 1's and the
+ * cycle column says there is more than one day.
+ */
+function stats(plan: Plan): { cycle: string; items: string; measure: string } {
+  const cycle = plan.cycleLengthDays > 1 ? `${plan.cycleLengthDays}-day cycle` : 'Every day';
   if (plan.type === 'WORKOUT') {
-    const content = plan.content as WorkoutContent;
-    const count = content.exercises.length;
-    return { items: `${count} ${count === 1 ? 'exercise' : 'exercises'}`, measure: content.duration };
+    const days = (plan.content as WorkoutContent).days;
+    const training = days.filter((day) => !day.isRestDay);
+    const exercises = training.reduce((total, day) => total + day.exercises.length, 0);
+    const rest = days.length - training.length;
+    return {
+      cycle: rest > 0 ? `${cycle} · ${plural(rest, 'rest day')}` : cycle,
+      items: plural(exercises, 'exercise'),
+      measure: training[0]?.duration || '—',
+    };
   }
-  const content = plan.content as DietContent;
-  const count = content.meals.length;
-  return { items: `${count} ${count === 1 ? 'meal' : 'meals'}`, measure: content.calories };
+  const days = (plan.content as DietContent).days;
+  const meals = days.reduce((total, day) => total + day.meals.length, 0);
+  return { cycle, items: plural(meals, 'meal'), measure: days[0]?.calories || '—' };
 }
 
 export function Plans() {
@@ -53,6 +68,7 @@ export function Plans() {
       type,
       title: draft.title,
       ...(draft.description ? { description: draft.description } : {}),
+      cycleLengthDays: draft.cycleLengthDays,
       content: draft.content,
     });
     closeEditor();
@@ -63,6 +79,7 @@ export function Plans() {
     await adminPlanApi.update(plan.id, {
       title: draft.title,
       description: draft.description,
+      cycleLengthDays: draft.cycleLengthDays,
       content: draft.content,
     });
     closeEditor();
@@ -147,6 +164,7 @@ export function Plans() {
             <tr>
               <th>Title</th>
               <th>Description</th>
+              <th>Cycle</th>
               <th>Contents</th>
               <th>{type === 'WORKOUT' ? 'Duration' : 'Calories'}</th>
               <th>Actions</th>
@@ -154,7 +172,7 @@ export function Plans() {
           </thead>
           <tbody>
             {plans.map((plan) => {
-              const { items, measure } = stats(plan);
+              const { cycle, items, measure } = stats(plan);
               return (
                 <tr key={plan.id}>
                   <td>
@@ -163,6 +181,7 @@ export function Plans() {
                     </button>
                   </td>
                   <td className={plan.description ? 'secondary' : 'muted'}>{plan.description || '—'}</td>
+                  <td className="secondary">{cycle}</td>
                   <td className="secondary">{items}</td>
                   <td className="secondary numeric">{measure}</td>
                   <td>
