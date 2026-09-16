@@ -213,7 +213,7 @@ export function ProfileScreen() {
   }
 
   return (
-    <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh}>
+    <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh} avoidKeyboard>
       {loadError ? (
         <View style={[styles.errorBanner, { backgroundColor: theme.dangerSoft }]}>
           <ThemedText type="small" themeColor="danger">

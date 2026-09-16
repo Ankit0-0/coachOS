@@ -1,18 +1,17 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { GoogleSignInButton } from '@/components/auth/google-sign-in-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
+import { KeyboardForm } from '@/components/ui/keyboard-form';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Radii, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth';
 import { useTheme } from '@/hooks/use-theme';
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Something went wrong. Please try again.';
-}
+import { describeError } from '@/lib/api-errors';
 
 export default function SignUpScreen() {
   const router = useRouter();
@@ -48,7 +47,7 @@ export default function SignUpScreen() {
       await signUp(email.trim().toLowerCase(), password, name.trim());
       // The root layout watches isSignedIn and redirects to the app tabs.
     } catch (error) {
-      setFormError(errorMessage(error));
+      setFormError(describeError(error));
     } finally {
       setIsLoading(false);
     }
@@ -56,7 +55,7 @@ export default function SignUpScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <KeyboardForm contentContainerStyle={styles.content}>
         <Pressable accessibilityRole="button" onPress={() => router.back()} hitSlop={8} style={styles.back}>
           <ThemedText type="linkPrimary">Back</ThemedText>
         </Pressable>
@@ -105,14 +104,13 @@ export default function SignUpScreen() {
             <ThemedText type="label" themeColor="textSecondary">
               Password
             </ThemedText>
-            <TextInput
-              style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+            <PasswordInput
               placeholder="At least 8 characters"
-              placeholderTextColor={theme.textMuted}
               value={password}
               onChangeText={setPassword}
               editable={!isLoading}
-              secureTextEntry
+              autoComplete="new-password"
+              textContentType="newPassword"
             />
           </View>
 
@@ -120,14 +118,13 @@ export default function SignUpScreen() {
             <ThemedText type="label" themeColor="textSecondary">
               Confirm password
             </ThemedText>
-            <TextInput
-              style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+            <PasswordInput
               placeholder="Repeat your password"
-              placeholderTextColor={theme.textMuted}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               editable={!isLoading}
-              secureTextEntry
+              autoComplete="new-password"
+              textContentType="newPassword"
             />
           </View>
         </View>
@@ -160,7 +157,7 @@ export default function SignUpScreen() {
             </Pressable>
           </View>
         </View>
-      </ScrollView>
+      </KeyboardForm>
     </ThemedView>
   );
 }

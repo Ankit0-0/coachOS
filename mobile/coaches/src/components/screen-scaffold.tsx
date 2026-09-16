@@ -1,8 +1,9 @@
 import { PropsWithChildren } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, ViewStyle } from 'react-native';
+import { KeyboardAvoidingView, Platform, RefreshControl, ScrollView, StyleSheet, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedView } from '@/components/themed-view';
+import { KEYBOARD_AVOIDING_BEHAVIOR } from '@/components/ui/keyboard-form';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -16,6 +17,12 @@ type ScreenScaffoldProps = PropsWithChildren<{
    */
   refreshing?: boolean;
   onRefresh?: () => void;
+  /**
+   * For screens with text inputs: shrinks the scroll area above the keyboard
+   * so the focused field and the save button stay reachable. See KeyboardForm
+   * for why Android needs this despite `adjustResize`.
+   */
+  avoidKeyboard?: boolean;
 }>;
 
 export function ScreenScaffold({
@@ -24,32 +31,42 @@ export function ScreenScaffold({
   includeBottomTabInset = false,
   refreshing = false,
   onRefresh,
+  avoidKeyboard = false,
 }: ScreenScaffoldProps) {
   const theme = useTheme();
 
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            onRefresh ? (
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                tintColor={theme.textSecondary}
-                colors={[theme.accent]}
-                progressBackgroundColor={theme.surface}
-              />
-            ) : undefined
-          }
-          contentContainerStyle={[
-            styles.content,
-            includeBottomTabInset && styles.contentWithTabs,
-            contentStyle,
-          ]}>
-          {children}
-        </ScrollView>
+        <KeyboardAvoidingView
+          style={styles.fill}
+          behavior={avoidKeyboard ? KEYBOARD_AVOIDING_BEHAVIOR : undefined}
+          enabled={avoidKeyboard}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            // A tap on a button with the keyboard up should press the button,
+            // not just close the keyboard.
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+            refreshControl={
+              onRefresh ? (
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  tintColor={theme.textSecondary}
+                  colors={[theme.accent]}
+                  progressBackgroundColor={theme.surface}
+                />
+              ) : undefined
+            }
+            contentContainerStyle={[
+              styles.content,
+              includeBottomTabInset && styles.contentWithTabs,
+              contentStyle,
+            ]}>
+            {children}
+          </ScrollView>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </ThemedView>
   );
@@ -59,6 +76,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     alignItems: 'center',
+  },
+  fill: {
+    flex: 1,
   },
   safeArea: {
     flex: 1,

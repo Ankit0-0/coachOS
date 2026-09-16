@@ -177,13 +177,9 @@ export async function pickAndUploadImage(purpose: UploadPurpose): Promise<ImageU
         pickerMimeType: asset.mimeType,
         body: put.body.slice(0, 2000),
       });
-      // TEMPORARY: S3's code is shown in-app so a device test reports the real
-      // cause without a debugger attached. Remove once native uploads are
-      // confirmed working — the detail stays in the console log above.
-      const detail = receivedContentType !== undefined
-        ? `${code}, sent content-type "${receivedContentType}", signed "${contentType}"`
-        : code;
-      return { status: 'error', message: `The photo was rejected during upload (${detail}).` };
+      // S3's code and status stay in the console log above; the app never
+      // shows a raw status.
+      return { status: 'error', message: 'The photo couldn’t be uploaded. Please try again.' };
     }
 
     return { status: 'uploaded', key, uri: asset.uri };

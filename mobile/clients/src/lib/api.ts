@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 
+import { contextForRequest, messageForStatus } from '@/lib/api-errors';
 import { loadAccessToken } from '@/lib/token-storage';
 
 export type Role = 'CLIENT' | 'COACH';
@@ -70,11 +71,9 @@ async function apiRequest<T>(path: string, options: RequestOptions = {}): Promis
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
-  } catch {
-    throw new ApiError(
-      0,
-      'Unable to reach the server. Check your connection and confirm the backend is running.',
-    );
+  } catch (error) {
+    console.log(`[api] ${method} ${path} failed before a response`, error);
+    throw new ApiError(0, messageForStatus(0, contextForRequest(method, path)));
   }
 
   let data: unknown = null;
@@ -85,15 +84,10 @@ async function apiRequest<T>(path: string, options: RequestOptions = {}): Promis
   }
 
   if (!response.ok) {
-    const serverMessage =
-      data && typeof data === 'object' && 'message' in data
-        ? (data as { message?: unknown }).message
-        : undefined;
-    const message =
-      typeof serverMessage === 'string'
-        ? serverMessage
-        : `Request failed with status ${response.status}.`;
-    throw new ApiError(response.status, message, data);
+    // The status is for whoever is debugging; the person using the app gets
+    // words chosen for this request (lib/api-errors.ts), never the number.
+    console.log(`[api] ${method} ${path} failed with ${response.status}`, data);
+    throw new ApiError(response.status, messageForStatus(response.status, contextForRequest(method, path)), data);
   }
 
   return data as T;

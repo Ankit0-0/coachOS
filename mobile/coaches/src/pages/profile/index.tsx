@@ -220,7 +220,7 @@ export function ProfileScreen() {
   }
 
   return (
-    <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh}>
+    <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh} avoidKeyboard>
       <View style={styles.identity}>
         <Pressable
           accessibilityRole="button"
