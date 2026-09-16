@@ -23,8 +23,8 @@ type PlanPickerModalProps = {
 };
 
 /**
- * API errors carry only a status, so the generic "Request failed with status
- * 500." is all there is to show unless the meaningful ones are named here.
+ * API errors carry only a status, and the general copy for it can't know this
+ * is an assignment — so the statuses that mean something here are named.
  */
 function errorMessage(error: unknown, fallback: string): string {
   if (error instanceof ApiError) {

@@ -1,13 +1,16 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
+import { KeyboardForm } from '@/components/ui/keyboard-form';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Radii, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { authApi } from '@/lib/api';
+import { describeError } from '@/lib/api-errors';
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
@@ -47,10 +50,10 @@ export default function ResetPasswordScreen() {
       setFormError(null);
       await authApi.resetPassword({ email: trimmedEmail, code: trimmedCode, newPassword: password });
       setDone(true);
-    } catch {
-      // The server won't say whether the code was wrong, expired, or already
-      // used, so cover all three here.
-      setFormError('That code didn’t work. It may have expired or already been used — request a new one.');
+    } catch (error) {
+      // A bad code — wrong, expired or used, the server won't say which — gets
+      // its own copy; a dropped connection or a server fault says so instead.
+      setFormError(describeError(error));
     } finally {
       setIsLoading(false);
     }
@@ -74,7 +77,7 @@ export default function ResetPasswordScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <KeyboardForm contentContainerStyle={styles.content}>
         <Pressable accessibilityRole="button" onPress={() => router.back()} hitSlop={8} style={styles.back}>
           <ThemedText type="linkPrimary">Back</ThemedText>
         </Pressable>
@@ -125,14 +128,13 @@ export default function ResetPasswordScreen() {
             <ThemedText type="label" themeColor="textSecondary">
               New password
             </ThemedText>
-            <TextInput
-              style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+            <PasswordInput
               placeholder="At least 8 characters"
-              placeholderTextColor={theme.textMuted}
               value={password}
               onChangeText={setPassword}
               editable={!isLoading}
-              secureTextEntry
+              autoComplete="new-password"
+              textContentType="newPassword"
             />
           </View>
 
@@ -140,14 +142,13 @@ export default function ResetPasswordScreen() {
             <ThemedText type="label" themeColor="textSecondary">
               Confirm new password
             </ThemedText>
-            <TextInput
-              style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+            <PasswordInput
               placeholder="Repeat your new password"
-              placeholderTextColor={theme.textMuted}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               editable={!isLoading}
-              secureTextEntry
+              autoComplete="new-password"
+              textContentType="newPassword"
             />
           </View>
         </View>
@@ -175,7 +176,7 @@ export default function ResetPasswordScreen() {
             </Pressable>
           </View>
         </View>
-      </ScrollView>
+      </KeyboardForm>
     </ThemedView>
   );
 }
