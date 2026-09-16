@@ -135,12 +135,20 @@ export interface Exercise {
   rest?: string;
 }
 
-export interface WorkoutContent {
+/** One day of a plan's rotating cycle. Which day a date lands on is the backend's to work out. */
+export interface WorkoutDay {
+  dayIndex: number;
+  label: string;
+  isRestDay: boolean;
   duration: string;
+  exercises: Exercise[];
+}
+
+export interface WorkoutContent {
   focus: string;
   summary: string;
   difficulty: string;
-  exercises: Exercise[];
+  days: WorkoutDay[];
 }
 
 export interface Meal {
@@ -148,11 +156,17 @@ export interface Meal {
   label: string;
 }
 
-export interface DietContent {
+export interface DietDay {
+  dayIndex: number;
+  label: string;
   calories: string;
+  meals: Meal[];
+}
+
+export interface DietContent {
   focus: string;
   summary: string;
-  meals: Meal[];
+  days: DietDay[];
 }
 
 export interface Plan {
@@ -161,6 +175,8 @@ export interface Plan {
   title: string;
   description: string | null;
   content: WorkoutContent | DietContent;
+  /** 1-31, always equal to `content.days.length`. */
+  cycleLengthDays: number;
   isDefault: boolean;
   createdById: string | null;
   createdAt: string;
@@ -209,11 +225,20 @@ export const adminPlanApi = {
     return request<{ plans: Plan[] }>(`/admin/plans?type=${type}`).then((data) => data.plans);
   },
 
-  create(input: { type: PlanType; title: string; description?: string; content: WorkoutContent | DietContent }) {
+  create(input: {
+    type: PlanType;
+    title: string;
+    description?: string;
+    cycleLengthDays: number;
+    content: WorkoutContent | DietContent;
+  }) {
     return request<{ plan: Plan }>('/admin/plans', { method: 'POST', body: input }).then((data) => data.plan);
   },
 
-  update(id: string, input: { title?: string; description?: string; content?: WorkoutContent | DietContent }) {
+  update(
+    id: string,
+    input: { title?: string; description?: string; cycleLengthDays?: number; content?: WorkoutContent | DietContent },
+  ) {
     return request<{ plan: Plan }>(`/admin/plans/${encodeURIComponent(id)}`, { method: 'PATCH', body: input }).then(
       (data) => data.plan,
     );

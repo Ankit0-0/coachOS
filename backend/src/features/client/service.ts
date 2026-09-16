@@ -2,6 +2,7 @@ import { getLogger } from "../../config/logger.js";
 import { prisma } from "../../config/prisma.config.js";
 import { findAcceptedInvite } from "../../utils/coach-access.js";
 import { getSignedReadUrl } from "../upload/service.js";
+import { getClientSchedule } from "../plan/schedule.js";
 import { parseDate, serializeCheckIn, serializeWeight } from "../tracking/service.js";
 
 type DateString = string;
@@ -65,6 +66,16 @@ export async function listClientWeights(coachId: string, clientId: string, input
     orderBy: { date: "asc" },
   });
   return Promise.all(rows.map(serializeWeight));
+}
+
+/** The client's schedule, for a coach who actually coaches them. */
+export async function getClientScheduleForCoach(
+  coachId: string,
+  clientId: string,
+  range: { from: string; to: string },
+) {
+  await assertAccess(coachId, clientId, "getClientSchedule");
+  return getClientSchedule(clientId, range);
 }
 
 export async function getClientProfile(coachId: string, clientId: string) {

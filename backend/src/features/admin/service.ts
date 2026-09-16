@@ -2,14 +2,17 @@ import type { CoachApprovalStatus, Plan, Prisma } from "@prisma/client";
 
 import { getLogger } from "../../config/logger.js";
 import { prisma } from "../../config/prisma.config.js";
+import { normalizePlanContent } from "../plan/content.js";
 
 function serializePlan(plan: Plan) {
+  const content = normalizePlanContent(plan.type, plan.content);
   return {
     id: plan.id,
     type: plan.type,
     title: plan.title,
     description: plan.description,
-    content: plan.content,
+    content,
+    cycleLengthDays: content.days.length,
     isDefault: plan.isDefault,
     createdById: plan.createdById,
     createdAt: plan.createdAt,
@@ -132,6 +135,7 @@ export async function getDefaultPlan(planId: string) {
 }
 
 export async function createDefaultPlan(input: {
+  cycleLengthDays: number;
   type: "WORKOUT" | "DIET";
   title: string;
   description?: string | undefined;
@@ -143,6 +147,7 @@ export async function createDefaultPlan(input: {
       title: input.title,
       description: input.description ?? null,
       content: input.content,
+      cycleLengthDays: input.cycleLengthDays,
       isDefault: true,
       // No owner: a library plan belongs to the platform, not to the admin who
       // happened to type it in, so it survives that admin's account being
@@ -158,7 +163,12 @@ export async function createDefaultPlan(input: {
 
 export async function updateDefaultPlan(
   planId: string,
-  input: { title?: string | undefined; description?: string | undefined; content?: Prisma.InputJsonValue | undefined },
+  input: {
+    title?: string | undefined;
+    description?: string | undefined;
+    cycleLengthDays?: number | undefined;
+    content?: Prisma.InputJsonValue | undefined;
+  },
 ) {
   const existing = await prisma.plan.findUnique({ where: { id: planId } });
   if (!existing || !existing.isDefault) {
@@ -169,7 +179,10 @@ export async function updateDefaultPlan(
   if (input.content !== undefined) {
     // A plan's type and its stored content have to keep matching, and the
     // type itself is not editable, so the new content must fit the old type.
-    const looksLikeWorkout = typeof input.content === "object" && input.content !== null && "exercises" in input.content;
+    const days = typeof input.content === "object" && input.content !== null ? (input.content as { days?: { exercises?: unknown }[] }).days : undefined;
+    const looksLikeWorkout = Array.isArray(days)
+      ? days.some((day) => Array.isArray(day?.exercises))
+      : typeof input.content === "object" && input.content !== null && "exercises" in input.content;
     const contentType = looksLikeWorkout ? "WORKOUT" : "DIET";
     if (contentType !== existing.type) {
       getLogger().debug({ planId, planType: existing.type, contentType }, "updateDefaultPlan: rejected — content type mismatch");
@@ -183,6 +196,7 @@ export async function updateDefaultPlan(
       ...(input.title !== undefined ? { title: input.title } : {}),
       ...(input.description !== undefined ? { description: input.description } : {}),
       ...(input.content !== undefined ? { content: input.content } : {}),
+      ...(input.cycleLengthDays !== undefined ? { cycleLengthDays: input.cycleLengthDays } : {}),
     },
   });
   getLogger().info({ planId }, "updateDefaultPlan: default plan updated");

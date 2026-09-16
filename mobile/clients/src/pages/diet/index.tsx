@@ -5,28 +5,33 @@ import { ActivityIndicator, Image, Pressable, StyleSheet, TextInput, View } from
 import { DetailHeader } from '@/components/detail-header';
 import { LockedState } from '@/components/locked-state';
 import { PlanStateCard } from '@/components/plan-state-card';
+import { RestDayCard } from '@/components/rest-day-card';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Fonts, Radii, Spacing } from '@/constants/theme';
 import { useTrackingAssignments } from '@/hooks/use-assignments';
 import { useOnboardingStatus } from '@/hooks/use-onboarding-status';
+import { useTodaySchedule } from '@/hooks/use-schedule';
 import { useRefresh } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { trackingApi } from '@/lib/api';
 import { todayKey } from '@/lib/dates';
 import { pickAndUploadImage } from '@/lib/image-upload';
-import { dietContentOf } from '@/lib/plan-content';
+import { cycleDayLabel, dietDayOf } from '@/lib/plan-content';
 import { formatCalories } from '@/lib/plan-units';
 
 export function DietDetailsScreen() {
   const theme = useTheme();
   const onboarding = useOnboardingStatus();
   const tracking = useTrackingAssignments();
+  // Today's day of the cycle, resolved by the backend.
+  const schedule = useTodaySchedule();
+  const today = schedule.diet;
   const dietAssignment = tracking.diet;
   const assignmentId = dietAssignment?.id;
-  const content = useMemo(() => dietContentOf(dietAssignment), [dietAssignment]);
-  const meals = content?.meals ?? [];
+  const day = useMemo(() => dietDayOf(today), [today]);
+  const meals = day?.meals ?? [];
 
   // Per-meal state, keyed by the plan's meal ids (which are also the check-in item ids).
   const [checkedIds, setCheckedIds] = useState<Set<string>>(() => new Set());
@@ -64,7 +69,7 @@ export function DietDetailsScreen() {
     }, [loadToday]),
   );
 
-  const { isRefreshing, refresh } = useRefresh(onboarding.reload, tracking.reload, loadToday);
+  const { isRefreshing, refresh } = useRefresh(onboarding.reload, tracking.reload, schedule.reload, loadToday);
 
   /** Only ids that belong to the current plan — a stale tick from an old plan never gets saved. */
   function completedItemIds(ids: Set<string>): string[] {
@@ -164,7 +169,7 @@ export function DietDetailsScreen() {
     return <LockedState title="Diet" refreshing={isRefreshing} onRefresh={refresh} />;
   }
 
-  if (tracking.isLoading) {
+  if (tracking.isLoading || schedule.isLoading) {
     return (
       <ScreenScaffold>
         <DetailHeader title="Diet" subtitle="Loading your plan…" />
@@ -173,8 +178,19 @@ export function DietDetailsScreen() {
     );
   }
 
+  // Diet cycles have no rest days, but a day can still be empty if the coach
+  // left it so; treat that the same way.
+  if (today?.isRestDay) {
+    return (
+      <ScreenScaffold refreshing={isRefreshing} onRefresh={refresh}>
+        <DetailHeader title="Diet" subtitle={today.title} />
+        <RestDayCard cycleLabel={cycleDayLabel(today)} />
+      </ScreenScaffold>
+    );
+  }
+
   // Only fall through to the plan when there is a real, readable one.
-  if (!dietAssignment || !content || meals.length === 0) {
+  if (!dietAssignment || !today || meals.length === 0) {
     const failed = !dietAssignment && tracking.error;
     return (
       <ScreenScaffold refreshing={isRefreshing} onRefresh={refresh}>
@@ -199,6 +215,8 @@ export function DietDetailsScreen() {
     <ScreenScaffold refreshing={isRefreshing} onRefresh={refresh}>
       <DetailHeader title="Diet" subtitle={dietAssignment.title} />
 
+      <ThemedText type="meta">{cycleDayLabel(today)}</ThemedText>
+
       {tracking.error ? (
         <PlanStateCard
           tone="danger"
@@ -208,12 +226,12 @@ export function DietDetailsScreen() {
       ) : null}
 
       <ThemedView type="backgroundElement" style={[styles.summary, { borderColor: theme.border }]}>
-        {content.calories ? (
+        {day?.calories ? (
           <ThemedText type="smallBold" style={{ color: theme.warning }}>
-            {formatCalories(content.calories)}
+            {formatCalories(day.calories)}
           </ThemedText>
         ) : null}
-        {content.focus ? <ThemedText>{content.focus}</ThemedText> : null}
+        {dietAssignment.title ? <ThemedText>{day?.label}</ThemedText> : null}
       </ThemedView>
 
       <View style={styles.list}>

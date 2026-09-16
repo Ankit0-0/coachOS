@@ -4,8 +4,9 @@ import { getLogger } from "../../config/logger.js";
 import { requireAuth } from "../../middleware/auth.js";
 import { requireRole } from "../../middleware/role.js";
 import { sendError } from "../../utils/http-error.js";
+import { scheduleQuerySchema } from "../plan/schemas.js";
 import { checkInsQuerySchema, weightQuerySchema } from "./schemas.js";
-import { getClientProfile, listClientCheckIns, listClientWeights } from "./service.js";
+import { getClientProfile, getClientScheduleForCoach, listClientCheckIns, listClientWeights } from "./service.js";
 
 export const coachClientRouter: ReturnType<typeof Router> = Router();
 
@@ -59,6 +60,27 @@ coachClientRouter.get("/:clientId/weight", async (request, response) => {
     response.json({
       message: "Weight entries retrieved successfully.",
       weightEntries: await listClientWeights(user.id, request.params.clientId, parsed.data),
+    });
+  } catch (error) {
+    respondToClientError(response, request, error);
+  }
+});
+
+coachClientRouter.get("/:clientId/schedule", async (request, response) => {
+  const user = requireRole(request, response, "COACH");
+  if (!user) return;
+
+  const parsed = scheduleQuerySchema.safeParse(request.query);
+  if (!parsed.success) {
+    getLogger().debug({ issues: parsed.error.flatten() }, "GET /coach/clients/:clientId/schedule: rejected — invalid query parameters");
+    sendError(response, 400);
+    return;
+  }
+
+  try {
+    response.json({
+      message: "Schedule retrieved successfully.",
+      schedule: await getClientScheduleForCoach(user.id, request.params.clientId, parsed.data),
     });
   } catch (error) {
     respondToClientError(response, request, error);

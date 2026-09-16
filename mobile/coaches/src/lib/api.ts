@@ -323,12 +323,24 @@ export interface ExerciseContent {
   rest?: string;
 }
 
-export interface WorkoutContent {
+/**
+ * One day of a plan's rotating cycle. `content.days[dayIndex]` is what a client
+ * does on a date; which index a date maps to is the backend's to work out
+ * (`/coach/clients/:id/schedule`), never this app's.
+ */
+export interface WorkoutDayContent {
+  dayIndex: number;
+  label: string;
+  isRestDay: boolean;
   duration: string;
+  exercises: ExerciseContent[];
+}
+
+export interface WorkoutContent {
   focus: string;
   summary: string;
   difficulty: string;
-  exercises: ExerciseContent[];
+  days: WorkoutDayContent[];
 }
 
 export interface MealContent {
@@ -336,11 +348,17 @@ export interface MealContent {
   label: string;
 }
 
-export interface DietContent {
+export interface DietDayContent {
+  dayIndex: number;
+  label: string;
   calories: string;
+  meals: MealContent[];
+}
+
+export interface DietContent {
   focus: string;
   summary: string;
-  meals: MealContent[];
+  days: DietDayContent[];
 }
 
 export interface Plan {
@@ -349,10 +367,17 @@ export interface Plan {
   title: string;
   description: string | null;
   content: WorkoutContent | DietContent;
+  /** How many days the cycle rotates through, 1-31. Always matches `content.days.length`. */
+  cycleLengthDays: number;
   isDefault: boolean;
   createdById: string | null;
   createdAt: string;
   updatedAt: string;
+  /**
+   * Clients on this plan right now. Only sent for the coach's own plans, and
+   * only where the backend counted it — absent means "not asked", not "none".
+   */
+  activeAssignmentCount?: number;
 }
 
 export type AssignmentStatus = 'ACTIVE' | 'COMPLETED' | 'PAUSED';
@@ -382,6 +407,7 @@ export const planApi = {
     type: PlanType;
     title: string;
     description?: string;
+    cycleLengthDays: number;
     content: WorkoutContent | DietContent;
   }): Promise<Plan> {
     return apiRequest<{ plan: Plan }>('/coach/plans', { method: 'POST', body: input }).then(
@@ -391,7 +417,13 @@ export const planApi = {
 
   update(
     id: string,
-    input: { title?: string; description?: string; content?: WorkoutContent | DietContent },
+    input: {
+      title?: string;
+      description?: string;
+      /** Required whenever `content` is sent: the two have to agree. */
+      cycleLengthDays?: number;
+      content?: WorkoutContent | DietContent;
+    },
   ): Promise<Plan> {
     return apiRequest<{ plan: Plan }>(`/coach/plans/${id}`, { method: 'PATCH', body: input }).then(
       (data) => data.plan,
@@ -404,7 +436,7 @@ export const planApi = {
 };
 
 export const assignmentApi = {
-  create(input: { clientId: string; planId: string }): Promise<PlanAssignment> {
+  create(input: { clientId: string; planId: string; startDate?: string }): Promise<PlanAssignment> {
     return apiRequest<{ assignment: PlanAssignment }>('/coach/assignments', {
       method: 'POST',
       body: input,
@@ -487,7 +519,31 @@ export const coachClientApi = {
       `/coach/clients/${encodeURIComponent(clientId)}/profile`,
     ).then((data) => data.profile);
   },
+
+  /** What the client is scheduled to do on each date in the range, one entry per active plan. */
+  listSchedule(clientId: string, params: { from: string; to: string }): Promise<ScheduleEntry[]> {
+    return apiRequest<{ schedule: ScheduleEntry[] }>(
+      `/coach/clients/${encodeURIComponent(clientId)}/schedule?${queryString(params)}`,
+    ).then((data) => data.schedule);
+  },
 };
+
+/** One plan on one date, with the cycle already resolved by the backend. */
+export interface ScheduleEntry {
+  date: string;
+  assignmentId: string;
+  planId: string;
+  type: PlanType;
+  title: string;
+  dayIndex: number;
+  cycleLengthDays: number;
+  label: string;
+  isRestDay: boolean;
+  itemCount: number;
+  itemIds: string[];
+  /** That day of the plan. Null only if the plan's content is unreadable. */
+  content: WorkoutDayContent | DietDayContent | null;
+}
 
 // ---------------------------------------------------------------------------
 // Subscriptions

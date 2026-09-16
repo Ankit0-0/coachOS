@@ -2,6 +2,8 @@ import { Prisma, type CheckIn, type WeightEntry } from "@prisma/client";
 
 import { prisma } from "../../config/prisma.config.js";
 import { getSignedReadUrl, getSignedReadUrlMap, isOwnedKey } from "../upload/service.js";
+import { normalizePlanContent } from "../plan/content.js";
+import { cycleStartDate } from "../plan/schedule.js";
 
 type DateString = string;
 
@@ -184,11 +186,17 @@ export async function listActiveAssignments(userId: string) {
     include: { plan: true },
     orderBy: { assignedAt: "asc" },
   });
-  return rows.map((row) => ({
-    id: row.id,
-    planId: row.planId,
-    type: row.plan.type,
-    title: row.plan.title,
-    content: row.plan.content,
-  }));
+  return rows.map((row) => {
+    const content = normalizePlanContent(row.plan.type, row.plan.content);
+    return {
+      id: row.id,
+      planId: row.planId,
+      type: row.plan.type,
+      title: row.plan.title,
+      content,
+      cycleLengthDays: content.days.length,
+      /** What the cycle counts from; the schedule endpoint resolves dates against it. */
+      startDate: cycleStartDate(row),
+    };
+  });
 }

@@ -18,6 +18,10 @@ export type HomePlanCard = {
   /** "Workout" or "Diet". The icon says it on screen; this says it to a screen reader. */
   kind: string;
   title: string;
+  /** "Day 3 of 7 · Pull" — which day of the cycle today is. */
+  dayLabel: string;
+  /** A scheduled rest day shows a neutral marker, never a 0% ring. */
+  isRestDay: boolean;
   /** The one supporting line under the title. */
   summary: string;
   /** Short facts, each carrying its unit: "24 min", "4 exercises". */
@@ -62,6 +66,7 @@ export function PlanCard({ plan }: PlanCardProps) {
         </View>
 
         <View style={styles.copy}>
+          {plan.dayLabel ? <ThemedText type="meta">{plan.dayLabel}</ThemedText> : null}
           <ThemedText type="heading" numberOfLines={2}>
             {plan.title}
           </ThemedText>
@@ -79,6 +84,15 @@ export function PlanCard({ plan }: PlanCardProps) {
           ) : null}
         </View>
 
+        {plan.isRestDay ? (
+          // A rest day is scheduled, so it gets its own marker: an empty ring
+          // here would read as a day the client failed.
+          <View style={[styles.ring, styles.restMarker, { borderColor: theme.border }]} aria-hidden>
+            <ThemedText type="meta" themeColor="textSecondary">
+              Rest
+            </ThemedText>
+          </View>
+        ) : (
         <View style={styles.ring} aria-hidden>
           <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
             <Circle cx={center} cy={center} r={RING_RADIUS} stroke={theme.border} strokeWidth={RING_STROKE} fill="none" />
@@ -103,6 +117,7 @@ export function PlanCard({ plan }: PlanCardProps) {
             </ThemedText>
           </View>
         </View>
+        )}
       </Card>
     </Pressable>
   );
@@ -142,6 +157,12 @@ const styles = StyleSheet.create({
   ring: {
     width: RING_SIZE,
     height: RING_SIZE,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  restMarker: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Radii.pill,
     alignItems: 'center',
     justifyContent: 'center',
   },

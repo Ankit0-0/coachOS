@@ -10,7 +10,7 @@ import {
 import { coachClientRouter } from "./features/client/routes.js";
 import { clientInviteRouter, coachInviteRouter } from "./features/invite/routes.js";
 import { clientSubscriptionRouter, coachSubscriptionRouter } from "./features/subscription/routes.js";
-import { coachAssignmentRouter, coachPlanRouter } from "./features/plan/routes.js";
+import { clientScheduleRouter, coachAssignmentRouter, coachPlanRouter } from "./features/plan/routes.js";
 import { clientProfileRouter, coachProfileRouter } from "./features/profile/routes.js";
 import { trackingRouter } from "./features/tracking/routes.js";
 import { uploadRouter } from "./features/upload/routes.js";
@@ -32,6 +32,7 @@ router.use("/coach/clients", coachClientRouter);
 router.use("/coach/clients", coachSubscriptionRouter);
 router.use("/coach/profile", coachProfileRouter);
 router.use("/client/profile", clientProfileRouter);
+router.use("/client/schedule", clientScheduleRouter);
 router.use("/client/subscription", clientSubscriptionRouter);
 router.use("/client/coaches", clientDirectoryRouter);
 router.use("/client/coach-requests", clientCoachRequestRouter);
