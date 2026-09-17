@@ -27,6 +27,12 @@
     "plugins": [
       "expo-router",
       [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/"
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#7ec8ff",

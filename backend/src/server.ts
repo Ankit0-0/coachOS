@@ -1,3 +1,6 @@
+// First, before any other import: Sentry has to load ahead of what it instruments.
+import "./instrument.js";
+
 import dotenv from "dotenv";
 import type { Server as HttpServer } from "node:http";
 
@@ -5,6 +8,7 @@ import { app } from "./app.js";
 import { env } from "./config/env.js";
 import { logger } from "./config/logger.js";
 import { PrismaService } from "./config/prisma.config.js";
+import { flushSentry } from "./config/sentry.js";
 
 dotenv.config();
 
@@ -60,9 +64,11 @@ class Server {
       }
       await this.prisma.disconnect();
       logger.info("Shutdown complete");
+      await flushSentry();
       process.exit(0);
     } catch (error) {
       logger.error({ err: error }, "Error during shutdown");
+      await flushSentry();
       process.exit(1);
     }
   }
@@ -78,5 +84,6 @@ server.start().catch((error: unknown) => {
   logger.fatal({ err: error }, "Unable to start server");
   // Exit outright: a half-started process with an open pool would otherwise
   // linger, and the host needs a non-zero exit to mark the deploy as failed.
-  process.exit(1);
+  // Flushed first, or the report of why it failed never leaves the process.
+  void flushSentry().finally(() => process.exit(1));
 });

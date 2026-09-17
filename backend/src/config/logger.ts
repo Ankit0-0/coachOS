@@ -1,54 +1,12 @@
 import pino from "pino";
 
 import { env } from "./env.js";
+import { REDACTED_PATHS } from "./redaction.js";
 import { requestContext } from "./request-context.js";
+import { reportLoggedError } from "./sentry.js";
 
 const isDevelopment = env.nodeEnv === "development";
 
-/**
- * Field paths whose values never belong in a log line, whatever passes them in.
- * A backstop rather than a licence: code still shouldn't log credentials.
- *
- * The bare names catch a field logged at the top level; the `*.` forms catch one
- * nested a level down (`user.password`, `body.token`). `code` is the password
- * reset code — error codes are logged as `reason` so they stay readable.
- */
-const REDACTED_PATHS = [
-  "password",
-  "newPassword",
-  "currentPassword",
-  "passwordHash",
-  "token",
-  "accessToken",
-  "refreshToken",
-  "idToken",
-  "code",
-  "codeHash",
-  "resetCode",
-  "authorization",
-  "cookie",
-  "secret",
-  "jwtSecret",
-  "apiKey",
-  "resendApiKey",
-  "DATABASE_URL",
-  "databaseUrl",
-  "awsSecretAccessKey",
-  "AWS_SECRET_ACCESS_KEY",
-  "req.headers.authorization",
-  "req.headers.cookie",
-  "*.password",
-  "*.newPassword",
-  "*.passwordHash",
-  "*.token",
-  "*.accessToken",
-  "*.idToken",
-  "*.code",
-  "*.codeHash",
-  "*.authorization",
-  "*.secret",
-  "*.apiKey",
-];
 
 /**
  * Shared by the running logger and by tests, which build a logger over a memory
@@ -62,6 +20,14 @@ export const loggerOptions: pino.LoggerOptions = {
   // Without this an Error logged as { err } serialises to {} — no message, no stack.
   serializers: { err: pino.stdSerializers.err },
   redact: { paths: REDACTED_PATHS, censor: "[REDACTED]" },
+  hooks: {
+    // An error-level line is, by this codebase's convention, something
+    // unexpected — the same line that precedes a 500. Those go to Sentry too.
+    logMethod(args, method, level) {
+      if (level >= pino.levels.values.error!) reportLoggedError(args, this.bindings());
+      method.apply(this, args);
+    },
+  },
 };
 
 export const logger = pino({

@@ -11,13 +11,23 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://coachos-fxor.onrender.com/v1"
+        "EXPO_PUBLIC_API_URL": "https://coachos-fxor.onrender.com/v1",
+        "EXPO_PUBLIC_SENTRY_DSN": "REPLACE_WITH_CLIENT_APP_SENTRY_DSN",
+        "EXPO_PUBLIC_SENTRY_ENVIRONMENT": "preview",
+        "SENTRY_ORG": "REPLACE_WITH_SENTRY_ORG_SLUG",
+        "SENTRY_PROJECT": "REPLACE_WITH_CLIENT_APP_SENTRY_PROJECT_SLUG",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://coachos-fxor.onrender.com/v1"
+        "EXPO_PUBLIC_API_URL": "https://coachos-fxor.onrender.com/v1",
+        "EXPO_PUBLIC_SENTRY_DSN": "REPLACE_WITH_CLIENT_APP_SENTRY_DSN",
+        "EXPO_PUBLIC_SENTRY_ENVIRONMENT": "production",
+        "SENTRY_ORG": "REPLACE_WITH_SENTRY_ORG_SLUG",
+        "SENTRY_PROJECT": "REPLACE_WITH_CLIENT_APP_SENTRY_PROJECT_SLUG",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     }
   },
