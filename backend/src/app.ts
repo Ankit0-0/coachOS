@@ -6,6 +6,7 @@ import helmet from "helmet";
 import { env } from "./config/env.js";
 import { attachRequestLogger, createHttpLogger } from "./config/http-logger.js";
 import { logger } from "./config/logger.js";
+import { registerSentryErrorHandler } from "./config/sentry.js";
 import { router } from "./router.js";
 import { sendError } from "./utils/http-error.js";
 
@@ -46,6 +47,10 @@ app.get("/heartbeat", (_request: Request, response: Response) => {
 });
 
 app.use("/v1", router);
+
+// After the routes, before the handler below: reports a 5xx or a raw throw,
+// then passes the error on to be logged and answered as before.
+registerSentryErrorHandler(app);
 
 /**
  * Anything that escaped a route handler. Express's own handler would answer

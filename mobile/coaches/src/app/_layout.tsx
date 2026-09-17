@@ -1,3 +1,6 @@
+// First: error reporting has to be running before anything else can fail.
+import { Sentry, useNavigationBreadcrumbs } from '@/lib/sentry';
+
 import {
   Inter_400Regular,
   Inter_500Medium,
@@ -10,6 +13,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
+import { ErrorFallback } from '@/components/error-fallback';
 import { AuthProvider, useAuth } from '@/contexts/auth';
 
 SplashScreen.preventAutoHideAsync();
@@ -23,6 +27,7 @@ function RootLayoutNav() {
   const colorScheme = useColorScheme();
   const router = useRouter();
   const pathname = usePathname();
+  useNavigationBreadcrumbs();
 
   // Inter is the app's only typeface, and every text style names one of these
   // families directly. Rendering before they resolve would show a frame of the
@@ -71,10 +76,18 @@ function RootLayoutNav() {
   );
 }
 
-export default function RootLayout() {
+function RootLayout() {
   return (
-    <AuthProvider>
-      <RootLayoutNav />
-    </AuthProvider>
+    // A render error anywhere below shows a recoverable screen instead of a
+    // blank one, and is reported to Sentry on the way.
+    <Sentry.ErrorBoundary fallback={({ resetError }) => <ErrorFallback resetError={resetError} />}>
+      <AuthProvider>
+        <RootLayoutNav />
+      </AuthProvider>
+    </Sentry.ErrorBoundary>
   );
 }
+
+// wrap() adds tap breadcrumbs ("crashed after tapping X") and ties the root to
+// Sentry's native crash and session reporting.
+export default Sentry.wrap(RootLayout);
