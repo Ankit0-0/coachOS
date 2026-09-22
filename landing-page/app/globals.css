@@ -26,26 +26,12 @@ body {
 }
 
 /*
-  The hero's before/after row is sized by HEIGHT, not width: phone screenshots
-  are tall, so sizing by width makes the visual taller than the viewport and
-  pushes the calls to action off screen.
-
-  Everything derives from one height, --hero-h:
-    - the after screenshot is --hero-h tall,
-    - each before tile is half of it (minus the row gap),
-    - widths follow from each screenshot's own aspect ratio, so nothing crops.
-
-  --hero-h is the smaller of a viewport-height value and what the container's
-  WIDTH allows, so the row never overflows on a narrow screen. The width limit
-  needs the row's width in terms of its height: the grid is 3 tiles wide and the
-  after screenshot is 1 more, each tile being half height, which comes to
-  2.5 x aspect x height, plus the gaps and the arrow. 2.5 x 0.46 = 1.15.
-
-  --shot-aspect is the screenshots' width ÷ height. If the real screenshots
-  land with a different shape, change it here and the row still fits.
+  The hero row is sized by height, not width: tall phone screenshots sized by
+  width overflow the viewport. --hero-h drives the after screenshot; each
+  before tile is half of it. The width limit uses the row's width in terms of
+  its height: 2.5 tiles wide at --shot-aspect each, hence 2.5 x aspect.
 */
 .hero-visual {
-  /* So the row below can measure the container's width with cqw. */
   container-type: inline-size;
 }
 
@@ -54,7 +40,7 @@ body {
   --hero-tile-gap: 0.375rem;
   --hero-col-gap: 0.5rem;
   --hero-arrow: 1.25rem;
-  /* The row's width that is not the screenshots themselves. */
+  /* Row width that is not screenshot. */
   --hero-extras: calc(1.31 * var(--hero-tile-gap) + var(--hero-arrow) + 2 * var(--hero-col-gap));
   --hero-h: min(
     clamp(220px, 40vh, 400px),
@@ -68,6 +54,16 @@ body {
     --hero-tile-gap: 0.5rem;
     --hero-col-gap: 1rem;
     --hero-arrow: 2rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  /* Its own column from lg up, so it can be taller. */
+  .hero-visual-row {
+    --hero-h: min(
+      clamp(320px, 60vh, 560px),
+      calc((100cqw - var(--hero-extras)) / (2.5 * var(--shot-aspect)))
+    );
   }
 }
 

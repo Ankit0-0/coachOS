@@ -37,14 +37,16 @@ export function NewHero() {
   return (
     <section
       id="top"
-      className="mx-auto max-w-7xl px-4 pb-10 pt-4 sm:px-6 sm:pb-14 sm:pt-6 lg:px-8"
+      // Same container as the navbar, so edges line up with the logo and its button.
+      className="mx-auto max-w-7xl px-4 pb-10 pt-4 sm:px-6 sm:pb-14 sm:pt-6 lg:grid lg:grid-cols-2 lg:grid-rows-[auto_auto] lg:gap-x-12 lg:gap-y-8 lg:px-8 lg:pb-16 lg:pt-10"
       style={{ fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif' }}
     >
-      <div className="max-w-4xl">
+      {/* self-end + self-start below centres the copy and buttons against the visual. */}
+      <div className="max-w-4xl lg:col-start-1 lg:row-start-1 lg:max-w-[34rem] lg:self-end">
         <div className="inline-flex rounded-full border border-accent/20 bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
           Built for online fitness coaches
         </div>
-        <h1 className="text-balance mt-4 text-2xl font-semibold leading-tight text-cream sm:text-3xl lg:text-4xl">
+        <h1 className="text-balance mt-4 text-2xl font-semibold leading-tight text-cream sm:text-3xl lg:text-5xl">
           Your coaching business out of six apps into one
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-7 text-muted sm:text-base">
@@ -53,17 +55,10 @@ export function NewHero() {
         </p>
       </div>
 
-      {/*
-        Before → after, side by side at every width. Sized by height rather
-        than width (see .hero-visual in globals.css): the after screenshot is
-        --hero-h tall, each before tile is half that, and their widths follow
-        from the screenshots' own aspect ratio — so the row fits the viewport
-        and both sides finish level without any tuning.
-      */}
-      <div className="hero-visual mt-6 sm:mt-8">
-        {/* Left-aligned, like the copy and the buttons: centred it read as a
-            detached panel with a wide empty gutter beside it. */}
-        <div className="hero-visual-row flex items-center justify-start">
+      {/* Sized by height, not width — see .hero-visual in globals.css. */}
+      {/* Full-column width so cqw stays stable; the row inside aligns right. */}
+      <div className="hero-visual mt-6 sm:mt-8 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:mt-0 lg:self-center">
+        <div className="hero-visual-row flex items-center justify-start lg:justify-end">
           <div className="hero-tile-grid grid grid-cols-3">
             {beforeApps.map((app, index) => (
               <Screenshot
@@ -78,7 +73,7 @@ export function NewHero() {
             ))}
           </div>
 
-          <div className="flex shrink-0 items-center justify-center text-lg text-accent sm:text-2xl" aria-hidden>
+          <div className="flex shrink-0 items-center justify-center text-lg text-accent sm:text-2xl lg:text-3xl" aria-hidden>
             →
           </div>
 
@@ -93,9 +88,8 @@ export function NewHero() {
         </div>
       </div>
 
-      {/* One row, even on a phone: stacked full-width buttons cost about 50px
-          of height that the visual above needs. */}
-      <div className="mt-6 flex flex-row flex-wrap items-center gap-3 sm:mt-8 sm:gap-4">
+      {/* One row even on a phone: stacked full-width buttons cost ~50px of height. */}
+      <div className="mt-6 flex flex-row flex-wrap items-center gap-3 sm:mt-8 sm:gap-4 lg:col-start-1 lg:row-start-2 lg:mt-0 lg:self-start">
         <button
           type="button"
           onClick={earlyAccess.open}
