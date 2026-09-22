@@ -14,6 +14,12 @@ dotenv.config();
 
 const app: Application = express();
 
+// Render terminates TLS and forwards the visitor's address in X-Forwarded-For.
+// The public early-access endpoint is rate limited per address, and without
+// this every request would look like it came from the proxy — so one visitor
+// hitting the limit would block everyone. 1 = trust exactly one proxy hop.
+app.set("trust proxy", 1);
+
 app.use(helmet());
 app.use(
   cors({

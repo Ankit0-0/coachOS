@@ -4,6 +4,7 @@ import { Layout } from './components/Layout';
 import { useAuth } from './lib/auth';
 import { CoachDetail } from './pages/CoachDetail';
 import { Coaches } from './pages/Coaches';
+import { EarlyAccess } from './pages/EarlyAccess';
 import { Login } from './pages/Login';
 import { Plans } from './pages/Plans';
 
@@ -32,6 +33,7 @@ export default function App() {
           <Route path="/coaches" element={<Coaches />} />
           <Route path="/coaches/:id" element={<CoachDetail />} />
           <Route path="/plans" element={<Plans />} />
+          <Route path="/early-access" element={<EarlyAccess />} />
           <Route path="*" element={<Navigate to="/coaches" replace />} />
         </Route>
       </Routes>

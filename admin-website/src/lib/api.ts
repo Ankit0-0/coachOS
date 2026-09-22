@@ -220,6 +220,27 @@ export const adminCoachApi = {
   },
 };
 
+export type DevicePlatform = 'IOS' | 'ANDROID';
+
+export interface EarlyAccessSignup {
+  id: string;
+  email: string;
+  platform: DevicePlatform;
+  createdAt: string;
+}
+
+export interface EarlyAccessList {
+  signups: EarlyAccessSignup[];
+  total: number;
+  countsByPlatform: Record<DevicePlatform, number>;
+}
+
+export const adminEarlyAccessApi = {
+  list() {
+    return request<EarlyAccessList>('/admin/early-access');
+  },
+};
+
 export const adminPlanApi = {
   list(type: PlanType) {
     return request<{ plans: Plan[] }>(`/admin/plans?type=${type}`).then((data) => data.plans);

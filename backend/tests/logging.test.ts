@@ -66,7 +66,10 @@ describe("logging", () => {
           authorization: "Bearer jwt-value",
           DATABASE_URL: "postgres://user:pw@host/db",
           awsSecretAccessKey: "aws-secret",
-          user: { password: "nested-secret", token: "nested-token", email: "keep@example.com" },
+          // An address is personal data, so it is redacted like a credential.
+          email: "someone@example.com",
+          user: { password: "nested-secret", token: "nested-token", email: "nested@example.com" },
+          userId: "user-123",
           req: { headers: { authorization: "Bearer jwt-value", cookie: "session=abc" } },
         },
         "everything sensitive",
@@ -84,12 +87,14 @@ describe("logging", () => {
         "nested-secret",
         "nested-token",
         "session=abc",
+        "someone@example.com",
+        "nested@example.com",
       ]) {
         expect(line).not.toContain(secret);
       }
       expect(line).toContain("[REDACTED]");
       // Redaction is targeted: ordinary fields still come through.
-      expect(line).toContain("keep@example.com");
+      expect(line).toContain("user-123");
     });
   });
 

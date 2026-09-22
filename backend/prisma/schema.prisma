@@ -287,3 +287,20 @@ model WeightEntry {
   @@unique([clientId, date])
   @@index([clientId])
 }
+
+/// Which app store a coach is waiting for, captured with an early-access signup
+/// so a launch announcement can go to the right list.
+enum DevicePlatform {
+  IOS
+  ANDROID
+}
+
+/// Someone who asked to be told when CoachOS launches, from the landing page.
+/// Not a user: there is no account here, and a repeat signup updates the row
+/// rather than failing, so the endpoint never reveals who is already on the list.
+model EarlyAccessSignup {
+  id        String         @id @default(cuid())
+  email     String         @unique
+  platform  DevicePlatform
+  createdAt DateTime       @default(now())
+}

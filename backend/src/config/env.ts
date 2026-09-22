@@ -87,4 +87,10 @@ export const env = {
    * CI, the test suite — Sentry is never initialised and nothing is sent.
    */
   sentryDsn: process.env.SENTRY_DSN?.trim() || undefined,
+  /**
+   * How many early-access signups one IP may send per ten minutes. The only
+   * unauthenticated endpoint, so the only one that needs a limit; raised in the
+   * test suite, which makes far more than five requests from one address.
+   */
+  earlyAccessRateLimitMax: positiveInt(process.env.EARLY_ACCESS_RATE_LIMIT_MAX, 5),
 };
