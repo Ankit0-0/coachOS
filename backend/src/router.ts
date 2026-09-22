@@ -8,6 +8,7 @@ import {
   coachCoachRequestRouter,
 } from "./features/explore/routes.js";
 import { coachClientRouter } from "./features/client/routes.js";
+import { adminEarlyAccessRouter, earlyAccessRouter } from "./features/early-access/routes.js";
 import { clientInviteRouter, coachInviteRouter } from "./features/invite/routes.js";
 import { clientSubscriptionRouter, coachSubscriptionRouter } from "./features/subscription/routes.js";
 import { clientScheduleRouter, coachAssignmentRouter, coachPlanRouter } from "./features/plan/routes.js";
@@ -19,6 +20,9 @@ import { requireAuth } from "./middleware/auth.js";
 const router: ReturnType<typeof Router> = Router();
 
 router.use("/auth", authRouter);
+// Public: the landing page posts here with no token. Rate limited in its router.
+router.use("/early-access", earlyAccessRouter);
+router.use("/admin/early-access", adminEarlyAccessRouter);
 router.use("/admin/coaches", adminCoachRouter);
 router.use("/admin/plans", adminPlanRouter);
 router.use("/tracking", trackingRouter);

@@ -19,6 +19,9 @@ export function Layout() {
               <NavLink to="/plans" style={navLinkStyle}>
                 Plans
               </NavLink>
+              <NavLink to="/early-access" style={navLinkStyle}>
+                Early access
+              </NavLink>
             </nav>
           </div>
 

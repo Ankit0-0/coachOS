@@ -1,7 +1,8 @@
 # CoachOS
 
 pnpm workspace: `backend` (Node/Express/Prisma), `mobile/clients` and
-`mobile/coaches` (Expo/React Native), `admin-website` (Vite/React).
+`mobile/coaches` (Expo/React Native), `admin-website` (Vite/React), and
+`landing-page` (Next.js marketing site).
 Each has its own AGENTS.md with conventions specific to it — read that
 one too when working in it.
 

@@ -13,8 +13,14 @@
  * The bare names catch a field logged at the top level; the `*.` forms catch one
  * nested a level down (`user.password`, `body.token`). `code` is the password
  * reset code — error codes are logged as `reason` so they stay readable.
+ *
+ * `email` is here because an address is personal data, not because it is a
+ * credential: log lines keep the user id, and `emailDomain()` when the domain
+ * is the useful part.
  */
 export const REDACTED_PATHS = [
+  "email",
+  "clientEmail",
   "password",
   "newPassword",
   "currentPassword",
@@ -38,6 +44,8 @@ export const REDACTED_PATHS = [
   "AWS_SECRET_ACCESS_KEY",
   "req.headers.authorization",
   "req.headers.cookie",
+  "*.email",
+  "*.clientEmail",
   "*.password",
   "*.newPassword",
   "*.passwordHash",

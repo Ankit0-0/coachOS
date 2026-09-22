@@ -2,13 +2,16 @@ packages:
   - "mobile/*"
   - "backend"
   - "admin-website"
+  - "landing-page"
   - "packages/*"
 allowBuilds:
   '@prisma/engines': true
   '@sentry/cli': true
   esbuild: true
   prisma: true
-  unrs-resolver: set this to true or false
+  # Next.js uses sharp to optimise images at build time.
+  sharp: true
+  unrs-resolver: true
 minimumReleaseAgeExclude:
   - vite@8.3.0
   - expo-image-picker@57.0.17
