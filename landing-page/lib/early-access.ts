@@ -6,6 +6,9 @@
 
 export type DevicePlatform = 'IOS' | 'ANDROID';
 
+/** Which app someone is waiting for: coaches and clients use different apps. */
+export type Audience = 'COACH' | 'CLIENT';
+
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/v1').replace(/\/+$/, '');
 
 /** Good enough to catch a typo in the browser; the backend validates properly. */
@@ -27,13 +30,19 @@ export class EarlyAccessError extends Error {
  * never a status code, and never a hint about whether the address was already
  * on the list (the backend answers a repeat exactly like a first signup).
  */
-export async function submitEarlyAccess(input: { email: string; platform: DevicePlatform }): Promise<void> {
+export async function submitEarlyAccess(input: {
+  email: string;
+  platform: DevicePlatform;
+  audience: Audience;
+}): Promise<void> {
   let response: Response;
   try {
     response = await fetch(`${API_BASE_URL}/early-access`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: input.email.trim(), platform: input.platform }),
+      // `audience` is not stored yet: the backend's schema strips keys it does
+      // not know, so it is dropped rather than rejected until a column exists.
+      body: JSON.stringify({ email: input.email.trim(), platform: input.platform, audience: input.audience }),
     });
   } catch {
     throw new EarlyAccessError("We couldn't reach the server. Check your connection and try again.");
