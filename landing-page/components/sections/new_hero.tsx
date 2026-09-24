@@ -4,32 +4,28 @@ import type { StaticImageData } from 'next/image';
 
 import { useEarlyAccess } from '@/components/early-access/early-access-provider';
 import { Screenshot } from '@/components/screenshot';
-import afterShot from '@/public/hero/after.png';
-import beforeOne from '@/public/hero/before-1.png';
-import beforeTwo from '@/public/hero/before-2.png';
-import beforeThree from '@/public/hero/before-3.png';
-import beforeFour from '@/public/hero/before-4.png';
-import beforeFive from '@/public/hero/before-5.png';
-import beforeSix from '@/public/hero/before-6.png';
+import coachOsShot from '@/public/hero/coachOS_screenshot.png';
+import googleDriveShot from '@/public/hero/google_drive_screenshot.png';
+import googleFormShot from '@/public/hero/google_form_screenshot.png';
+import googleSheetShot from '@/public/hero/google_sheet_screenshot.jpeg';
+import pdfShot from '@/public/hero/pdf_screenshot.png';
+import updatesShot from '@/public/hero/updates_screenshot.png';
+import whatsappShot from '@/public/hero/whatsapp_screenshot.png';
 
 type HeroScreenshot = { src: StaticImageData; label: string };
 
-/**
- * The six apps a coach juggles today. Every file is a copy of the same
- * placeholder until the real screenshots land — replace the files in
- * public/hero/ and put the real app names in `label`, which is the alt text.
- */
+/** The six apps a coach juggles today. WhatsApp first: the copy names it first. */
 const beforeApps: HeroScreenshot[] = [
-  { src: beforeOne, label: 'App 1' },
-  { src: beforeTwo, label: 'App 2' },
-  { src: beforeThree, label: 'App 3' },
-  { src: beforeFour, label: 'App 4' },
-  { src: beforeFive, label: 'App 5' },
-  { src: beforeSix, label: 'App 6' },
+  { src: whatsappShot, label: 'WhatsApp' },
+  { src: googleSheetShot, label: 'Google Sheets' },
+  { src: googleFormShot, label: 'Google Forms' },
+  { src: googleDriveShot, label: 'Google Drive' },
+  { src: pdfShot, label: 'A workout PDF' },
+  { src: updatesShot, label: 'Client updates' },
 ];
 
-/** The one screen that replaces them. Also a placeholder for now. */
-const afterApp: HeroScreenshot = { src: afterShot, label: 'CoachOS' };
+/** The one screen that replaces them. */
+const afterApp: HeroScreenshot = { src: coachOsShot, label: 'CoachOS' };
 
 export function NewHero() {
   const earlyAccess = useEarlyAccess();
