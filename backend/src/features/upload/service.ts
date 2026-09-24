@@ -191,7 +191,7 @@ export async function putObject(key: string, body: Buffer, contentType: AllowedC
   );
 }
 
-/** Removes one object, so a script that uploaded it can undo itself. */
+/** Removes one object: a cleared photo key, or a script undoing its own upload. */
 export async function deleteObject(key: string): Promise<void> {
   const config = readConfig();
   if (!config) throw new Error("S3_NOT_CONFIGURED");

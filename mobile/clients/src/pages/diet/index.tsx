@@ -17,6 +17,7 @@ import { useRefresh } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { trackingApi } from '@/lib/api';
 import { todayKey } from '@/lib/dates';
+import { confirmDestructive } from '@/lib/confirm';
 import { pickAndUploadImage } from '@/lib/image-upload';
 import { cycleDayLabel, dietDayOf } from '@/lib/plan-content';
 import { formatCalories } from '@/lib/plan-units';
@@ -135,6 +136,37 @@ export function DietDetailsScreen() {
           ? `Photo uploaded, but saving it to today's log failed: ${error.message}`
           : "Photo uploaded, but saving it to today's log failed.",
       );
+    }
+  };
+
+  const handleRemovePhoto = async (id: string, label: string) => {
+    if (!assignmentId || !photoUris[id]) return;
+    const confirmed = await confirmDestructive({
+      title: 'Remove meal photo?',
+      message: `This deletes the photo for ${label} for good. The meal stays ticked.`,
+      confirmLabel: 'Remove',
+    });
+    if (!confirmed) return;
+
+    const previous = photoUris[id];
+    setPhotoError(null);
+    setPhotoUris((current) => {
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
+    try {
+      const checkIn = await trackingApi.saveCheckIn({
+        assignmentId,
+        date: todayKey(),
+        completedItemIds: completedItemIds(checkedIds),
+        // A null value removes just this meal's photo.
+        photoKeys: { [id]: null },
+      });
+      setPhotoUris(checkIn.photoUrls ?? {});
+    } catch (error) {
+      setPhotoUris((current) => ({ ...current, [id]: previous }));
+      setPhotoError(error instanceof Error ? error.message : 'Could not remove the photo. Please try again.');
     }
   };
 
@@ -278,11 +310,23 @@ export function DietDetailsScreen() {
                 </View>
 
                 {imageUri ? (
-                  <Image
-                    source={{ uri: imageUri }}
-                    accessibilityLabel={`Photo of ${meal.label}`}
-                    style={[styles.thumbnail, { backgroundColor: theme.surfaceSunken }]}
-                  />
+                  <View style={styles.thumbnailWrap}>
+                    <Image
+                      source={{ uri: imageUri }}
+                      accessibilityLabel={`Photo of ${meal.label}`}
+                      style={[styles.thumbnail, { backgroundColor: theme.surfaceSunken }]}
+                    />
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Remove photo for ${meal.label}`}
+                      onPress={() => void handleRemovePhoto(meal.id, meal.label)}
+                      hitSlop={8}
+                      style={[styles.removeBadge, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                      <ThemedText type="smallBold" themeColor="text">
+                        ×
+                      </ThemedText>
+                    </Pressable>
+                  </View>
                 ) : null}
               </View>
             </ThemedView>
@@ -336,6 +380,20 @@ export function DietDetailsScreen() {
 }
 
 const styles = StyleSheet.create({
+  thumbnailWrap: {
+    alignSelf: 'flex-start',
+  },
+  removeBadge: {
+    position: 'absolute',
+    top: Spacing.one,
+    right: Spacing.one,
+    width: 24,
+    height: 24,
+    borderRadius: Radii.pill,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   summary: {
     borderRadius: Spacing.two,
     borderWidth: StyleSheet.hairlineWidth,

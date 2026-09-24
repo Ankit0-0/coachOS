@@ -374,7 +374,8 @@ export interface Plan {
   activeAssignmentCount?: number;
 }
 
-export type AssignmentStatus = 'ACTIVE' | 'COMPLETED' | 'PAUSED';
+/** CANCELLED: the coach removed it — not the same as the client finishing it. */
+export type AssignmentStatus = 'ACTIVE' | 'COMPLETED' | 'PAUSED' | 'CANCELLED';
 
 export interface PlanAssignment {
   id: string;
@@ -434,6 +435,13 @@ export const assignmentApi = {
     return apiRequest<{ assignment: PlanAssignment }>('/coach/assignments', {
       method: 'POST',
       body: input,
+    }).then((data) => data.assignment);
+  },
+
+  /** Takes the plan off the client. The assignment and its check-ins are kept. */
+  cancel(assignmentId: string): Promise<PlanAssignment> {
+    return apiRequest<{ assignment: PlanAssignment }>(`/coach/assignments/${encodeURIComponent(assignmentId)}`, {
+      method: 'DELETE',
     }).then((data) => data.assignment);
   },
 
