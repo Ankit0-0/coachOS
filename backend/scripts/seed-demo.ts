@@ -9,7 +9,9 @@
  *   DATABASE_URL="…" pnpm --filter backend exec tsx scripts/seed-demo.ts
  *   DATABASE_URL="…" pnpm --filter backend exec tsx scripts/seed-demo.ts --remove
  *
- * --client=someone@example.com seeds a different account. Set
+ * --client=someone@example.com seeds a different account, and
+ * --coach=their@coach.com hangs the demo plans off a coach they already have
+ * instead of creating one (no second coach, no second invite). Set
  * DEMO_COACH_PASSWORD to give the demo coach a password, so the coach side can
  * be signed into; without it the account exists only to own the demo plans.
  *
@@ -26,7 +28,10 @@
  *   - the subscription and invite between the demo coach and this client
  *   - the demo coach itself, only when nothing else of its own is left
  * A row it did not create is never touched. The client user is never created
- * or deleted — that has to be deliberate.
+ * or deleted — that has to be deliberate, and a client who already has an
+ * ACTIVE plan of either type is refused rather than quietly given a second.
+ * --replace-active is the one exception: it completes those assignments, prints
+ * their ids, and --remove does NOT put them back.
  */
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
@@ -46,13 +51,18 @@ import { MAX_WEIGHT_KG } from "../src/utils/weight.js";
 /** The account to seed. --client=someone@example.com targets another one. */
 const CLIENT_EMAIL =
   process.argv.find((arg) => arg.startsWith("--client="))?.slice("--client=".length) ?? "ankitpundir.work@gmail.com";
-const COACH_EMAIL = "demo.coach@coachos.app";
+/** --coach=… uses a coach the client already has, so no second coach is created. */
+const COACH_EMAIL =
+  process.argv.find((arg) => arg.startsWith("--coach="))?.slice("--coach=".length) ?? "demo.coach@coachos.app";
+const usingOwnCoach = COACH_EMAIL !== "demo.coach@coachos.app";
 const DEMO_PREFIX = "[DEMO] ";
 const MARKER = "seeded-demo";
 const HISTORY_DAYS = 30;
 
 const dryRun = process.argv.includes("--dry-run");
 const removing = process.argv.includes("--remove");
+/** Opt-in: complete a plan the client is already on, so the demo one can take over. */
+const replaceActive = process.argv.includes("--replace-active");
 
 const assetsDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "demo-assets");
 
@@ -269,13 +279,13 @@ function cycleStart(): DateKey {
 type WeightPoint = { date: DateKey; weightKg: number; photo: boolean };
 
 /**
- * Thirty days from 82 kg to about 79.5 kg: daily noise, a plateau in the third
+ * Thirty days from 72 kg to about 69.6 kg: daily noise, a plateau in the third
  * week, and a few days simply missing, because real weigh-ins look like that.
  */
 function weightSeries(): WeightPoint[] {
   const random = mulberry32(20260924);
-  const start = 82;
-  const end = 79.5;
+  const start = 72;
+  const end = 69.6;
   const missing = new Set([23, 17, 9, 2]); // days ago that were never logged
   const plateauFrom = 16;
   const plateauTo = 12;
@@ -337,6 +347,12 @@ async function findClient() {
 
 async function ensureCoach() {
   const existing = await prisma.user.findUnique({ where: { email: COACH_EMAIL }, include: { coachProfile: true } });
+  if (usingOwnCoach) {
+    if (!existing) throw new Error(`No user with email ${COACH_EMAIL} — check --coach.`);
+    if (existing.role !== "COACH") throw new Error(`${COACH_EMAIL} has role ${existing.role}, expected COACH.`);
+    say(`coach ${COACH_EMAIL}: existing account, left as it is`);
+    return existing;
+  }
   if (existing) {
     if (!existing.coachProfile) {
       say(`coach profile for ${COACH_EMAIL}: create`);
@@ -377,6 +393,13 @@ async function ensureCoach() {
 
 async function ensureInvite(coachId: string, client: { id: string; email: string }) {
   const existing = await prisma.coachClientInvite.findFirst({ where: { coachId, clientEmail: client.email } });
+  if (usingOwnCoach) {
+    if (existing?.status !== "ACCEPTED") {
+      throw new Error(`${COACH_EMAIL} has no accepted invite with ${client.email}; plans can only be assigned through one.`);
+    }
+    say("invite: already accepted, left as it is");
+    return existing;
+  }
   if (existing) {
     if (existing.status !== "ACCEPTED" && !dryRun) {
       await prisma.coachClientInvite.update({
@@ -402,6 +425,13 @@ async function ensureInvite(coachId: string, client: { id: string; email: string
 async function ensureSubscription(coachId: string, clientId: string) {
   const existing = await prisma.subscription.findFirst({ where: { coachId, clientId, notes: { contains: MARKER } } });
   if (existing) return existing;
+  if (usingOwnCoach) {
+    const theirs = await prisma.subscription.findFirst({ where: { coachId, clientId } });
+    if (theirs) {
+      say("subscription: already there, left as it is");
+      return theirs;
+    }
+  }
   const startDate = parseDateKey(addDays(today(), -30));
   const endDate = parseDateKey(addDays(today(), 60));
   say(`subscription: create (ACTIVE, ${dateKeyOf(startDate)} to ${dateKeyOf(endDate)})`);
@@ -441,6 +471,38 @@ async function ensurePlans(coachId: string) {
   return plans;
 }
 
+/**
+ * The service layer keeps one ACTIVE assignment per plan type; assigning here
+ * would quietly make a second one, and the apps would disagree about which
+ * plan is current. So an existing active plan is a stop, not something to
+ * complete on the client's behalf.
+ */
+async function assertNoOtherActivePlan(clientId: string, type: "WORKOUT" | "DIET", ourPlanIds: string[]): Promise<void> {
+  const clashes = await prisma.planAssignment.findMany({
+    where: { clientId, status: "ACTIVE", planId: { notIn: ourPlanIds }, plan: { type } },
+    include: { plan: { select: { title: true } } },
+  });
+  if (clashes.length === 0) return;
+  const list = clashes.map((row) => `"${row.plan.title}" (${row.id})`).join(", ");
+
+  if (!replaceActive) {
+    throw new Error(
+      `This client already has an ACTIVE ${type} plan: ${list}. Two active plans of one type is a state the app never creates, so this stops here — move the client off it in the coach app, or re-run with --replace-active.`,
+    );
+  }
+
+  for (const row of clashes) {
+    say(`assignment "${row.plan.title}" (${row.id}): ACTIVE -> COMPLETED`);
+    console.log(`   to undo by hand: status ACTIVE, endDate ${row.endDate ? row.endDate.toISOString() : "null"}`);
+  }
+  if (!dryRun) {
+    await prisma.planAssignment.updateMany({
+      where: { id: { in: clashes.map((row) => row.id) } },
+      data: { status: "COMPLETED", endDate: new Date() },
+    });
+  }
+}
+
 async function ensureAssignment(coachId: string, clientId: string, planId: string, planTitle: string) {
   const existing = await prisma.planAssignment.findFirst({ where: { coachId, clientId, planId } });
   if (existing) return existing;
@@ -476,6 +538,9 @@ async function seed(): Promise<void> {
   const plans = await ensurePlans(coachId);
   const workoutPlan = plans.find((plan) => plan.title === ASSIGNED_WORKOUT)!;
   const dietPlan = plans.find((plan) => plan.title === ASSIGNED_DIET)!;
+  const ourPlanIds = plans.map((plan) => plan.id);
+  await assertNoOtherActivePlan(client.id, "WORKOUT", ourPlanIds);
+  await assertNoOtherActivePlan(client.id, "DIET", ourPlanIds);
   const workoutAssignment = await ensureAssignment(coachId, client.id, workoutPlan.id, workoutPlan.title);
   const dietAssignment = await ensureAssignment(coachId, client.id, dietPlan.id, dietPlan.title);
 
@@ -635,8 +700,12 @@ async function remove(): Promise<void> {
     const keepPlanIds = new Set(others.map((assignment) => assignment.planId));
     await prisma.plan.deleteMany({ where: { id: { in: planIds.filter((id) => !keepPlanIds.has(id)) } } });
 
+    // Only the ones this script made: a real coach's invite and subscription
+    // are none of its business.
     await prisma.subscription.deleteMany({ where: { coachId: coach.id, clientId: client.id, notes: { contains: MARKER } } });
-    await prisma.coachClientInvite.deleteMany({ where: { coachId: coach.id, clientEmail: client.email } });
+    if (!usingOwnCoach) {
+      await prisma.coachClientInvite.deleteMany({ where: { coachId: coach.id, clientEmail: client.email } });
+    }
 
     if (isS3Configured()) {
       for (const key of keys) await deleteObject(key);
