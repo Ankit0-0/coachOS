@@ -1,4 +1,4 @@
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
@@ -33,6 +33,7 @@ import {
   type WeightEntry,
 } from '@/lib/api';
 import { buildTelUrl, startCall } from '@/lib/call';
+import { confirmDestructive } from '@/lib/confirm';
 import { dayOfMonth, lastNDaysRange, longDateLabel, monthRange } from '@/lib/dates';
 import { formatPhone } from '@/lib/phone';
 import { planStats, planSummary } from '@/lib/plan-format';
@@ -41,7 +42,8 @@ import { buildWhatsAppUrl, openWhatsApp } from '@/lib/whatsapp';
 
 /** For "Latest weight" and the physique photos — the chart loads its own range. */
 const WEIGHT_LOOKBACK_DAYS = 30;
-const MAX_RECENT_NOTES = 10;
+const MAX_RECENT_NOTES = 3;
+const MAX_PHOTOS_PER_GROUP = 6;
 
 type ClientDetailScreenProps = {
   clientId: string;
@@ -75,6 +77,7 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
   const [pickerType, setPickerType] = useState<PlanType | null>(null);
   /** A small notice under the header, since Alert is a no-op on React Native Web. */
   const [contactError, setContactError] = useState<string | null>(null);
+  const [planError, setPlanError] = useState<string | null>(null);
   const dismissContactError = useCallback(() => setContactError(null), []);
   const [chartRange, setChartRange] = useState<WeightRangeKey>(DEFAULT_WEIGHT_RANGE);
   /** Weigh-ins in the chart's selected range, separate from `weights` so switching range can't move the photos. */
@@ -150,8 +153,13 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
   const activeDiet = assignments.find((a) => a.status === 'ACTIVE' && a.plan.type === 'DIET');
   // Fall back to the most recent past assignment so the card can still show
   // what they were last on (with its COMPLETED/PAUSED status).
-  const latestWorkout = activeWorkout ?? assignments.find((a) => a.plan.type === 'WORKOUT');
-  const latestDiet = activeDiet ?? assignments.find((a) => a.plan.type === 'DIET');
+  // A plan the coach removed leaves the card empty rather than showing it again.
+  const latestOf = (type: PlanType) => {
+    const mostRecent = assignments.find((a) => a.plan.type === type);
+    return mostRecent?.status === 'CANCELLED' ? undefined : mostRecent;
+  };
+  const latestWorkout = activeWorkout ?? latestOf('WORKOUT');
+  const latestDiet = activeDiet ?? latestOf('DIET');
 
   const latestWeightEntry = weights.length > 0 ? weights[weights.length - 1] : undefined;
   const displayWeight = latestWeightEntry?.weightKg ?? profile?.weightKg ?? null;
@@ -211,10 +219,14 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
     (entry) => entry.workoutCompleted > 0 || entry.dietCompleted > 0,
   ).length;
 
-  const recentNotes = checkIns
+  const allNotes = checkIns
     .filter((checkIn) => checkIn.notes && checkIn.notes.trim().length > 0)
-    .sort((a, b) => b.date.localeCompare(a.date))
-    .slice(0, MAX_RECENT_NOTES);
+    .sort((a, b) => b.date.localeCompare(a.date));
+  const recentNotes = allNotes.slice(0, MAX_RECENT_NOTES);
+
+  const openPhotos = (group: 'physique' | 'meal') =>
+    router.push({ pathname: '/client-photos', params: { clientId, name, filter: group } });
+  const openNotes = () => router.push({ pathname: '/client-notes', params: { clientId, name } });
 
   // Call and WhatsApp share the one number, so they show and hide together.
   const canContact = buildTelUrl(profile?.phone) !== null && buildWhatsAppUrl(profile?.phone) !== null;
@@ -232,18 +244,48 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
     if (result.status === 'error') setContactError(result.message);
   };
 
+  const handleRemovePlan = async (label: string, assignment: PlanAssignment) => {
+    const kind = label.toLowerCase();
+    const confirmed = await confirmDestructive({
+      title: `Remove ${kind} plan?`,
+      message: `${name} will have no ${kind} plan until you assign a new one. Their past check-ins stay.`,
+      confirmLabel: 'Remove',
+    });
+    if (!confirmed) return;
+
+    setPlanError(null);
+    try {
+      await assignmentApi.cancel(assignment.id);
+      await loadAll();
+    } catch (error) {
+      setPlanError(error instanceof Error ? error.message : 'Could not remove the plan. Please try again.');
+    }
+  };
+
   const renderPlanCard =(label: string, type: PlanType, assignment: PlanAssignment | undefined) => {
     const stats = assignment ? planStats(assignment.plan) : null;
+    const isActive = assignment?.status === 'ACTIVE';
 
     return (
       <Card>
         <View style={styles.cardHeader}>
           <ThemedText type="smallBold">{label}</ThemedText>
-          <Pressable accessibilityRole="button" onPress={() => setPickerType(type)} hitSlop={8}>
-            <ThemedText type="linkPrimary">
-              {assignment?.status === 'ACTIVE' ? 'Change plan' : 'Assign plan'}
-            </ThemedText>
-          </Pressable>
+          <View style={styles.planActions}>
+            {isActive && assignment ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Remove ${label.toLowerCase()} plan`}
+                onPress={() => void handleRemovePlan(label, assignment)}
+                hitSlop={8}>
+                <ThemedText type="small" themeColor="danger">
+                  Remove
+                </ThemedText>
+              </Pressable>
+            ) : null}
+            <Pressable accessibilityRole="button" onPress={() => setPickerType(type)} hitSlop={8}>
+              <ThemedText type="linkPrimary">{isActive ? 'Change plan' : 'Assign plan'}</ThemedText>
+            </Pressable>
+          </View>
         </View>
 
         {assignment && stats ? (
@@ -318,6 +360,11 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
           </Section>
 
           <Section title="Current plans">
+            {planError ? (
+              <ThemedText type="small" themeColor="danger">
+                {planError}
+              </ThemedText>
+            ) : null}
             {renderPlanCard('Workout', 'WORKOUT', latestWorkout)}
             {renderPlanCard('Diet', 'DIET', latestDiet)}
 
@@ -388,6 +435,8 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
             planByAssignmentId={planByAssignmentId}
             weightLookbackDays={WEIGHT_LOOKBACK_DAYS}
             monthLabel={month.monthYearLabel}
+            limit={MAX_PHOTOS_PER_GROUP}
+            onViewAll={openPhotos}
           />
 
           <Section title="Recent notes">
@@ -415,6 +464,11 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
                 ))}
               </Card>
             )}
+            {allNotes.length > MAX_RECENT_NOTES ? (
+              <Pressable accessibilityRole="button" onPress={openNotes} hitSlop={8} style={styles.viewAll}>
+                <ThemedText type="linkPrimary">View all {allNotes.length}</ThemedText>
+              </Pressable>
+            ) : null}
           </Section>
 
           <SubscriptionSection ref={subscriptionSection} clientId={clientId} />
@@ -434,6 +488,14 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
 }
 
 const styles = StyleSheet.create({
+  viewAll: {
+    alignSelf: 'flex-start',
+  },
+  planActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
   monthSummary: {
     marginTop: Spacing.two,
   },

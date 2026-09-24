@@ -95,7 +95,10 @@ function assignmentOn(
   const covering = assignments.filter((assignment) => {
     if (date < cycleStartDate(assignment)) return false;
     const end = assignment.endDate ? dateKeyOf(assignment.endDate) : null;
-    return end === null || date <= end;
+    if (end === null) return true;
+    // A cancelled plan stops that same day, so the client lands on the empty
+    // state straight away; earlier dates still resolve, for their history.
+    return assignment.status === "CANCELLED" ? date < end : date <= end;
   });
   if (covering.length > 0) {
     return covering.reduce((latest, assignment) =>

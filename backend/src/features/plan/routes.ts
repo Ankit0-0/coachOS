@@ -15,6 +15,7 @@ import {
   updatePlanSchema,
 } from "./schemas.js";
 import {
+  cancelAssignment,
   createAssignment,
   createPlan,
   deletePlan,
@@ -79,8 +80,10 @@ function respondToAssignmentError(response: Response, request: Request, error: u
     sendError(response, COACH_NOT_APPROVED_STATUS);
   } else if (code === "NOT_YOUR_CLIENT") {
     sendError(response, 403);
-  } else if (code === "PLAN_NOT_FOUND") {
+  } else if (code === "PLAN_NOT_FOUND" || code === "ASSIGNMENT_NOT_FOUND") {
     sendError(response, 404);
+  } else if (code === "ASSIGNMENT_NOT_ACTIVE") {
+    sendError(response, 409);
   } else {
     getLogger().error({ err: error, url: request.originalUrl }, "assignment: unexpected error");
     sendError(response, 500);
@@ -192,6 +195,21 @@ coachAssignmentRouter.post("/", async (request, response) => {
     response.status(201).json({
       message: "Plan assigned successfully.",
       assignment: await createAssignment(user.id, parsed.data),
+    });
+  } catch (error) {
+    respondToAssignmentError(response, request, error);
+  }
+});
+
+// Removing a plan is a status change; the row and its check-ins stay.
+coachAssignmentRouter.delete("/:id", async (request, response) => {
+  const user = requireRole(request, response, "COACH");
+  if (!user) return;
+
+  try {
+    response.json({
+      message: "Plan removed from this client.",
+      assignment: await cancelAssignment(user.id, request.params.id),
     });
   } catch (error) {
     respondToAssignmentError(response, request, error);
