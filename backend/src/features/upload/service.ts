@@ -75,7 +75,7 @@ function s3Client(config: S3Config): S3Client {
  * one user from writing over another's image; the cuid stops a key from being
  * guessable from anything the client knows.
  */
-function buildKey(userId: string, purpose: UploadPurpose, contentType: AllowedContentType): string {
+export function buildObjectKey(userId: string, purpose: UploadPurpose, contentType: AllowedContentType): string {
   return `users/${userId}/${purpose}/${createId()}.${ALLOWED_CONTENT_TYPES[contentType]}`;
 }
 
@@ -86,7 +86,7 @@ export async function createPresignedUpload(
   const config = readConfig();
   if (!config) throw new Error("S3_NOT_CONFIGURED");
 
-  const key = buildKey(userId, input.purpose, input.contentType);
+  const key = buildObjectKey(userId, input.purpose, input.contentType);
 
   // ContentType is part of what the signature covers, so the URL can only be
   // used to upload the type that was asked for — it can't be replayed to put a
@@ -177,7 +177,21 @@ export async function getSignedReadUrlMap(keys: unknown): Promise<Record<string,
   return Object.keys(urls).length > 0 ? urls : null;
 }
 
-/** Removes one object, so a key that's been cleared doesn't leave its file behind. */
+/** Whether the four AWS variables are set, without logging when they are not. */
+export function isS3Configured(): boolean {
+  return Boolean(env.awsRegion && env.awsAccessKeyId && env.awsSecretAccessKey && env.s3Bucket);
+}
+
+/** Uploads bytes we already hold, for scripts — the apps use presigned PUTs instead. */
+export async function putObject(key: string, body: Buffer, contentType: AllowedContentType): Promise<void> {
+  const config = readConfig();
+  if (!config) throw new Error("S3_NOT_CONFIGURED");
+  await s3Client(config).send(
+    new PutObjectCommand({ Bucket: config.bucket, Key: key, Body: body, ContentType: contentType }),
+  );
+}
+
+/** Removes one object: a cleared photo key, or a script undoing its own upload. */
 export async function deleteObject(key: string): Promise<void> {
   const config = readConfig();
   if (!config) throw new Error("S3_NOT_CONFIGURED");
