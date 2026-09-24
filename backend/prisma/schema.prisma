@@ -28,6 +28,8 @@ enum AssignmentStatus {
   ACTIVE
   COMPLETED
   PAUSED
+  /// The coach took the plan away, which is not the same as the client finishing it.
+  CANCELLED
 }
 
 enum SubscriptionStatus {

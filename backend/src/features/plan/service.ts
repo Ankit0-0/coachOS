@@ -263,6 +263,34 @@ export async function createAssignment(
   return serializeAssignment(assignment);
 }
 
+/**
+ * Takes a plan off a client. A status change, never a delete: CheckIn cascades
+ * from the assignment, so deleting one would take the client's whole history
+ * for that plan with it.
+ */
+export async function cancelAssignment(coachId: string, assignmentId: string) {
+  const assignment = await prisma.planAssignment.findUnique({ where: { id: assignmentId } });
+  if (!assignment) throw new Error("ASSIGNMENT_NOT_FOUND");
+
+  const invite = await findAcceptedInvite(coachId, assignment.clientId);
+  if (!invite || assignment.coachId !== coachId) {
+    getLogger().warn({ coachId, assignmentId }, "cancelAssignment: rejected — not this coach's client");
+    throw new Error("NOT_YOUR_CLIENT");
+  }
+  if (assignment.status !== "ACTIVE" && assignment.status !== "PAUSED") {
+    getLogger().debug({ coachId, assignmentId, status: assignment.status }, "cancelAssignment: rejected — already finished");
+    throw new Error("ASSIGNMENT_NOT_ACTIVE");
+  }
+
+  const updated = await prisma.planAssignment.update({
+    where: { id: assignmentId },
+    data: { status: "CANCELLED", endDate: new Date() },
+    include: { plan: true },
+  });
+  getLogger().info({ coachId, assignmentId, clientId: assignment.clientId }, "cancelAssignment: plan removed from client");
+  return serializeAssignment(updated);
+}
+
 export async function listClientAssignments(coachId: string, clientId: string) {
   const invite = await findAcceptedInvite(coachId, clientId);
   if (!invite) {

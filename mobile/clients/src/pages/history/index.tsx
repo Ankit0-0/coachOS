@@ -19,6 +19,7 @@ import { useTrackingAssignments } from '@/hooks/use-assignments';
 import { useRefresh } from '@/hooks/use-refresh';
 import { trackingApi, type CheckIn, type WeightEntry } from '@/lib/api';
 import { dayOfMonth, monthRange, todayKey } from '@/lib/dates';
+import { confirmDestructive } from '@/lib/confirm';
 import { pickAndUploadImage } from '@/lib/image-upload';
 import { parseWeightInput } from '@/lib/weight';
 import { DEFAULT_WEIGHT_RANGE, weightRangeDates, type WeightRangeKey } from '@/lib/weight-range';
@@ -218,6 +219,34 @@ export function HistoryScreen() {
     setPhotoKey(result.key);
   };
 
+  const handleRemovePhoto = async () => {
+    // Picked but never saved: nothing to delete on the server.
+    if (photoUri) {
+      setPhotoUri(null);
+      setPhotoKey(null);
+      return;
+    }
+    if (!todayEntry?.photoUrl) return;
+
+    const confirmed = await confirmDestructive({
+      title: 'Remove progress photo?',
+      message: "This deletes today's photo for good. Your weight stays logged.",
+      confirmLabel: 'Remove',
+    });
+    if (!confirmed) return;
+
+    const previous = todayEntry;
+    setWeightMessage(null);
+    setWeights((current) => current.map((row) => (row.date === previous.date ? { ...row, photoUrl: null } : row)));
+    try {
+      const entry = await trackingApi.saveWeight({ date: previous.date, weightKg: previous.weightKg, photoKey: null });
+      setWeights((current) => [...current.filter((row) => row.date !== entry.date), entry]);
+    } catch (error) {
+      setWeights((current) => [...current.filter((row) => row.date !== previous.date), previous]);
+      setWeightMessage(error instanceof Error ? error.message : 'Could not remove the photo. Please try again.');
+    }
+  };
+
   const handleLogWeight = async () => {
     // Checked here so an out-of-range weight gets a reason, not the API's bare 400.
     const weight = parseWeightInput(weightInput);
@@ -341,11 +370,23 @@ export function HistoryScreen() {
         </Pressable>
 
         {photoDisplayUri ? (
-          <Image
-            source={{ uri: photoDisplayUri }}
-            accessibilityLabel="Progress photo for today"
-            style={[styles.photoPreview, { backgroundColor: theme.surfaceSunken }]}
-          />
+          <>
+            <Image
+              source={{ uri: photoDisplayUri }}
+              accessibilityLabel="Progress photo for today"
+              style={[styles.photoPreview, { backgroundColor: theme.surfaceSunken }]}
+            />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Remove progress photo"
+              onPress={() => void handleRemovePhoto()}
+              hitSlop={8}
+              style={styles.removePhoto}>
+              <ThemedText type="small" themeColor="danger">
+                Remove photo
+              </ThemedText>
+            </Pressable>
+          </>
         ) : null}
 
         {weightMessage ? (
@@ -410,6 +451,10 @@ export function HistoryScreen() {
 }
 
 const styles = StyleSheet.create({
+  removePhoto: {
+    alignSelf: 'flex-start',
+    paddingVertical: Spacing.one,
+  },
   header: { gap: Spacing.one },
   title: { fontSize: 32, lineHeight: 38 },
   chartCard: {

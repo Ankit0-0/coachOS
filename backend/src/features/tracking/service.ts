@@ -1,7 +1,8 @@
 import { Prisma, type CheckIn, type WeightEntry } from "@prisma/client";
 
+import { getLogger } from "../../config/logger.js";
 import { prisma } from "../../config/prisma.config.js";
-import { getSignedReadUrl, getSignedReadUrlMap, isOwnedKey } from "../upload/service.js";
+import { deleteObject, getSignedReadUrl, getSignedReadUrlMap, isOwnedKey } from "../upload/service.js";
 import { normalizePlanContent } from "../plan/content.js";
 import { cycleStartDate } from "../plan/schedule.js";
 
@@ -61,13 +62,24 @@ function assertOwnedKeys(keys: string[], userId: string) {
  * map: Prisma distinguishes a JSON null from "don't touch", so it has to be
  * spelled out.
  */
+/** Objects nothing points at any more. Dropped after the write, never before. */
+async function deleteOrphans(keys: string[]): Promise<void> {
+  for (const key of keys) {
+    try {
+      await deleteObject(key);
+    } catch (error) {
+      // A stale object costs pennies; a failed save costs the client their data.
+      getLogger().warn({ err: error, key }, "tracking: could not delete the replaced image");
+    }
+  }
+}
+
 async function mergePhotoKeys(
   assignmentId: string,
   date: Date,
   patch: Record<string, string | null> | null | undefined,
-): Promise<Record<string, string> | typeof Prisma.DbNull | undefined> {
-  if (patch === undefined) return undefined;
-  if (patch === null) return Prisma.DbNull;
+): Promise<{ value: Record<string, string> | typeof Prisma.DbNull | undefined; orphaned: string[] }> {
+  if (patch === undefined) return { value: undefined, orphaned: [] };
 
   const existing = await prisma.checkIn.findUnique({
     where: { assignmentId_date: { assignmentId, date } },
@@ -79,11 +91,17 @@ async function mergePhotoKeys(
       ? { ...(stored as Record<string, string>) }
       : {};
 
+  // A null map clears the lot, so every stored key is orphaned.
+  if (patch === null) return { value: Prisma.DbNull, orphaned: Object.values(merged) };
+
+  const orphaned: string[] = [];
   for (const [itemId, key] of Object.entries(patch)) {
+    const previous = merged[itemId];
+    if (previous && previous !== key) orphaned.push(previous);
     if (key === null) delete merged[itemId];
     else merged[itemId] = key;
   }
-  return Object.keys(merged).length > 0 ? merged : Prisma.DbNull;
+  return { value: Object.keys(merged).length > 0 ? merged : Prisma.DbNull, orphaned };
 }
 
 export async function upsertCheckIn(
@@ -108,7 +126,7 @@ export async function upsertCheckIn(
   }
 
   const date = parseDate(input.date);
-  const photoKeys = await mergePhotoKeys(input.assignmentId, date, input.photoKeys);
+  const { value: photoKeys, orphaned } = await mergePhotoKeys(input.assignmentId, date, input.photoKeys);
 
   const checkIn = await prisma.checkIn.upsert({
     where: { assignmentId_date: { assignmentId: input.assignmentId, date } },
@@ -125,6 +143,7 @@ export async function upsertCheckIn(
       photoKeys: photoKeys ?? Prisma.DbNull,
     },
   });
+  await deleteOrphans(orphaned);
   return serializeCheckIn(checkIn);
 }
 
@@ -153,6 +172,11 @@ export async function upsertWeight(
   if (input.photoKey) assertOwnedKeys([input.photoKey], userId);
 
   const date = parseDate(input.date);
+  const previous =
+    input.photoKey !== undefined
+      ? await prisma.weightEntry.findUnique({ where: { clientId_date: { clientId: userId, date } }, select: { photoKey: true } })
+      : null;
+
   const entry = await prisma.weightEntry.upsert({
     where: { clientId_date: { clientId: userId, date } },
     update: {
@@ -166,6 +190,10 @@ export async function upsertWeight(
       photoKey: input.photoKey ?? null,
     },
   });
+
+  if (previous?.photoKey && previous.photoKey !== input.photoKey) {
+    await deleteOrphans([previous.photoKey]);
+  }
   return serializeWeight(entry);
 }
 
