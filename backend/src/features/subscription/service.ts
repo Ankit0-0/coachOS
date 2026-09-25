@@ -1,4 +1,4 @@
-import type { Subscription, SubscriptionStatus } from "@prisma/client";
+import type { Prisma, Subscription, SubscriptionStatus } from "@prisma/client";
 
 import { getLogger } from "../../config/logger.js";
 import { prisma } from "../../config/prisma.config.js";
@@ -10,7 +10,7 @@ export function parseDateOnly(value: string): Date {
 }
 
 /** Today at UTC midnight, so comparisons against @db.Date columns line up. */
-function todayUtc(): Date {
+export function todayUtc(): Date {
   const now = new Date();
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 }
@@ -174,26 +174,47 @@ export async function getClientSubscription(clientId: string) {
   };
 }
 
+export type SubscriptionPeriod = { startDate: Date; endDate: Date };
+
+/** A period from YYYY-MM-DD strings, or null when neither was given. */
+export function periodFromDates(start: string | undefined, end: string | undefined): SubscriptionPeriod | null {
+  if (start === undefined || end === undefined) return null;
+  return { startDate: parseDateOnly(start), endDate: parseDateOnly(end) };
+}
+
 /**
- * Creates the first period when a coach set a duration on the invite.
- * Called on acceptance; does nothing when no duration was chosen.
+ * Legacy: the period an old months-only invite stands for, starting today.
+ * setUTCMonth rolls the year over and clamps a short target month itself:
+ * 31 Jan + 1 month lands in early March rather than throwing.
  */
-export async function createSubscriptionFromInvite(
-  coachId: string,
-  clientId: string,
-  durationMonths: number,
-): Promise<void> {
+export function periodFromMonths(durationMonths: number): SubscriptionPeriod {
   const startDate = todayUtc();
   const endDate = new Date(startDate);
-  // setUTCMonth rolls the year over, and clamps a short target month itself:
-  // 31 Jan + 1 month lands in early March rather than throwing.
   endDate.setUTCMonth(endDate.getUTCMonth() + durationMonths);
+  return { startDate, endDate };
+}
 
-  const created = await prisma.subscription.create({
-    data: { coachId, clientId, startDate, endDate, status: "ACTIVE" },
+/** True once the whole period is in the past; the last day itself still counts. */
+export function periodHasEnded(period: SubscriptionPeriod): boolean {
+  return period.endDate < todayUtc();
+}
+
+/**
+ * The first period of a new relationship, created exactly as the coach chose
+ * it — never shifted to the acceptance date, since the coach may already have
+ * been paid from the start date. Runs inside the acceptance transaction.
+ */
+export async function createFirstSubscription(
+  tx: Prisma.TransactionClient,
+  coachId: string,
+  clientId: string,
+  period: SubscriptionPeriod,
+): Promise<void> {
+  const created = await tx.subscription.create({
+    data: { coachId, clientId, startDate: period.startDate, endDate: period.endDate, status: "ACTIVE" },
   });
   getLogger().info(
-    { coachId, clientId, durationMonths, subscriptionId: created.id },
-    "createSubscriptionFromInvite: first period created on invite acceptance",
+    { coachId, clientId, subscriptionId: created.id, startDate: period.startDate, endDate: period.endDate },
+    "createFirstSubscription: first period created on acceptance",
   );
 }

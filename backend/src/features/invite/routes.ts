@@ -5,6 +5,7 @@ import { requireAuth } from "../../middleware/auth.js";
 import { requireRole } from "../../middleware/role.js";
 import { COACH_NOT_APPROVED_STATUS } from "../../utils/coach-approval.js";
 import { sendError } from "../../utils/http-error.js";
+import { periodFromDates, periodFromMonths } from "../subscription/service.js";
 import { createInviteSchema, listInvitesQuerySchema } from "./schemas.js";
 import {
   acceptInvite,
@@ -25,6 +26,9 @@ function respondToInviteError(response: Response, request: Request, error: unkno
     sendError(response, 403);
   } else if (code === "INVALID_STATUS") {
     sendError(response, 409);
+  } else if (code === "INVITE_PERIOD_ENDED") {
+    // Gone: the period the coach chose is over, so the invite can't be used.
+    sendError(response, 410);
   } else {
     getLogger().error({ err: error, url: request.originalUrl }, "invite: unexpected error");
     sendError(response, 500);
@@ -45,10 +49,16 @@ coachInviteRouter.post("/", async (request, response) => {
     return;
   }
 
+  const { clientEmail, subscriptionStartDate, subscriptionEndDate, durationMonths } = parsed.data;
+  // A legacy length becomes dates here, so every invite stored from now on carries dates.
+  const period =
+    periodFromDates(subscriptionStartDate, subscriptionEndDate) ??
+    (durationMonths !== undefined ? periodFromMonths(durationMonths) : null);
+
   try {
     response.status(201).json({
       message: "Invite sent successfully.",
-      invite: await createInvite(user.id, parsed.data.clientEmail, parsed.data.durationMonths),
+      invite: await createInvite(user.id, clientEmail, period),
     });
   } catch (error) {
     const code = error instanceof Error ? error.message : "INTERNAL_ERROR";
@@ -56,6 +66,9 @@ coachInviteRouter.post("/", async (request, response) => {
       sendError(response, COACH_NOT_APPROVED_STATUS);
     } else if (code === "INVITE_ALREADY_EXISTS") {
       sendError(response, 409);
+    } else if (code === "PERIOD_ENDED") {
+      getLogger().debug({ url: request.originalUrl }, "POST /coach/invites: rejected — end date already past");
+      sendError(response, 400);
     } else {
       getLogger().error({ err: error, url: request.originalUrl }, "invite: unexpected error");
       sendError(response, 500);

@@ -78,6 +78,24 @@ export function addDays(dateKey: string, days: number): string {
   return formatDateKey(date);
 }
 
+/**
+ * The same day `months` later, clamped to the end of a shorter month:
+ * 30 Nov + 3 months is 28 Feb, not 2 Mar.
+ */
+export function addMonths(dateKey: string, months: number): string {
+  const date = parseDateKey(dateKey);
+  const target = new Date(date.getFullYear(), date.getMonth() + months, 1);
+  const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+  target.setDate(Math.min(date.getDate(), lastDay));
+  return formatDateKey(target);
+}
+
+/** A real calendar date written YYYY-MM-DD: "2026-02-30" is not one. */
+export function isDateKey(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  return formatDateKey(parseDateKey(value)) === value;
+}
+
 /** Whole calendar days from `from` to `to`. Counts dates rather than hours, so a DST change can't skew it. */
 export function daysBetween(from: string, to: string): number {
   const a = parseDateKey(from);

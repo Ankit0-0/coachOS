@@ -17,12 +17,15 @@ import { Spacing } from '@/constants/theme';
 import { useRefresh } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { buildTelUrl, startCall } from '@/lib/call';
+import { expiredInviteMessage, inviteSwitchWarning } from '@/lib/coach-switch';
+import { confirmDestructive } from '@/lib/confirm';
 import { longDateLabel } from '@/lib/dates';
 import { experienceLabel } from '@/lib/explore';
 import { formatPhone } from '@/lib/phone';
 import { summariseSubscription } from '@/lib/subscription';
 import { buildWhatsAppUrl, openWhatsApp } from '@/lib/whatsapp';
 import {
+  ApiError,
   clientInviteApi,
   clientSubscriptionApi,
   coachRequestApi,
@@ -104,12 +107,23 @@ export function MyCoachScreen() {
   };
 
   const handleAccept = async (invite: ClientInvite) => {
+    // One coach at a time: accepting ends the current one, so ask first, by name.
+    if (invite.currentCoach) {
+      const confirmed = await confirmDestructive({
+        title: 'Switch coach?',
+        message: inviteSwitchWarning(invite.currentCoach),
+        confirmLabel: 'Continue',
+      });
+      if (!confirmed) return;
+    }
     try {
       setActioningId(invite.id);
       await clientInviteApi.accept(invite.id);
       await loadData();
     } catch (error) {
-      Alert.alert('Could not accept invite', errorMessage(error));
+      const message =
+        error instanceof ApiError && error.status === 410 ? expiredInviteMessage(invite.coach?.name) : errorMessage(error);
+      Alert.alert('Could not accept invite', message);
     } finally {
       setActioningId(null);
     }
@@ -140,6 +154,48 @@ export function MyCoachScreen() {
       setActioningId(null);
     }
   };
+
+  const pendingSection = (
+    <Section title="Pending invites">
+      <Card style={styles.listCard}>
+        <InsetPanel>
+          {pendingInvites.map((invite) => (
+            <Row key={invite.id} style={[styles.inviteRow, styles.wrapRow]}>
+              <Avatar name={invite.coach?.name ?? 'A coach'} size="row" imageUrl={invite.coach?.avatarUrl ?? null} />
+              <View style={styles.inviteInfo}>
+                <ThemedText type="smallBold">{invite.coach?.name ?? 'A coach'}</ThemedText>
+                <ThemedText type="meta" numberOfLines={1}>
+                  {invite.coach?.email ?? ''}
+                </ThemedText>
+              </View>
+              {/* Own line under the name, so a long name isn't squeezed. */}
+              <View style={styles.pendingActions}>
+                <View style={styles.pendingAction}>
+                  <Button
+                    label="Decline"
+                    variant="secondary"
+                    size="sm"
+                    fullWidth
+                    onPress={() => handleDecline(invite)}
+                    disabled={actioningId === invite.id}
+                  />
+                </View>
+                <View style={styles.pendingAction}>
+                  <Button
+                    label="Accept"
+                    size="sm"
+                    fullWidth
+                    loading={actioningId === invite.id}
+                    onPress={() => handleAccept(invite)}
+                  />
+                </View>
+              </View>
+            </Row>
+          ))}
+        </InsetPanel>
+      </Card>
+    </Section>
+  );
 
   return (
     <ScreenScaffold refreshing={isRefreshing} onRefresh={refresh}>
@@ -217,40 +273,12 @@ export function MyCoachScreen() {
               </Card>
             </Section>
           ) : null}
+
+          {/* Another coach's invite: accepting it asks first, since it ends this relationship. */}
+          {pendingInvites.length > 0 ? pendingSection : null}
         </>
       ) : pendingInvites.length > 0 ? (
-        <Section title="Pending invites">
-          <Card style={styles.listCard}>
-            <InsetPanel>
-              {pendingInvites.map((invite) => (
-                <Row key={invite.id} style={styles.inviteRow}>
-                  <Avatar name={invite.coach?.name ?? 'A coach'} size="row" imageUrl={invite.coach?.avatarUrl ?? null} />
-                  <View style={styles.inviteInfo}>
-                    <ThemedText type="smallBold">{invite.coach?.name ?? 'A coach'}</ThemedText>
-                    <ThemedText type="meta" numberOfLines={1}>
-                      {invite.coach?.email ?? ''}
-                    </ThemedText>
-                  </View>
-                  <View style={styles.inviteActions}>
-                    <Button
-                      label="Decline"
-                      variant="secondary"
-                      size="sm"
-                      onPress={() => handleDecline(invite)}
-                      disabled={actioningId === invite.id}
-                    />
-                    <Button
-                      label="Accept"
-                      size="sm"
-                      loading={actioningId === invite.id}
-                      onPress={() => handleAccept(invite)}
-                    />
-                  </View>
-                </Row>
-              ))}
-            </InsetPanel>
-          </Card>
-        </Section>
+        pendingSection
       ) : (
         <Card style={styles.emptyPanel}>
           <ThemedText type="heading">No coach yet</ThemedText>
@@ -349,8 +377,15 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: Spacing.half,
   },
-  inviteActions: {
+  wrapRow: {
+    flexWrap: 'wrap',
+  },
+  pendingActions: {
+    flexBasis: '100%',
     flexDirection: 'row',
     gap: Spacing.two,
+  },
+  pendingAction: {
+    flex: 1,
   },
 });

@@ -1,4 +1,5 @@
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
@@ -28,6 +29,8 @@ export function SetFeedbackPanel({
   selectedSet,
 }: SetFeedbackPanelProps) {
   const theme = useTheme();
+  // The sheet sits on the bottom edge: clear of the navigation bar, at least as roomy as before.
+  const insets = useSafeAreaInsets();
 
   if (!selectedSet) {
     return null;
@@ -39,7 +42,15 @@ export function SetFeedbackPanel({
     <Modal animationType="slide" transparent visible onRequestClose={onClose}>
       <View style={[styles.backdrop, { backgroundColor: theme.scrim }]}>
         <Pressable style={styles.dismissArea} onPress={onClose} accessibilityLabel="Close set notes" />
-        <View style={[styles.panel, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <View
+          style={[
+            styles.panel,
+            {
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
+              paddingBottom: Math.max(insets.bottom, Spacing.threeHalf),
+            },
+          ]}>
           <View style={[styles.handle, { backgroundColor: theme.border }]} />
           <View style={styles.header}>
             <View style={styles.headerCopy}>

@@ -2,9 +2,15 @@ import type { CoachProfile, CoachRequest, InviteStatus, User } from "@prisma/cli
 
 import { getLogger } from "../../config/logger.js";
 import { prisma } from "../../config/prisma.config.js";
+import { endPreviousCoaching, findCurrentCoach } from "../../utils/coach-access.js";
 import { assertCoachApproved } from "../../utils/coach-approval.js";
 import { normalizeEmail } from "../../utils/email.js";
-import { effectiveStatus } from "../subscription/service.js";
+import {
+  createFirstSubscription,
+  effectiveStatus,
+  periodHasEnded,
+  type SubscriptionPeriod,
+} from "../subscription/service.js";
 import { getSignedReadUrl } from "../upload/service.js";
 
 /**
@@ -33,19 +39,19 @@ type ClientCounts = { activeClientCount: number; totalClientCount: number };
 /**
  * How many clients each coach has, in two queries whatever the number of coaches.
  *
- * - total:  every client this coach has ever had an ACCEPTED invite with.
- * - active: those whose relationship is still running — their latest
- *   subscription with this coach is ACTIVE (expiry derived as everywhere else),
- *   or they have none at all, which is an open-ended relationship, not a lapse.
+ * - total:  every client this coach has ever had an ACCEPTED invite with,
+ *   including relationships that have since ENDED.
+ * - active: those whose relationship is still running — still ACCEPTED, and
+ *   their latest subscription with this coach is ACTIVE (expiry derived as
+ *   everywhere else) or absent, which is an open-ended relationship, not a lapse.
  *
  * Counted per distinct client, so a re-invite can't count someone twice.
  */
 async function clientCountsFor(coachIds: string[]): Promise<Map<string, ClientCounts>> {
   const [accepted, subscriptions] = await Promise.all([
     prisma.coachClientInvite.findMany({
-      where: { coachId: { in: coachIds }, status: "ACCEPTED", clientId: { not: null } },
-      select: { coachId: true, clientId: true },
-      distinct: ["coachId", "clientId"],
+      where: { coachId: { in: coachIds }, status: { in: ["ACCEPTED", "ENDED"] }, clientId: { not: null } },
+      select: { coachId: true, clientId: true, status: true },
     }),
     prisma.subscription.findMany({
       where: { coachId: { in: coachIds } },
@@ -64,11 +70,18 @@ async function clientCountsFor(coachIds: string[]): Promise<Map<string, ClientCo
   const counts = new Map<string, ClientCounts>(
     coachIds.map((id) => [id, { activeClientCount: 0, totalClientCount: 0 }]),
   );
-  for (const { coachId, clientId } of accepted) {
-    const count = counts.get(coachId)!;
+  // Per distinct pair: a client who left and came back counts once, and is
+  // active when any of their invites with this coach is still ACCEPTED.
+  const current = new Map<string, boolean>();
+  for (const { coachId, clientId, status } of accepted) {
+    const pair = `${coachId}:${clientId}`;
+    current.set(pair, current.get(pair) === true || status === "ACCEPTED");
+  }
+  for (const [pair, isCurrent] of current) {
+    const count = counts.get(pair.split(":")[0]!)!;
     count.totalClientCount += 1;
-    const latest = latestByPair.get(`${coachId}:${clientId}`);
-    if (!latest || effectiveStatus(latest) === "ACTIVE") count.activeClientCount += 1;
+    const latest = latestByPair.get(pair);
+    if (isCurrent && (!latest || effectiveStatus(latest) === "ACTIVE")) count.activeClientCount += 1;
   }
   return counts;
 }
@@ -176,12 +189,20 @@ export async function getDirectoryCoach(clientId: string, coachId: string) {
     getLogger().debug({ clientId, coachId }, "getDirectoryCoach: rejected — coach not listed in Explore");
     throw new Error("COACH_NOT_FOUND");
   }
-  const [relationships, counts] = await Promise.all([
+  const [relationships, counts, currentCoach] = await Promise.all([
     relationshipsFor(client, [coach.id]),
     clientCountsFor([coach.id]),
+    findCurrentCoach(clientId),
   ]);
   const status = relationships.get(coach.id)!;
-  return serializeDirectoryCoach(coach, status.relationship, status.pendingRequestId, counts.get(coach.id)!);
+  return {
+    ...(await serializeDirectoryCoach(coach, status.relationship, status.pendingRequestId, counts.get(coach.id)!)),
+    /**
+     * Who this coach would replace if they accept a request, so the app can
+     * warn by name before the client sends one. Null when there's no one.
+     */
+    currentCoach: currentCoach && currentCoach.id !== coach.id ? currentCoach : null,
+  };
 }
 
 type PersonSummary = { id: string; name: string; email: string };
@@ -272,12 +293,22 @@ async function loadCoachRequest(coachId: string, requestId: string) {
  * Accepting forms the relationship exactly the way an accepted invite does —
  * by writing an ACCEPTED CoachClientInvite — so plans, tracking, subscriptions
  * and every coach-scoped access check work without knowing requests exist.
+ * It also ends the client's current coach, in the same transaction, exactly
+ * as accepting an invite does.
+ *
+ * `period` is the first subscription as the coach chose it; null for an
+ * open-ended relationship.
  */
-export async function acceptCoachRequest(coachId: string, requestId: string) {
+export async function acceptCoachRequest(coachId: string, requestId: string, period: SubscriptionPeriod | null) {
   await assertCoachApproved(coachId);
   const request = await loadCoachRequest(coachId, requestId);
   const clientId = request.clientId;
   const clientEmail = normalizeEmail(request.client.email);
+
+  if (period && periodHasEnded(period)) {
+    getLogger().debug({ coachId, requestId, endDate: period.endDate }, "acceptCoachRequest: rejected — subscription period already over");
+    throw new Error("PERIOD_ENDED");
+  }
 
   const updated = await prisma.$transaction(async (tx) => {
     const existing = await tx.coachClientInvite.findFirst({
@@ -286,8 +317,18 @@ export async function acceptCoachRequest(coachId: string, requestId: string) {
     });
     if (!existing) {
       await tx.coachClientInvite.create({
-        data: { coachId, clientId, clientEmail, status: "ACCEPTED", respondedAt: new Date() },
+        data: {
+          coachId,
+          clientId,
+          clientEmail,
+          status: "ACCEPTED",
+          respondedAt: new Date(),
+          subscriptionStartDate: period?.startDate ?? null,
+          subscriptionEndDate: period?.endDate ?? null,
+        },
       });
+      await endPreviousCoaching(tx, clientId, coachId);
+      if (period) await createFirstSubscription(tx, coachId, clientId, period);
     }
     // An invite the coach had also sent is now redundant; retire it so the
     // client isn't left with a stale "accept this invite" prompt.

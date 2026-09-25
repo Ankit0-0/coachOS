@@ -58,12 +58,15 @@ export default function SignUpScreen() {
   return (
     <ThemedView style={styles.container}>
       <KeyboardForm contentContainerStyle={styles.content}>
-        <Pressable accessibilityRole="button" onPress={() => router.back()} hitSlop={12} style={styles.back}>
-          <ThemedText type="linkPrimary">Back</ThemedText>
-        </Pressable>
+        {/* One row for Back and the app chip: the form has to fit a 375×667 screen. */}
+        <View style={styles.topRow}>
+          <Pressable accessibilityRole="button" onPress={() => router.back()} hitSlop={12}>
+            <ThemedText type="linkPrimary">Back</ThemedText>
+          </Pressable>
+          <Chip label="Coach app" tone="green" />
+        </View>
 
         <View style={styles.header}>
-          <Chip label="Coach app" tone="green" />
           <ThemedText type="display">Create account</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
             Set up your coach profile — you can invite clients right after.
@@ -164,27 +167,31 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  // Tight on purpose so the submit button clears a 3-button navigation bar on
+  // a 375×667 screen; KeyboardForm adds the safe-area insets on top.
   content: {
     flexGrow: 1,
     padding: Spacing.four,
-    paddingTop: Spacing.five,
-    paddingBottom: Spacing.five,
-    gap: Spacing.four,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.four,
+    gap: Spacing.threeHalf,
   },
-  back: {
-    alignSelf: 'flex-start',
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   header: {
     gap: Spacing.one,
   },
   form: {
-    gap: Spacing.three,
+    gap: Spacing.twoHalf,
   },
   field: {
     gap: Spacing.one,
   },
   actions: {
-    gap: Spacing.three,
+    gap: Spacing.twoHalf,
     marginTop: 'auto',
   },
   errorBanner: {

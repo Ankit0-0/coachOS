@@ -5,7 +5,8 @@ import { requireAuth } from "../../middleware/auth.js";
 import { requireRole } from "../../middleware/role.js";
 import { COACH_NOT_APPROVED_STATUS } from "../../utils/coach-approval.js";
 import { sendError } from "../../utils/http-error.js";
-import { createCoachRequestSchema, listCoachRequestsQuerySchema } from "./schemas.js";
+import { periodFromDates } from "../subscription/service.js";
+import { acceptCoachRequestSchema, createCoachRequestSchema, listCoachRequestsQuerySchema } from "./schemas.js";
 import {
   acceptCoachRequest,
   cancelCoachRequest,
@@ -40,6 +41,9 @@ function respondToExploreError(response: Response, request: Request, error: unkn
     sendError(response, 409);
   } else if (code === "COACH_NOT_APPROVED") {
     sendError(response, COACH_NOT_APPROVED_STATUS);
+  } else if (code === "PERIOD_ENDED") {
+    getLogger().debug({ url: request.originalUrl }, "explore: rejected — subscription end date already past");
+    sendError(response, 400);
   } else {
     getLogger().error({ err: error, url: request.originalUrl }, "explore: unexpected error");
     sendError(response, 500);
@@ -146,10 +150,18 @@ coachCoachRequestRouter.get("/", async (request, response) => {
 coachCoachRequestRouter.post("/:id/accept", async (request, response) => {
   const user = requireRole(request, response, "COACH");
   if (!user) return;
+  // No body at all (older app versions) is an open-ended relationship.
+  const parsed = acceptCoachRequestSchema.safeParse(request.body ?? {});
+  if (!parsed.success) {
+    getLogger().debug({ issues: parsed.error.flatten() }, "POST /coach/coach-requests/:id/accept: rejected — invalid request body");
+    sendError(response, 400);
+    return;
+  }
+  const period = periodFromDates(parsed.data.subscriptionStartDate, parsed.data.subscriptionEndDate);
   try {
     response.json({
       message: "Request accepted successfully.",
-      request: await acceptCoachRequest(user.id, request.params.id),
+      request: await acceptCoachRequest(user.id, request.params.id, period),
     });
   } catch (error) {
     respondToExploreError(response, request, error);

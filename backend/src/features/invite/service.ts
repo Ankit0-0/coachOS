@@ -2,8 +2,15 @@ import type { CoachClientInvite, CoachProfile, InviteStatus } from "@prisma/clie
 
 import { getLogger } from "../../config/logger.js";
 import { prisma } from "../../config/prisma.config.js";
+import { endPreviousCoaching, findCurrentCoach, type CurrentCoach } from "../../utils/coach-access.js";
 import { assertCoachApproved } from "../../utils/coach-approval.js";
-import { createSubscriptionFromInvite, effectiveStatus } from "../subscription/service.js";
+import {
+  createFirstSubscription,
+  effectiveStatus,
+  periodFromMonths,
+  periodHasEnded,
+  type SubscriptionPeriod,
+} from "../subscription/service.js";
 import { getSignedReadUrl } from "../upload/service.js";
 import { normalizeEmail } from "../../utils/email.js";
 
@@ -32,19 +39,33 @@ function serializeInvite(row: InviteRow) {
     client: row.client ?? undefined,
     status: row.status,
     durationMonths: row.durationMonths,
+    /**
+     * The first period the coach chose; null for an open-ended relationship.
+     * Nested so it can't be confused with the roster's `subscriptionEndDate`,
+     * which is the current subscription's end.
+     */
+    subscriptionPeriod:
+      row.subscriptionStartDate && row.subscriptionEndDate
+        ? { startDate: row.subscriptionStartDate, endDate: row.subscriptionEndDate }
+        : null,
     createdAt: row.createdAt,
     respondedAt: row.respondedAt,
   };
 }
 
-export async function createInvite(
-  coachId: string,
-  clientEmailInput: string,
-  durationMonths?: number | undefined,
-) {
+/**
+ * `period` is the first subscription, as the coach chose it; null for an
+ * open-ended relationship.
+ */
+export async function createInvite(coachId: string, clientEmailInput: string, period: SubscriptionPeriod | null) {
   await assertCoachApproved(coachId);
 
   const clientEmail = normalizeEmail(clientEmailInput);
+
+  if (period && periodHasEnded(period)) {
+    getLogger().debug({ coachId, clientEmail, endDate: period.endDate }, "createInvite: rejected — subscription period already over");
+    throw new Error("PERIOD_ENDED");
+  }
 
   const existing = await prisma.coachClientInvite.findFirst({
     where: { coachId, clientEmail, status: { in: ["PENDING", "ACCEPTED"] } },
@@ -58,7 +79,13 @@ export async function createInvite(
   const clientId = matchedClient && matchedClient.role === "CLIENT" ? matchedClient.id : null;
 
   const invite = await prisma.coachClientInvite.create({
-    data: { coachId, clientEmail, clientId, durationMonths: durationMonths ?? null },
+    data: {
+      coachId,
+      clientEmail,
+      clientId,
+      subscriptionStartDate: period?.startDate ?? null,
+      subscriptionEndDate: period?.endDate ?? null,
+    },
     include: { client: { select: { id: true, name: true, email: true } } },
   });
   getLogger().info({ coachId, clientEmail, inviteId: invite.id, autoMatchedClientId: clientId }, "createInvite: invite created");
@@ -134,9 +161,10 @@ async function serializeClientInvite(
       coachProfile: Pick<CoachProfile, "phone" | "avatarKey" | "bio" | "specialties" | "yearsExperience"> | null;
     };
   },
+  currentCoach: CurrentCoach | null,
 ) {
   const { coachProfile, ...coach } = row.coach;
-  return serializeInvite({
+  const invite = serializeInvite({
     ...row,
     coach:
       row.status === "ACCEPTED"
@@ -150,6 +178,15 @@ async function serializeClientInvite(
           }
         : coach,
   });
+  return {
+    ...invite,
+    /**
+     * Who accepting this invite would replace, so the app can warn by name
+     * first. Null when the client has no coach, and on anything but a
+     * pending invite.
+     */
+    currentCoach: row.status === "PENDING" && currentCoach && currentCoach.id !== row.coachId ? currentCoach : null,
+  };
 }
 
 export async function listClientInvites(clientId: string, email: string, status: InviteStatus = "PENDING") {
@@ -170,10 +207,12 @@ export async function listClientInvites(clientId: string, email: string, status:
     },
     orderBy: { createdAt: "desc" },
   });
-  return Promise.all(rows.map(serializeClientInvite));
+  const currentCoach = rows.some((row) => row.status === "PENDING") ? await findCurrentCoach(clientId) : null;
+  return Promise.all(rows.map((row) => serializeClientInvite(row, currentCoach)));
 }
 
-async function respondToInvite(inviteId: string, userId: string, email: string, status: "ACCEPTED" | "DECLINED") {
+/** The invite, checked to be pending and addressed to this user. */
+async function loadPendingInvite(inviteId: string, userId: string, email: string) {
   const invite = await prisma.coachClientInvite.findUnique({ where: { id: inviteId } });
   if (!invite) {
     getLogger().debug({ inviteId, userId }, "respondToInvite: rejected — invite not found");
@@ -193,32 +232,61 @@ async function respondToInvite(inviteId: string, userId: string, email: string, 
     getLogger().debug({ inviteId, userId, currentStatus: invite.status }, "respondToInvite: rejected — invite already responded to");
     throw new Error("INVALID_STATUS");
   }
+  return invite;
+}
 
-  const updated = await prisma.coachClientInvite.update({
-    where: { id: inviteId },
-    data: {
-      status,
-      respondedAt: new Date(),
-      ...(status === "ACCEPTED" ? { clientId: userId } : {}),
-    },
-    include: { coach: { select: { id: true, name: true, email: true } } },
-  });
-  getLogger().info({ inviteId, userId, status }, "respondToInvite: invite updated");
+/** The first period an invite carries: its dates, or a legacy length counted from today. */
+function invitePeriod(invite: CoachClientInvite): SubscriptionPeriod | null {
+  if (invite.subscriptionStartDate && invite.subscriptionEndDate) {
+    return { startDate: invite.subscriptionStartDate, endDate: invite.subscriptionEndDate };
+  }
+  return invite.durationMonths ? periodFromMonths(invite.durationMonths) : null;
+}
 
-  // The relationship itself is already formed by the ACCEPTED invite above.
-  // A subscription is the commercial record on top of it, and only exists
-  // when the coach picked a duration when inviting.
-  if (status === "ACCEPTED" && invite.durationMonths) {
-    await createSubscriptionFromInvite(invite.coachId, userId, invite.durationMonths);
+/**
+ * Forms the relationship, and ends the client's current one if they have one
+ * — all in one transaction, so there is never a moment with two coaches.
+ *
+ * The subscription keeps the coach's dates even when the client accepts after
+ * the start date. Accepting after the end date is refused instead: that would
+ * create a period that is over before it begins, so the coach has to re-invite.
+ */
+export async function acceptInvite(inviteId: string, userId: string, email: string) {
+  const invite = await loadPendingInvite(inviteId, userId, email);
+
+  const period = invitePeriod(invite);
+  if (period && periodHasEnded(period)) {
+    getLogger().debug({ inviteId, userId, endDate: period.endDate }, "acceptInvite: rejected — subscription period already over");
+    throw new Error("INVITE_PERIOD_ENDED");
   }
 
+  const updated = await prisma.$transaction(async (tx) => {
+    // Conditional on PENDING, so a double tap can't accept twice.
+    const claimed = await tx.coachClientInvite.updateMany({
+      where: { id: inviteId, status: "PENDING" },
+      data: { status: "ACCEPTED", respondedAt: new Date(), clientId: userId },
+    });
+    if (claimed.count !== 1) throw new Error("INVALID_STATUS");
+
+    await endPreviousCoaching(tx, userId, invite.coachId);
+    if (period) await createFirstSubscription(tx, invite.coachId, userId, period);
+
+    return tx.coachClientInvite.findUniqueOrThrow({
+      where: { id: inviteId },
+      include: { coach: { select: { id: true, name: true, email: true } } },
+    });
+  });
+  getLogger().info({ inviteId, userId, coachId: invite.coachId }, "acceptInvite: relationship formed");
   return serializeInvite(updated);
 }
 
-export function acceptInvite(inviteId: string, userId: string, email: string) {
-  return respondToInvite(inviteId, userId, email, "ACCEPTED");
-}
-
-export function declineInvite(inviteId: string, userId: string, email: string) {
-  return respondToInvite(inviteId, userId, email, "DECLINED");
+export async function declineInvite(inviteId: string, userId: string, email: string) {
+  await loadPendingInvite(inviteId, userId, email);
+  const updated = await prisma.coachClientInvite.update({
+    where: { id: inviteId },
+    data: { status: "DECLINED", respondedAt: new Date() },
+    include: { coach: { select: { id: true, name: true, email: true } } },
+  });
+  getLogger().info({ inviteId, userId }, "declineInvite: invite declined");
+  return serializeInvite(updated);
 }

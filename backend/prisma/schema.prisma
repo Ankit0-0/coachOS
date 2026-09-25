@@ -43,6 +43,8 @@ enum InviteStatus {
   ACCEPTED
   DECLINED
   CANCELLED
+  /// The relationship happened and is over: the client accepted another coach.
+  ENDED
 }
 
 model User {
@@ -105,10 +107,15 @@ model CoachClientInvite {
   status InviteStatus @default(PENDING)
   token  String       @unique @default(cuid())
 
-  /// Chosen by the coach when inviting. Used once, on acceptance, to compute
-  /// the first subscription's endDate. Null means an open-ended relationship
-  /// with no subscription record at all.
+  /// Legacy: the old way of choosing a first period. No longer written; read
+  /// only for invites still pending from before the dates below existed.
   durationMonths Int?
+
+  /// The first subscription period, chosen by the coach when inviting and
+  /// created as-is on acceptance. Both null means an open-ended relationship
+  /// with no subscription record.
+  subscriptionStartDate DateTime? @db.Date
+  subscriptionEndDate   DateTime? @db.Date
 
   createdAt   DateTime  @default(now())
   respondedAt DateTime?
