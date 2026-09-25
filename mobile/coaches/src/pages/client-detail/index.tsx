@@ -13,13 +13,14 @@ import { DetailHeader } from '@/components/detail-header';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
 import { Avatar } from '@/components/ui/avatar';
-import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Card, InsetPanel } from '@/components/ui/card';
 import { FieldRow } from '@/components/ui/field-row';
 import { CALL_ICON, IconButton, MESSAGE_ICON } from '@/components/ui/icon-button';
 import { InlineNotice } from '@/components/ui/inline-notice';
-import { Pill } from '@/components/ui/pill';
+import { Chip } from '@/components/ui/pill';
 import { Section } from '@/components/ui/section';
-import { Spacing } from '@/constants/theme';
+import { Radii, Spacing } from '@/constants/theme';
 import { useRefresh, type RefreshHandle } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import {
@@ -267,54 +268,53 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
     const isActive = assignment?.status === 'ACTIVE';
 
     return (
-      <Card>
-        <View style={styles.cardHeader}>
-          <ThemedText type="smallBold">{label}</ThemedText>
-          <View style={styles.planActions}>
-            {isActive && assignment ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Remove ${label.toLowerCase()} plan`}
-                onPress={() => void handleRemovePlan(label, assignment)}
-                hitSlop={8}>
-                <ThemedText type="small" themeColor="danger">
-                  Remove
-                </ThemedText>
-              </Pressable>
-            ) : null}
-            <Pressable accessibilityRole="button" onPress={() => setPickerType(type)} hitSlop={8}>
-              <ThemedText type="linkPrimary">{isActive ? 'Change plan' : 'Assign plan'}</ThemedText>
-            </Pressable>
-          </View>
+      <View style={[styles.planRow, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <View style={styles.planTitleRow}>
+          <Chip label={label} tone={type === 'DIET' ? 'terracotta' : 'green'} />
+          {assignment && stats ? (
+            <Chip
+              label={assignment.status === 'ACTIVE' ? 'Active' : assignment.status.toLowerCase()}
+              tone={assignment.status === 'ACTIVE' ? 'success' : 'neutral'}
+            />
+          ) : null}
         </View>
 
         {assignment && stats ? (
           <View style={styles.planBody}>
-            <View style={styles.planTitleRow}>
-              <ThemedText type="heading" style={styles.planTitle}>
-                {assignment.plan.title}
+            <ThemedText type="smallBold">{assignment.plan.title}</ThemedText>
+            {planSummary(assignment.plan) ? (
+              <ThemedText type="small" themeColor="textSecondary" numberOfLines={2}>
+                {planSummary(assignment.plan)}
               </ThemedText>
-              <Pill
-                label={assignment.status === 'ACTIVE' ? 'Active' : assignment.status.toLowerCase()}
-                tone={assignment.status === 'ACTIVE' ? 'success' : 'neutral'}
-              />
-            </View>
-            <ThemedText type="small" themeColor="textSecondary">
-              {planSummary(assignment.plan)}
+            ) : null}
+            <ThemedText type="meta">
+              {[stats.primary, stats.secondary].filter(Boolean).join(' · ')}
             </ThemedText>
-            <View style={styles.planStats}>
-              <ThemedText type="meta" themeColor="textSecondary">
-                {stats.primary}
-              </ThemedText>
-              <ThemedText type="meta">{stats.secondary}</ThemedText>
-            </View>
           </View>
         ) : (
           <ThemedText type="small" themeColor="textSecondary">
             No {label.toLowerCase()} plan assigned yet.
           </ThemedText>
         )}
-      </Card>
+
+        <View style={styles.planActions}>
+          <Button
+            label={isActive ? 'Change plan' : 'Assign plan'}
+            variant={isActive ? 'secondary' : 'primary'}
+            size="sm"
+            onPress={() => setPickerType(type)}
+          />
+          {isActive && assignment ? (
+            <Button
+              label="Remove"
+              variant="ghost"
+              size="sm"
+              accessibilityLabel={`Remove ${label.toLowerCase()} plan`}
+              onPress={() => void handleRemovePlan(label, assignment)}
+            />
+          ) : null}
+        </View>
+      </View>
     );
   };
 
@@ -339,9 +339,14 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
       ) : (
         <>
           <View style={styles.identity}>
-            <Avatar name={name} size="md" imageUrl={profile?.avatarUrl ?? null} />
+            <Avatar name={name} size="md" imageUrl={profile?.avatarUrl ?? null} tone="warm" />
             <View style={styles.identityCopy}>
-              <ThemedText type="smallBold">{name}</ThemedText>
+              <Chip label="Client" tone="terracotta" />
+              {profile?.goals ? (
+                <ThemedText type="small" themeColor="textSecondary" numberOfLines={2}>
+                  {profile.goals}
+                </ThemedText>
+              ) : null}
               <ThemedText type="meta">
                 {profile?.onboardedAt ? `Client since ${longDateLabel(profile.onboardedAt)}` : 'Start date unknown'}
               </ThemedText>
@@ -365,8 +370,12 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
                 {planError}
               </ThemedText>
             ) : null}
-            {renderPlanCard('Workout', 'WORKOUT', latestWorkout)}
-            {renderPlanCard('Diet', 'DIET', latestDiet)}
+            <Card style={styles.plansCard}>
+              <InsetPanel>
+                {renderPlanCard('Workout', 'WORKOUT', latestWorkout)}
+                {renderPlanCard('Diet', 'DIET', latestDiet)}
+              </InsetPanel>
+            </Card>
 
             <PlanPickerModal
               type={pickerType}
@@ -381,7 +390,7 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
           <Section title="Progress">
             <Card>
               <View style={styles.cardHeader}>
-                <ThemedText type="smallBold">Weight trend</ThemedText>
+                <ThemedText type="heading">Weight trend</ThemedText>
                 {latestChartEntry ? (
                   <View style={styles.latestWeight}>
                     <ThemedText type="numeric">{latestChartEntry.weightKg}</ThemedText>
@@ -397,14 +406,14 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
               </View>
             </Card>
 
-            <Card>
+            <Card style={styles.monthCard}>
               <MonthNavigator
                 label={month.monthYearLabel}
                 onPrevious={() => stepMonth(-1)}
                 onNext={() => stepMonth(1)}
                 isAtCurrentMonth={isAtCurrentMonth}
               />
-              <ThemedText type="meta" style={styles.monthSummary}>
+              <ThemedText type="meta">
                 {completedDays} of {trainingDays.length} training days logged
               </ThemedText>
               <View style={styles.legendRow}>
@@ -454,7 +463,7 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
                     style={[
                       styles.noteRow,
                       index < recentNotes.length - 1 && {
-                        borderBottomWidth: StyleSheet.hairlineWidth,
+                        borderBottomWidth: 1,
                         borderBottomColor: theme.border,
                       },
                     ]}>
@@ -465,7 +474,7 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
               </Card>
             )}
             {allNotes.length > MAX_RECENT_NOTES ? (
-              <Pressable accessibilityRole="button" onPress={openNotes} hitSlop={8} style={styles.viewAll}>
+              <Pressable accessibilityRole="button" onPress={openNotes} hitSlop={12} style={styles.viewAll}>
                 <ThemedText type="linkPrimary">View all {allNotes.length}</ThemedText>
               </Pressable>
             ) : null}
@@ -474,8 +483,8 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
           <SubscriptionSection ref={subscriptionSection} clientId={clientId} />
 
           <Section title="Payment">
-            <Card>
-              <ThemedText type="smallBold">Billing isn&apos;t connected yet</ThemedText>
+            <Card style={styles.textCard}>
+              <ThemedText type="heading">Billing isn&apos;t connected yet</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
                 Invoices and receipts will appear here. Subscription periods are tracked above.
               </ThemedText>
@@ -494,10 +503,22 @@ const styles = StyleSheet.create({
   planActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.three,
+    gap: Spacing.two,
   },
-  monthSummary: {
-    marginTop: Spacing.two,
+  plansCard: {
+    padding: Spacing.twoHalf,
+  },
+  planRow: {
+    borderRadius: Radii.md,
+    borderWidth: 1,
+    padding: Spacing.three,
+    gap: Spacing.twoHalf,
+  },
+  monthCard: {
+    gap: Spacing.twoHalf,
+  },
+  textCard: {
+    gap: Spacing.one,
   },
   identity: {
     flexDirection: 'row',
@@ -506,7 +527,8 @@ const styles = StyleSheet.create({
   },
   identityCopy: {
     flex: 1,
-    gap: Spacing.half,
+    gap: Spacing.one,
+    alignItems: 'flex-start',
   },
   fieldCard: {
     paddingHorizontal: Spacing.three,
@@ -519,20 +541,11 @@ const styles = StyleSheet.create({
   },
   planBody: {
     gap: Spacing.one,
-    paddingTop: Spacing.one,
   },
   planTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: Spacing.two,
-  },
-  planTitle: {
-    flex: 1,
-  },
-  planStats: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
     gap: Spacing.two,
   },
   chartBody: {
@@ -556,9 +569,9 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
   },
   legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 10,
+    height: 10,
+    borderRadius: Radii.pill,
   },
   noteRow: {
     paddingVertical: Spacing.three,

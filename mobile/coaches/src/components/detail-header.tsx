@@ -4,7 +4,7 @@ import { type ReactNode } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { HitTarget, Radii, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 type DetailHeaderProps = {
@@ -23,15 +23,18 @@ export function DetailHeader({ title, subtitle, actions }: DetailHeaderProps) {
         accessibilityRole="button"
         accessibilityLabel="Go back"
         onPress={() => router.back()}
-        style={({ pressed }) => [styles.backButton, { borderColor: theme.border }, pressed && styles.pressed]}>
+        style={({ pressed }) => [
+          styles.backButton,
+          { borderColor: theme.border, backgroundColor: pressed ? theme.surfaceInset : theme.surface },
+        ]}>
         <SymbolView
           name={{ ios: 'chevron.left', android: 'chevron_left', web: 'chevron_left' }}
           size={20}
-          tintColor={theme.text}
+          tintColor={theme.textPrimary}
         />
       </Pressable>
       <View style={styles.copy}>
-        <ThemedText type="subtitle" style={styles.title} numberOfLines={actions ? 2 : undefined}>
+        <ThemedText type="display" numberOfLines={actions ? 2 : undefined}>
           {title}
         </ThemedText>
         <ThemedText themeColor="textSecondary" numberOfLines={actions ? 1 : undefined}>
@@ -50,27 +53,21 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: StyleSheet.hairlineWidth,
+    width: HitTarget,
+    height: HitTarget,
+    borderRadius: Radii.pill,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pressed: {
-    opacity: 0.72,
-  },
   copy: {
     flex: 1,
+    gap: Spacing.half,
   },
   actions: {
     flexDirection: 'row',
     alignSelf: 'flex-start',
     gap: Spacing.two,
     paddingTop: Spacing.half,
-  },
-  title: {
-    fontSize: 28,
-    lineHeight: 34,
   },
 });

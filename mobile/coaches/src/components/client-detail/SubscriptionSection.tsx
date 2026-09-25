@@ -1,6 +1,6 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useImperativeHandle, useState, type Ref } from 'react';
-import { ActivityIndicator, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import type { RefreshHandle } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { longDateLabel } from '@/lib/dates';
 import { subscriptionApi, type Subscription } from '@/lib/api';
+import { TextField } from '@coachos/theme';
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Something went wrong. Please try again.';
@@ -120,12 +121,10 @@ export function SubscriptionSection({ clientId, ref }: { clientId: string; ref?:
             <ThemedText type="label" themeColor="textSecondary">
               Start date
             </ThemedText>
-            <TextInput
-              style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+            <TextField
               value={startDate}
               onChangeText={setStartDate}
               placeholder="YYYY-MM-DD"
-              placeholderTextColor={theme.textMuted}
               autoCapitalize="none"
               editable={!isSaving}
             />
@@ -135,12 +134,10 @@ export function SubscriptionSection({ clientId, ref }: { clientId: string; ref?:
             <ThemedText type="label" themeColor="textSecondary">
               End date
             </ThemedText>
-            <TextInput
-              style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+            <TextField
               value={endDate}
               onChangeText={setEndDate}
               placeholder="YYYY-MM-DD"
-              placeholderTextColor={theme.textMuted}
               autoCapitalize="none"
               editable={!isSaving}
             />
@@ -150,12 +147,10 @@ export function SubscriptionSection({ clientId, ref }: { clientId: string; ref?:
             <ThemedText type="label" themeColor="textSecondary">
               Notes (optional)
             </ThemedText>
-            <TextInput
-              style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+            <TextField
               value={notes}
               onChangeText={setNotes}
               placeholder="e.g. Paid by bank transfer"
-              placeholderTextColor={theme.textMuted}
               editable={!isSaving}
             />
           </View>
@@ -237,14 +232,6 @@ const styles = StyleSheet.create({
   },
   field: {
     gap: Spacing.one,
-  },
-  input: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: Radii.sm,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    fontSize: 16,
-    minHeight: 44,
   },
   formActions: {
     flexDirection: 'row',

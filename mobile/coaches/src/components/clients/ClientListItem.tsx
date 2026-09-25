@@ -1,11 +1,11 @@
 import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Avatar } from '@/components/ui/avatar';
-import { Pill } from '@/components/ui/pill';
+import { Row } from '@/components/ui/card';
+import { Chip } from '@/components/ui/pill';
 import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
 
 type ClientListItemProps = {
   clientId: string;
@@ -18,32 +18,17 @@ type ClientListItemProps = {
    * nothing. A marker appears only once a period has actually run out.
    */
   subscriptionStatus?: 'ACTIVE' | 'EXPIRED' | 'CANCELLED' | null;
-  /** Rows sit inside one shared card, so all but the last carry a divider. */
-  divider?: boolean;
 };
 
-export function ClientListItem({
-  clientId,
-  name,
-  email,
-  avatarUrl = null,
-  subscriptionStatus = null,
-  divider = false,
-}: ClientListItemProps) {
-  const theme = useTheme();
+/** One client as a row in the roster's inset panel: avatar, name, chevron. */
+export function ClientListItem({ clientId, name, email, avatarUrl = null, subscriptionStatus = null }: ClientListItemProps) {
   const router = useRouter();
 
   return (
-    <Pressable
-      accessibilityRole="button"
+    <Row
       accessibilityLabel={`Open ${name}`}
-      onPress={() => router.push({ pathname: '/clients/[id]', params: { id: clientId, name, email } })}
-      style={({ pressed }) => [
-        styles.row,
-        divider && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.border },
-        pressed && styles.pressed,
-      ]}>
-      <Avatar name={name} size="sm" imageUrl={avatarUrl} />
+      onPress={() => router.push({ pathname: '/clients/[id]', params: { id: clientId, name, email } })}>
+      <Avatar name={name} size="row" imageUrl={avatarUrl} tone="warm" />
       <View style={styles.copy}>
         <ThemedText type="smallBold" numberOfLines={1}>
           {name}
@@ -53,28 +38,15 @@ export function ClientListItem({
         </ThemedText>
       </View>
       {subscriptionStatus === 'EXPIRED' || subscriptionStatus === 'CANCELLED' ? (
-        <Pill label={subscriptionStatus === 'CANCELLED' ? 'Cancelled' : 'Expired'} />
+        <Chip label={subscriptionStatus === 'CANCELLED' ? 'Cancelled' : 'Expired'} tone="warning" />
       ) : null}
-      <ThemedText type="small" themeColor="textMuted">
-        ›
-      </ThemedText>
-    </Pressable>
+    </Row>
   );
 }
 
 const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingVertical: Spacing.three,
-    paddingHorizontal: Spacing.three,
-  },
   copy: {
     flex: 1,
     gap: Spacing.half,
-  },
-  pressed: {
-    opacity: 0.6,
   },
 });

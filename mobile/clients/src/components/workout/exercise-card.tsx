@@ -2,10 +2,12 @@ import { SymbolView } from 'expo-symbols';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Card, InsetPanel } from '@/components/ui/card';
+import { Chip } from '@/components/ui/pill';
+import { HitTarget, Radii, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { SetFeedback, WorkoutExercise, WorkoutSet } from '@/lib/plan-content';
+import { Checkbox } from '@coachos/theme';
 
 type ExerciseCardProps = {
   exercise: WorkoutExercise;
@@ -14,86 +16,58 @@ type ExerciseCardProps = {
   onToggleSet: (setId: string) => void;
 };
 
-export function ExerciseCard({
-  exercise,
-  feedbackBySet,
-  onOpenSet,
-  onToggleSet,
-}: ExerciseCardProps) {
+/** One exercise; its sets are checkable rows in an inset tray, like the landing check-in card. */
+export function ExerciseCard({ exercise, feedbackBySet, onOpenSet, onToggleSet }: ExerciseCardProps) {
   const theme = useTheme();
   const completedSets = exercise.sets.filter((set) => feedbackBySet[set.id]?.completed).length;
+  const allDone = exercise.sets.length > 0 && completedSets === exercise.sets.length;
 
   return (
-    <ThemedView type="backgroundElement" style={[styles.card, { borderColor: theme.border }]}>
+    <Card style={styles.card}>
       <View style={styles.header}>
         <View style={styles.headerCopy}>
-          <ThemedText type="smallBold" themeColor="accent">
-            {exercise.sets.length} sets
-          </ThemedText>
-          <ThemedText style={styles.title}>{exercise.name}</ThemedText>
+          <ThemedText type="heading">{exercise.name}</ThemedText>
           {exercise.note ? (
             <ThemedText type="small" themeColor="textSecondary">
               {exercise.note}
             </ThemedText>
           ) : null}
         </View>
-        <ThemedText type="smallBold" themeColor="textSecondary">
-          {completedSets}/{exercise.sets.length}
-        </ThemedText>
+        <Chip label={`${completedSets}/${exercise.sets.length}`} tone={allDone ? 'success' : 'green'} />
       </View>
 
-      <View style={[styles.tableHead, { borderColor: theme.border }]}>
-        <ThemedText type="smallBold" themeColor="textSecondary" style={styles.setColumn}>
-          Set
-        </ThemedText>
-        <ThemedText type="smallBold" themeColor="textSecondary" style={styles.valueColumn}>
-          Reps
-        </ThemedText>
-        <ThemedText type="smallBold" themeColor="textSecondary" style={styles.valueColumn}>
-          Rest
-        </ThemedText>
-      </View>
-
-      <View style={styles.rows}>
+      <InsetPanel>
         {exercise.sets.map((set) => {
           const feedback = feedbackBySet[set.id];
+          const done = Boolean(feedback?.completed);
           const hasNotes = Boolean(feedback?.comment || feedback?.videoReference);
 
           return (
-            <View key={set.id} style={[styles.row, { borderColor: theme.border }]}>
-              <Pressable
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked: Boolean(feedback?.completed) }}
+            <View key={set.id} style={[styles.row, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+              <Checkbox
+                checked={done}
                 accessibilityLabel={`Mark ${exercise.name} set ${set.setNumber} complete`}
                 onPress={() => onToggleSet(set.id)}
-                style={[
-                  styles.checkbox,
-                  { borderColor: feedback?.completed ? theme.accent : theme.textSecondary },
-                  feedback?.completed && { backgroundColor: theme.accent },
-                ]}>
-                {feedback?.completed && (
-                  <SymbolView
-                    name={{ ios: 'checkmark', android: 'check', web: 'check' }}
-                    size={14}
-                    tintColor={theme.background}
-                  />
-                )}
-              </Pressable>
+              />
 
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`Open notes for ${exercise.name} set ${set.setNumber}`}
                 onPress={() => onOpenSet(exercise, set)}
                 style={({ pressed }) => [styles.rowBody, pressed && styles.pressed]}>
-                <ThemedText type="smallBold" style={styles.setColumn}>
-                  {set.setNumber}
-                </ThemedText>
-                <ThemedText type="small" style={styles.valueColumn}>
-                  {set.reps}
-                </ThemedText>
-                <ThemedText type="small" style={styles.valueColumn}>
-                  {set.rest}
-                </ThemedText>
+                <View style={styles.setCopy}>
+                  <ThemedText
+                    type="smallBold"
+                    themeColor={done ? 'textMuted' : 'textPrimary'}
+                    style={done && styles.done}>
+                    Set {set.setNumber} · {set.reps} reps
+                  </ThemedText>
+                  {set.rest ? (
+                    <ThemedText type="meta" style={done && styles.done}>
+                      Rest {set.rest}
+                    </ThemedText>
+                  ) : null}
+                </View>
                 <SymbolView
                   name={{
                     ios: hasNotes ? 'text.bubble.fill' : 'plus.bubble',
@@ -101,22 +75,19 @@ export function ExerciseCard({
                     web: hasNotes ? 'chat' : 'add_comment',
                   }}
                   size={18}
-                  tintColor={hasNotes ? theme.accent : theme.textSecondary}
+                  tintColor={hasNotes ? theme.primary : theme.textMuted}
                 />
               </Pressable>
             </View>
           );
         })}
-      </View>
-    </ThemedView>
+      </InsetPanel>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: Spacing.two,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: Spacing.three,
     gap: Spacing.three,
   },
   header: {
@@ -127,51 +98,33 @@ const styles = StyleSheet.create({
   },
   headerCopy: {
     flex: 1,
-    gap: Spacing.half,
-  },
-  title: {
-    fontSize: 20,
-    lineHeight: 28,
-  },
-  tableHead: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-    paddingBottom: Spacing.two,
-    paddingLeft: 40,
-  },
-  rows: {
-    gap: Spacing.two,
+    gap: Spacing.one,
   },
   row: {
-    borderRadius: Spacing.two,
-    borderWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: Spacing.two,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
+    gap: Spacing.twoHalf,
+    paddingLeft: Spacing.three,
+    borderRadius: Radii.md,
+    borderWidth: 1,
   },
   rowBody: {
     flex: 1,
-    minHeight: 54,
+    minHeight: 56,
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.two,
-    paddingHorizontal: Spacing.two,
+    paddingRight: Spacing.three,
+    minWidth: HitTarget,
   },
   pressed: {
-    opacity: 0.72,
+    opacity: 0.7,
   },
-  setColumn: {
-    width: 38,
-  },
-  valueColumn: {
+  setCopy: {
     flex: 1,
+    gap: Spacing.half,
+  },
+  done: {
+    textDecorationLine: 'line-through',
   },
 });

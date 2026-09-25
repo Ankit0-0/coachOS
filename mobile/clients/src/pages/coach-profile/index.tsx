@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { DetailHeader } from '@/components/detail-header';
 import { CLIENTS_ICON, EXPERIENCE_ICON, StatChip } from '@/components/explore/StatChip';
@@ -9,13 +9,14 @@ import { ThemedText } from '@/components/themed-text';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Pill } from '@/components/ui/pill';
+import { Chip, Pill } from '@/components/ui/pill';
 import { Section } from '@/components/ui/section';
 import { Radii, Spacing } from '@/constants/theme';
 import { useRefresh } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError, coachRequestApi, exploreApi, type DirectoryCoach } from '@/lib/api';
 import { clientCountLabel, experienceLabel, relationshipPill } from '@/lib/explore';
+import { TextField } from '@coachos/theme';
 
 const MAX_MESSAGE_LENGTH = 500;
 
@@ -160,7 +161,7 @@ export function CoachProfileScreen({ coachId }: { coachId: string }) {
         <Section title="Specialties">
           <View style={styles.specialties}>
             {coach.specialties.map((specialty) => (
-              <Pill key={specialty} label={specialty} />
+              <Chip key={specialty} label={specialty} tone="green" />
             ))}
           </View>
         </Section>
@@ -168,7 +169,7 @@ export function CoachProfileScreen({ coachId }: { coachId: string }) {
 
       <Section title="About">
         <Card>
-          <ThemedText type="small" themeColor={coach.bio ? 'text' : 'textSecondary'}>
+          <ThemedText type="small" themeColor={coach.bio ? 'textPrimary' : 'textSecondary'}>
             {coach.bio ?? `${coach.name} hasn’t written a bio yet.`}
           </ThemedText>
         </Card>
@@ -216,15 +217,13 @@ export function CoachProfileScreen({ coachId }: { coachId: string }) {
                 <ThemedText type="label" themeColor="textSecondary">
                   Message (optional)
                 </ThemedText>
-                <TextInput
+                <TextField
                   value={message}
                   onChangeText={setMessage}
                   placeholder="Your goals, experience, or when you can train"
-                  placeholderTextColor={theme.textMuted}
                   multiline
                   maxLength={MAX_MESSAGE_LENGTH}
                   editable={!isSubmitting}
-                  style={[styles.input, { borderColor: theme.border, color: theme.text }]}
                 />
                 <ThemedText type="meta" style={styles.counter}>
                   {message.length}/{MAX_MESSAGE_LENGTH}
@@ -238,7 +237,7 @@ export function CoachProfileScreen({ coachId }: { coachId: string }) {
             <View
               style={[
                 styles.notice,
-                { backgroundColor: notice.tone === 'danger' ? theme.dangerSoft : theme.surfaceSunken },
+                { backgroundColor: notice.tone === 'danger' ? theme.dangerSoft : theme.surfaceInset },
               ]}>
               <ThemedText type="small" themeColor={notice.tone === 'danger' ? 'danger' : 'textSecondary'}>
                 {notice.text}
@@ -280,15 +279,6 @@ const styles = StyleSheet.create({
   },
   field: {
     gap: Spacing.one,
-  },
-  input: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: Radii.sm,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    minHeight: 88,
-    fontSize: 16,
-    textAlignVertical: 'top',
   },
   counter: {
     alignSelf: 'flex-end',

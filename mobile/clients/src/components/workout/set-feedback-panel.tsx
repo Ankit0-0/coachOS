@@ -1,10 +1,12 @@
-import { SymbolView } from 'expo-symbols';
-import { Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Button } from '@/components/ui/button';
+import { Chip } from '@/components/ui/pill';
+import { CLOSE_ICON, IconButton } from '@/components/ui/icon-button';
+import { Radii, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { Checkbox, TextField } from '@coachos/theme';
 import type { SetFeedback, WorkoutExercise, WorkoutSet } from '@/lib/plan-content';
 
 type SelectedSet = {
@@ -31,121 +33,78 @@ export function SetFeedbackPanel({
     return null;
   }
 
+  const toggleCompleted = () => onChange({ ...feedback, completed: !feedback.completed });
+
   return (
     <Modal animationType="slide" transparent visible onRequestClose={onClose}>
       <View style={[styles.backdrop, { backgroundColor: theme.scrim }]}>
-        <Pressable style={styles.dismissArea} onPress={onClose} />
-        <ThemedView type="background" style={[styles.panel, { borderColor: theme.border }]}>
-          <View style={[styles.handle, { backgroundColor: theme.textMuted }]} />
+        <Pressable style={styles.dismissArea} onPress={onClose} accessibilityLabel="Close set notes" />
+        <View style={[styles.panel, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <View style={[styles.handle, { backgroundColor: theme.border }]} />
           <View style={styles.header}>
             <View style={styles.headerCopy}>
-              <ThemedText type="smallBold" themeColor="accent">
-                Set {selectedSet.set.setNumber}
-              </ThemedText>
-              <ThemedText style={styles.title}>{selectedSet.exercise.name}</ThemedText>
+              <Chip label={`Set ${selectedSet.set.setNumber}`} tone="green" />
+              <ThemedText type="subtitle">{selectedSet.exercise.name}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
                 {selectedSet.set.reps} reps · {selectedSet.set.rest} rest
               </ThemedText>
             </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Close set notes"
-              onPress={onClose}
-              style={({ pressed }) => [styles.closeButton, { borderColor: theme.border }, pressed && styles.pressed]}>
-              <SymbolView
-                name={{ ios: 'xmark', android: 'close', web: 'close' }}
-                size={18}
-                tintColor={theme.text}
-              />
-            </Pressable>
+            <IconButton icon={CLOSE_ICON} label="Close set notes" onPress={onClose} />
           </View>
 
           <Pressable
             accessibilityRole="checkbox"
             accessibilityState={{ checked: feedback.completed }}
-            onPress={() => onChange({ ...feedback, completed: !feedback.completed })}
-            style={[styles.completeRow, { borderColor: theme.border }]}>
-            <View
-              style={[
-                styles.checkbox,
-                { borderColor: feedback.completed ? theme.accent : theme.textSecondary },
-                feedback.completed && { backgroundColor: theme.accent },
-              ]}>
-              {feedback.completed && (
-                <SymbolView
-                  name={{ ios: 'checkmark', android: 'check', web: 'check' }}
-                  size={14}
-                  tintColor={theme.background}
-                />
-              )}
-            </View>
-            <ThemedText style={styles.completeText}>Completed as planned</ThemedText>
+            onPress={toggleCompleted}
+            style={[styles.completeRow, { backgroundColor: theme.surfaceInset }]}>
+            <Checkbox checked={feedback.completed} accessibilityLabel="Completed as planned" />
+            <ThemedText type="smallBold" style={styles.completeText}>
+              Completed as planned
+            </ThemedText>
           </Pressable>
 
           <View style={styles.field}>
-            <ThemedText type="smallBold">Comment for coach</ThemedText>
-            <TextInput
+            <ThemedText type="label" themeColor="textSecondary">
+              Comment for coach
+            </ThemedText>
+            <TextField
               multiline
               value={feedback.comment}
               onChangeText={(comment) => onChange({ ...feedback, comment })}
-              placeholder="Add pain, form, effort, or anything coach should review."
-              placeholderTextColor={theme.textSecondary}
-              style={[
-                styles.input,
-                styles.commentInput,
-                { borderColor: theme.border, color: theme.text, backgroundColor: theme.backgroundElement },
-              ]}
-              textAlignVertical="top"
+              placeholder="Pain, form, effort, or anything your coach should review."
+              accessibilityLabel="Comment for coach"
             />
           </View>
 
           <View style={styles.field}>
-            <ThemedText type="smallBold">Video reference</ThemedText>
+            <ThemedText type="label" themeColor="textSecondary">
+              Video reference
+            </ThemedText>
 
             <View style={styles.videoActions}>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => onChange({ ...feedback, videoReference: 'Recorded video captured locally' })}
-                style={({ pressed }) => [
-                  styles.videoButton,
-                  { borderColor: theme.border, backgroundColor: theme.accentSoft, opacity: pressed ? 0.7 : 1 },
-                ]}>
-                <ThemedText type="smallBold" themeColor="accent">
-                  Record video
-                </ThemedText>
-              </Pressable>
-
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => onChange({ ...feedback, videoReference: 'Video uploaded locally' })}
-                style={({ pressed }) => [
-                  styles.videoButton,
-                  { borderColor: theme.border, backgroundColor: theme.accentSoft, opacity: pressed ? 0.7 : 1 },
-                ]}>
-                <ThemedText type="smallBold" themeColor="accent">
-                  Upload video
-                </ThemedText>
-              </Pressable>
+              <View style={styles.videoButton}>
+                <Button
+                  label="Record video"
+                  variant="secondary"
+                  fullWidth
+                  onPress={() => onChange({ ...feedback, videoReference: 'Recorded video captured locally' })}
+                />
+              </View>
+              <View style={styles.videoButton}>
+                <Button
+                  label="Upload video"
+                  variant="secondary"
+                  fullWidth
+                  onPress={() => onChange({ ...feedback, videoReference: 'Video uploaded locally' })}
+                />
+              </View>
             </View>
 
-            {feedback.videoReference ? (
-              <View style={[styles.videoStatus, { backgroundColor: theme.surfaceSunken, borderColor: theme.border }]}>
-                <ThemedText type="smallBold" themeColor="success">
-                  {feedback.videoReference}
-                </ThemedText>
-              </View>
-            ) : null}
+            {feedback.videoReference ? <Chip label={feedback.videoReference} tone="success" /> : null}
           </View>
 
-          <Pressable
-            accessibilityRole="button"
-            onPress={onClose}
-            style={({ pressed }) => [styles.doneButton, { backgroundColor: theme.accent }, pressed && styles.pressed]}>
-            <ThemedText type="smallBold" style={{ color: theme.background }}>
-              Save temporary note
-            </ThemedText>
-          </Pressable>
-        </ThemedView>
+          <Button label="Save note" onPress={onClose} />
+        </View>
       </View>
     </Modal>
   );
@@ -160,16 +119,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   panel: {
-    borderTopLeftRadius: Spacing.three,
-    borderTopRightRadius: Spacing.three,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: Spacing.three,
-    gap: Spacing.three,
+    borderTopLeftRadius: Radii.xl,
+    borderTopRightRadius: Radii.xl,
+    borderWidth: 1,
+    padding: Spacing.threeHalf,
+    gap: Spacing.threeHalf,
   },
   handle: {
-    width: 42,
+    width: 40,
     height: 4,
-    borderRadius: 2,
+    borderRadius: Radii.pill,
     alignSelf: 'center',
   },
   header: {
@@ -179,55 +138,21 @@ const styles = StyleSheet.create({
   },
   headerCopy: {
     flex: 1,
-    gap: Spacing.half,
-  },
-  title: {
-    fontSize: 22,
-    lineHeight: 28,
-  },
-  closeButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    borderWidth: StyleSheet.hairlineWidth,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pressed: {
-    opacity: 0.72,
+    gap: Spacing.one + Spacing.half,
   },
   completeRow: {
-    borderRadius: Spacing.two,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: Spacing.three,
+    borderRadius: Radii.md,
+    minHeight: 56,
+    paddingHorizontal: Spacing.three,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
+    gap: Spacing.twoHalf,
   },
   completeText: {
     flex: 1,
   },
   field: {
-    gap: Spacing.one,
-  },
-  input: {
-    borderRadius: Spacing.two,
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    fontSize: 16,
-    lineHeight: 22,
-  },
-  commentInput: {
-    minHeight: 110,
+    gap: Spacing.two,
   },
   videoActions: {
     flexDirection: 'row',
@@ -235,23 +160,5 @@ const styles = StyleSheet.create({
   },
   videoButton: {
     flex: 1,
-    borderRadius: Spacing.two,
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.two,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  videoStatus: {
-    borderRadius: Spacing.two,
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.two,
-  },
-  doneButton: {
-    borderRadius: Spacing.two,
-    minHeight: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });

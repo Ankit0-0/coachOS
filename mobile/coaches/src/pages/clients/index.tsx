@@ -1,12 +1,13 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator } from 'react-native';
+import { ActivityIndicator, StyleSheet } from 'react-native';
 
 import { ClientListItem } from '@/components/clients/ClientListItem';
 import { DetailHeader } from '@/components/detail-header';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
-import { Card } from '@/components/ui/card';
+import { Card, InsetPanel } from '@/components/ui/card';
+import { Spacing } from '@/constants/theme';
 import { useRefresh } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { coachInviteApi, type CoachInvite } from '@/lib/api';
@@ -54,20 +55,27 @@ export function ClientsScreen() {
           </ThemedText>
         </Card>
       ) : (
-        <Card padded={false}>
-          {clients.map((invite, index) => (
-            <ClientListItem
-              key={invite.id}
-              clientId={invite.clientId ?? invite.client?.id ?? ''}
-              name={invite.client?.name ?? invite.clientEmail}
-              email={invite.client?.email ?? invite.clientEmail}
-              avatarUrl={invite.client?.avatarUrl}
-              subscriptionStatus={invite.subscriptionStatus}
-              divider={index < clients.length - 1}
-            />
-          ))}
+        <Card style={styles.listCard}>
+          <InsetPanel>
+            {clients.map((invite) => (
+              <ClientListItem
+                key={invite.id}
+                clientId={invite.clientId ?? invite.client?.id ?? ''}
+                name={invite.client?.name ?? invite.clientEmail}
+                email={invite.client?.email ?? invite.clientEmail}
+                avatarUrl={invite.client?.avatarUrl}
+                subscriptionStatus={invite.subscriptionStatus}
+              />
+            ))}
+          </InsetPanel>
         </Card>
       )}
     </ScreenScaffold>
   );
 }
+
+const styles = StyleSheet.create({
+  listCard: {
+    padding: Spacing.twoHalf,
+  },
+});

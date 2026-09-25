@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { TextField } from '@coachos/theme';
 
 import { ThemedText } from '@/components/themed-text';
 import { Radii, Spacing } from '@/constants/theme';
@@ -70,10 +71,10 @@ export function CycleLengthPicker({ length, onChange, disabled = false }: CycleL
               style={[
                 styles.preset,
                 { borderColor: theme.border },
-                isSelected && { backgroundColor: theme.accent, borderColor: theme.accent },
+                isSelected && { backgroundColor: theme.primary, borderColor: theme.primary },
                 disabled && styles.disabled,
               ]}>
-              <ThemedText type="smallBold" themeColor={isSelected ? 'onAccent' : 'text'}>
+              <ThemedText type="smallBold" themeColor={isSelected ? 'onPrimary' : 'textPrimary'}>
                 {preset}
               </ThemedText>
             </Pressable>
@@ -81,8 +82,9 @@ export function CycleLengthPicker({ length, onChange, disabled = false }: CycleL
         })}
 
         <View style={styles.customField}>
-          <TextInput
-            style={[styles.customInput, { borderColor: theme.border, color: theme.text }]}
+          <TextField
+            style={styles.customInput}
+            inputStyle={styles.customInputText}
             keyboardType="number-pad"
             value={customText}
             onChangeText={handleCustomChange}
@@ -111,11 +113,12 @@ const styles = StyleSheet.create({
   },
   preset: {
     minWidth: 52,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: Radii.sm,
-    paddingVertical: Spacing.two,
+    minHeight: 44,
+    borderWidth: 1,
+    borderRadius: Radii.md,
     paddingHorizontal: Spacing.three,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   customField: {
     flexDirection: 'row',
@@ -123,13 +126,10 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
   },
   customInput: {
-    width: 64,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: Radii.sm,
+    width: 72,
+  },
+  customInputText: {
     paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.two,
-    fontSize: 16,
-    minHeight: 44,
     textAlign: 'center',
   },
   disabled: {

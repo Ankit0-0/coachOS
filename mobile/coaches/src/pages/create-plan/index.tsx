@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { CycleLengthPicker } from '@/components/create-plan/CycleLengthPicker';
 import { DayStrip } from '@/components/create-plan/DayStrip';
@@ -22,6 +22,7 @@ import {
   type WorkoutContent,
   type WorkoutDayContent,
 } from '@/lib/api';
+import { TextField } from '@coachos/theme';
 
 /**
  * `id` is the plan-content id this row already had when it was loaded.
@@ -501,11 +502,6 @@ export function CreatePlanScreen() {
         ? { title: 'Edit Plan', subtitle: 'Changes apply to every client already on this plan.' }
         : { title: 'View Plan', subtitle: 'A shared plan from the library. Assign it as-is.' };
 
-  const inputStyle = [
-    styles.input,
-    { borderColor: theme.border, color: theme.text },
-    isReadOnly && { backgroundColor: theme.surfaceSunken },
-  ];
 
   const itemCount = type === 'WORKOUT' ? day.exercises.filter((row) => row.name.trim()).length : day.meals.filter((row) => row.label.trim()).length;
 
@@ -521,10 +517,10 @@ export function CreatePlanScreen() {
             style={[
               styles.typePill,
               { borderColor: theme.border },
-              type === 'WORKOUT' && { backgroundColor: theme.accent, borderColor: theme.accent },
+              type === 'WORKOUT' && { backgroundColor: theme.primary, borderColor: theme.primary },
             ]}
             onPress={() => setType('WORKOUT')}>
-            <ThemedText type="smallBold" themeColor={type === 'WORKOUT' ? 'onAccent' : 'text'}>
+            <ThemedText type="smallBold" themeColor={type === 'WORKOUT' ? 'onPrimary' : 'textPrimary'}>
               Workout
             </ThemedText>
           </Pressable>
@@ -532,10 +528,10 @@ export function CreatePlanScreen() {
             style={[
               styles.typePill,
               { borderColor: theme.border },
-              type === 'DIET' && { backgroundColor: theme.accent, borderColor: theme.accent },
+              type === 'DIET' && { backgroundColor: theme.primary, borderColor: theme.primary },
             ]}
             onPress={() => setType('DIET')}>
-            <ThemedText type="smallBold" themeColor={type === 'DIET' ? 'onAccent' : 'text'}>
+            <ThemedText type="smallBold" themeColor={type === 'DIET' ? 'onPrimary' : 'textPrimary'}>
               Diet
             </ThemedText>
           </Pressable>
@@ -560,10 +556,8 @@ export function CreatePlanScreen() {
         <ThemedText type="label" themeColor="textSecondary">
           Title
         </ThemedText>
-        <TextInput
-          style={inputStyle}
+        <TextField
           placeholder={placeholderFor('e.g. Lower body strength')}
-          placeholderTextColor={theme.textMuted}
           value={title}
           onChangeText={setTitle}
           editable={!isReadOnly}
@@ -572,10 +566,8 @@ export function CreatePlanScreen() {
         <ThemedText type="label" themeColor="textSecondary">
           Description (optional)
         </ThemedText>
-        <TextInput
-          style={inputStyle}
+        <TextField
           placeholder={placeholderFor('Short description')}
-          placeholderTextColor={theme.textMuted}
           value={description}
           onChangeText={setDescription}
           editable={!isReadOnly}
@@ -588,10 +580,8 @@ export function CreatePlanScreen() {
             <ThemedText type="label" themeColor="textSecondary">
               Difficulty
             </ThemedText>
-            <TextInput
-              style={inputStyle}
+            <TextField
               placeholder={placeholderFor('e.g. Intermediate')}
-              placeholderTextColor={theme.textMuted}
               value={difficulty}
               onChangeText={setDifficulty}
               editable={!isReadOnly}
@@ -602,10 +592,8 @@ export function CreatePlanScreen() {
         <ThemedText type="label" themeColor="textSecondary">
           Focus
         </ThemedText>
-        <TextInput
-          style={inputStyle}
+        <TextField
           placeholder={placeholderFor('What this plan targets')}
-          placeholderTextColor={theme.textMuted}
           value={focus}
           onChangeText={setFocus}
           editable={!isReadOnly}
@@ -614,10 +602,8 @@ export function CreatePlanScreen() {
         <ThemedText type="label" themeColor="textSecondary">
           Summary
         </ThemedText>
-        <TextInput
-          style={inputStyle}
+        <TextField
           placeholder={placeholderFor('One-line summary')}
-          placeholderTextColor={theme.textMuted}
           value={summary}
           onChangeText={setSummary}
           editable={!isReadOnly}
@@ -669,7 +655,7 @@ export function CreatePlanScreen() {
           </ThemedText>
           {isReadOnly || days.length === 1 ? null : (
             <Pressable onPress={duplicateDay} accessibilityRole="button">
-              <ThemedText type="small" themeColor="accent">
+              <ThemedText type="small" themeColor="primary">
                 Duplicate day
               </ThemedText>
             </Pressable>
@@ -679,10 +665,8 @@ export function CreatePlanScreen() {
         <ThemedText type="label" themeColor="textSecondary">
           Day label
         </ThemedText>
-        <TextInput
-          style={inputStyle}
+        <TextField
           placeholder={placeholderFor(type === 'WORKOUT' ? 'e.g. Pull' : 'e.g. High carb')}
-          placeholderTextColor={theme.textMuted}
           value={day.label}
           onChangeText={(value) => updateDay({ label: value })}
           editable={!isReadOnly}
@@ -696,10 +680,10 @@ export function CreatePlanScreen() {
             onPress={toggleRestDay}
             style={[
               styles.restToggle,
-              { borderColor: day.isRestDay ? theme.accent : theme.border },
-              day.isRestDay && { backgroundColor: theme.accentSoft },
+              { borderColor: day.isRestDay ? theme.primary : theme.border },
+              day.isRestDay && { backgroundColor: theme.chipBg },
             ]}>
-            <ThemedText type="smallBold" themeColor={day.isRestDay ? 'accent' : 'text'}>
+            <ThemedText type="smallBold" themeColor={day.isRestDay ? 'primary' : 'textPrimary'}>
               Rest day
             </ThemedText>
             <ThemedText type="meta" themeColor="textSecondary">
@@ -713,10 +697,8 @@ export function CreatePlanScreen() {
             <ThemedText type="label" themeColor="textSecondary">
               {type === 'WORKOUT' ? 'Duration' : 'Calories'}
             </ThemedText>
-            <TextInput
-              style={inputStyle}
+            <TextField
               placeholder={placeholderFor(type === 'WORKOUT' ? 'e.g. 45 min' : 'e.g. 2,000 kcal')}
-              placeholderTextColor={theme.textMuted}
               value={type === 'WORKOUT' ? day.duration : day.calories}
               onChangeText={(value) =>
                 updateDay(type === 'WORKOUT' ? { duration: value } : { calories: value })
@@ -739,18 +721,14 @@ export function CreatePlanScreen() {
           {type === 'WORKOUT'
             ? day.exercises.map((row) => (
                 <View key={row.rowId} style={styles.exerciseBlock}>
-                  <TextInput
-                    style={inputStyle}
+                  <TextField
                     placeholder={placeholderFor('Exercise name')}
-                    placeholderTextColor={theme.textMuted}
                     value={row.name}
                     onChangeText={(value) => updateExercise(row.rowId, { name: value })}
                     editable={!isReadOnly}
                   />
-                  <TextInput
-                    style={inputStyle}
+                  <TextField
                     placeholder={placeholderFor('Note (optional)')}
-                    placeholderTextColor={theme.textMuted}
                     value={row.note}
                     onChangeText={(value) => updateExercise(row.rowId, { note: value })}
                     editable={!isReadOnly}
@@ -759,10 +737,8 @@ export function CreatePlanScreen() {
                   <View style={styles.tripleRow}>
                     <View style={styles.tripleField}>
                       <ThemedText type="meta">Sets</ThemedText>
-                      <TextInput
-                        style={inputStyle}
+                      <TextField
                         placeholder={placeholderFor('3')}
-                        placeholderTextColor={theme.textMuted}
                         keyboardType="number-pad"
                         value={row.sets}
                         onChangeText={(value) => updateExercise(row.rowId, { sets: value })}
@@ -771,10 +747,8 @@ export function CreatePlanScreen() {
                     </View>
                     <View style={styles.tripleField}>
                       <ThemedText type="meta">Reps</ThemedText>
-                      <TextInput
-                        style={inputStyle}
+                      <TextField
                         placeholder={placeholderFor('8-10')}
-                        placeholderTextColor={theme.textMuted}
                         value={row.reps}
                         onChangeText={(value) => updateExercise(row.rowId, { reps: value })}
                         editable={!isReadOnly}
@@ -782,10 +756,8 @@ export function CreatePlanScreen() {
                     </View>
                     <View style={styles.tripleField}>
                       <ThemedText type="meta">Rest</ThemedText>
-                      <TextInput
-                        style={inputStyle}
+                      <TextField
                         placeholder={placeholderFor('90s')}
-                        placeholderTextColor={theme.textMuted}
                         value={row.rest}
                         onChangeText={(value) => updateExercise(row.rowId, { rest: value })}
                         editable={!isReadOnly}
@@ -804,10 +776,9 @@ export function CreatePlanScreen() {
               ))
             : day.meals.map((row) => (
                 <View key={row.rowId} style={styles.rowEditor}>
-                  <TextInput
-                    style={[...inputStyle, styles.rowInput]}
+                  <TextField
+                    style={styles.rowInput}
                     placeholder={placeholderFor('e.g. Breakfast: eggs, toast, fruit')}
-                    placeholderTextColor={theme.textMuted}
                     value={row.label}
                     onChangeText={(value) => updateMeal(row.rowId, value)}
                     editable={!isReadOnly}
@@ -826,7 +797,7 @@ export function CreatePlanScreen() {
             <Pressable
               style={[styles.addButton, { borderColor: theme.border }]}
               onPress={type === 'WORKOUT' ? addExercise : addMeal}>
-              <ThemedText type="smallBold" themeColor="accent">
+              <ThemedText type="smallBold" themeColor="primary">
                 + Add {type === 'WORKOUT' ? 'exercise' : 'meal'}
               </ThemedText>
             </Pressable>
@@ -925,21 +896,13 @@ const styles = StyleSheet.create({
   },
   typePill: {
     flex: 1,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderRadius: Radii.sm,
     paddingVertical: Spacing.three,
     alignItems: 'center',
   },
   panel: {
     gap: Spacing.two,
-  },
-  input: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: Radii.sm,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    fontSize: 16,
-    minHeight: 44,
   },
   dayHeader: {
     flexDirection: 'row',
@@ -948,7 +911,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   restToggle: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderRadius: Radii.sm,
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.three,
@@ -979,7 +942,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   addButton: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderRadius: Radii.sm,
     paddingVertical: Spacing.three,
     alignItems: 'center',

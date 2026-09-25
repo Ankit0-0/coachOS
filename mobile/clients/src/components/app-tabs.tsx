@@ -1,21 +1,16 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
-import { useColorScheme } from 'react-native';
-
-import { Colors } from '@/constants/theme';
+import { useTabBarColors } from '@coachos/theme';
 
 export default function AppTabs() {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  // Surface bar; the active tab gets the sage pill (Android indicator).
+  const colors = useTabBarColors();
 
   return (
     <NativeTabs
-      backgroundColor={colors.background}
-      indicatorColor={colors.backgroundElement}
-      iconColor={{ default: colors.textSecondary, selected: colors.accent }}
-      labelStyle={{
-        default: { color: colors.textSecondary },
-        selected: { color: colors.text },
-      }}>
+      backgroundColor={colors.backgroundColor}
+      indicatorColor={colors.indicatorColor}
+      iconColor={colors.iconColor}
+      labelStyle={colors.labelStyle}>
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon

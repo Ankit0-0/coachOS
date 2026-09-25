@@ -1,10 +1,11 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { GoogleSignInButton } from '@/components/auth/google-sign-in-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { Chip } from '@/components/ui/pill';
 import { Button } from '@/components/ui/button';
 import { KeyboardForm } from '@/components/ui/keyboard-form';
 import { PasswordInput } from '@/components/ui/password-input';
@@ -12,6 +13,7 @@ import { Radii, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth';
 import { useTheme } from '@/hooks/use-theme';
 import { describeError } from '@/lib/api-errors';
+import { TextField } from '@coachos/theme';
 
 export default function SignUpScreen() {
   const router = useRouter();
@@ -56,12 +58,12 @@ export default function SignUpScreen() {
   return (
     <ThemedView style={styles.container}>
       <KeyboardForm contentContainerStyle={styles.content}>
-        <Pressable accessibilityRole="button" onPress={() => router.back()} hitSlop={8} style={styles.back}>
+        <Pressable accessibilityRole="button" onPress={() => router.back()} hitSlop={12} style={styles.back}>
           <ThemedText type="linkPrimary">Back</ThemedText>
         </Pressable>
 
         <View style={styles.header}>
-          <ThemedText type="meta">COACH OS · CLIENT APP</ThemedText>
+          <Chip label="Client app" tone="terracotta" />
           <ThemedText type="display">Create account</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
             Track your plans and check in with your coach.
@@ -73,10 +75,8 @@ export default function SignUpScreen() {
             <ThemedText type="label" themeColor="textSecondary">
               Full name
             </ThemedText>
-            <TextInput
-              style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+            <TextField
               placeholder="How clients will see you"
-              placeholderTextColor={theme.textMuted}
               value={name}
               onChangeText={setName}
               editable={!isLoading}
@@ -87,10 +87,8 @@ export default function SignUpScreen() {
             <ThemedText type="label" themeColor="textSecondary">
               Email
             </ThemedText>
-            <TextInput
-              style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+            <TextField
               placeholder="you@example.com"
-              placeholderTextColor={theme.textMuted}
               value={email}
               onChangeText={setEmail}
               editable={!isLoading}
@@ -152,7 +150,7 @@ export default function SignUpScreen() {
             <ThemedText type="small" themeColor="textSecondary">
               Already have an account?
             </ThemedText>
-            <Pressable accessibilityRole="button" onPress={() => router.push('/auth/signin')} hitSlop={8}>
+            <Pressable accessibilityRole="button" onPress={() => router.push('/auth/signin')} hitSlop={12}>
               <ThemedText type="linkPrimary">Sign in</ThemedText>
             </Pressable>
           </View>
@@ -184,14 +182,6 @@ const styles = StyleSheet.create({
   },
   field: {
     gap: Spacing.one,
-  },
-  input: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: Radii.sm,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    fontSize: 16,
-    minHeight: 48,
   },
   actions: {
     gap: Spacing.three,

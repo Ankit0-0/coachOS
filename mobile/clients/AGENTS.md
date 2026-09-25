@@ -1,67 +1,75 @@
 ## Styling conventions
 
 This app uses plain React Native `StyleSheet` with a typed design-token
-system — not Tailwind/NativeWind. Follow these rules for every component:
+system shared with the other app in `packages/theme` (`@coachos/theme`) —
+not Tailwind/NativeWind. Follow these rules for every component:
 
-- **Never hardcode a color.** Always pull colors from `Colors` in
-  `@/constants/theme.ts` via the `useTheme()` hook, e.g.
-  `const theme = useTheme(); theme.text` / `theme.background` /
-  `theme.backgroundElement` / `theme.backgroundSelected` /
-  `theme.textSecondary`. If a component needs a new semantic color that
-  isn't in `Colors` yet, add it to both `light` and `dark` in
-  `theme.ts` first — don't inline a hex value anywhere.
+- **Never hardcode a color.** Read colours from `useTheme()`
+  (`@/hooks/use-theme`), e.g. `theme.textPrimary` / `theme.bg` /
+  `theme.surface` / `theme.surfaceInset` / `theme.border`. Every role is
+  in the `Theme` type in `packages/theme/src/themes.ts`; if a component
+  needs a new one, add it to that type and to both `light` and `dark` —
+  a missing value is then a compile error. Don't inline a hex value
+  anywhere under `mobile/`.
+- **Check contrast when you add or change a colour.** Every text/background
+  pair must meet WCAG AA (4.5:1 body, 3:1 large text and UI glyphs) in
+  both themes.
 - **Never hardcode a spacing/margin/padding number.** Use the `Spacing`
-  scale from `@/constants/theme.ts` (`Spacing.one` through `Spacing.six`).
-  If none of the existing steps fit, add a new named step to `Spacing`
-  rather than writing a raw number inline.
-- **Reuse `ThemedView` and `ThemedText`** for backgrounds and text instead
-  of raw `View`/`Text` wherever a themed color applies — they already
-  handle light/dark switching.
-- **Inter is the only typeface.** Every text style names one of
-  `Fonts.sans` / `.sansMedium` / `.sansSemibold` / `.sansBold` from
-  `theme.ts` — never a font family string, and never a system font. The
-  one exception is `Fonts.mono`, which exists solely for the dev build
-  badge. There is no `serif` or `rounded`; don't add them back.
+  scale (`Spacing.one` 4 through `Spacing.six` 64, with `twoHalf` 12 and
+  `threeHalf` 20). Screen gutters are `ScreenPadding` (20). If none fit,
+  add a named step to `Spacing` in `packages/theme/src/tokens.ts`.
+- **Reach for the shared components first**: `Card`, `InsetPanel`, `Row`,
+  `Chip`, `Button`, `Checkbox`, `Avatar`, `NumberBadge`, `CountBadge`,
+  `Callout`, `ProgressBar`, `Section`, `TextField`, `SegmentedControl`,
+  `IconTile`, `ThemedText`, `ThemedView`. The files in
+  `components/ui/` re-export them. Don't build a local card or button.
+- **Typefaces are the landing page's**: DM Sans for text, Manrope for
+  headings, loaded by name in `Fonts`. Never a font family string, and
+  never a system font. `Fonts.mono` exists solely for the dev build badge.
 - **Weight comes from the family, not `fontWeight`.** Use
-  `Fonts.sansBold` rather than `fontWeight: 700`. With a family loaded at
-  runtime, a numeric weight makes some platforms synthesise a bold on top
-  of an already-bold face. `fontWeight` should not appear anywhere in
-  either app.
+  `Fonts.sansSemibold` rather than `fontWeight: 600`; a numeric weight on a
+  runtime-loaded family gets a synthesised bold on some platforms.
+  `fontWeight` should not appear anywhere in either app.
 - **Prefer a `ThemedText` type over a bespoke text style.** The scale
-  (`display`, `title`, `subtitle`, `heading`, `default`, `small`,
-  `smallBold`, `label`, `meta`, `numeric`, `link`, `linkPrimary`) already
-  pairs each size with the right family. Reach for a local style only for
-  layout properties like `marginTop` or `textAlign`.
+  (`display` 28 screen titles, `subtitle` 20 section titles, `heading` 17
+  card titles, `default` 15, `small`, `smallBold`, `label`, `meta`, `chip`,
+  `numeric`, `link`, `linkPrimary`) pairs each size with its family and a
+  default colour. Use a local style only for layout (`marginTop`,
+  `textAlign`).
 - Keep component-specific styles in a local `StyleSheet.create({...})`
-  block at the bottom of the file, as in `themed-text.tsx` — don't use
-  inline style objects except to merge in the caller's `style` prop.
+  block at the bottom of the file — no inline style objects except to merge
+  in a theme colour or the caller's `style` prop.
+- Use `aria-checked` / `aria-disabled` rather than `accessibilityState`:
+  React Native Web drops the latter, so the web build loses the state.
 
 Do not introduce NativeWind, Tailwind, styled-components, or any other
 styling library — this is a deliberate choice, not an oversight.
 
 ## Visual language
 
-The look is deliberately restrained — closer to Notion than to a
-consumer fitness app. The rules, in priority order:
+The apps look like the landing page (`landing-page/`): warm off-white page,
+white cards, deep forest green, sage and terracotta accents. Light is the
+primary look; dark is a warm version of the same palette. Users pick
+System / Light / Dark in Profile.
 
-- **Flat, not elevated.** Separate a surface from the page with a
-  hairline border (`StyleSheet.hairlineWidth` on `theme.border`) or a
-  near-invisible fill tint (`theme.surface` / `theme.surfaceSunken`).
-  No shadows, no `elevation`, no glows. A screen should read as one
-  surface with divisions in it, not a stack of floating tiles.
-- **Accent discipline.** `theme.accent` is for primary actions and for
-  genuinely active or selected states — nothing else. A status badge, an
-  avatar, an eyebrow label, a section heading: all neutral. The accent
-  only reads as emphasis while it stays rare, so spending it on
-  decoration is what makes it stop working.
-- **Modest radii.** `Radii.sm` (6) for controls, inputs and badges,
-  `Radii.md` (10) for cards, `Radii.lg` (14) for the rare large panel,
-  `Radii.pill` only for actual circles like avatars. Don't inline a
+- **Cards on a warm page.** An outer `Card` is white, radius 24, 1px border,
+  and a very soft shadow in light mode only; dark mode uses the border
+  alone. Rows inside a card sit in an `InsetPanel` (the cream tray, radius
+  20) as white `Row`s, radius 14, 8 apart.
+- **Primary is for actions and selection.** Forest (sage in dark) fills
+  primary buttons, checked boxes, the selected segment and the active tab
+  label. Don't use it for decoration.
+- **Hues carry meaning.** Sage/green for workout and coaches, terracotta
+  for diet and clients — chips, avatars, icon tiles and chart series
+  follow this. Status uses the `success` / `warning` / `partial` / `danger`
+  chip tones.
+- **Radii by role**: `Radii.sm` (10) small controls, `Radii.md` (14)
+  buttons, inputs and rows, `Radii.lg` (20) inset panels and icon tiles,
+  `Radii.xl` (24) cards, `Radii.pill` chips and avatars. Don't inline a
   radius number.
-- **Hierarchy through weight and size, not colour.** A heading is
-  `theme.text` at a heavier family; body copy is `theme.textSecondary` at
-  a regular one; hints are `theme.textMuted`. Don't reach for the accent
-  or a tone colour to make something look important.
-- **Give it room.** Prefer the next `Spacing` step up over the tighter
-  one for card padding and the gap between a section heading and its
-  content. Density is not the goal here.
+- **Hierarchy through type, not colour.** Headings are Manrope in
+  `textHeading`; body copy is `textSecondary`; hints and units are
+  `textMuted`. No all-caps eyebrows — use a `Chip` or a muted label.
+- **Touch targets are at least 44×44**, via size or `hitSlop`.
+- **Give it room.** Prefer the next `Spacing` step up for card padding and
+  the gap between a section heading and its content.

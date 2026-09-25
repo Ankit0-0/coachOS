@@ -3,9 +3,10 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Radii, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Spacing } from '@/constants/theme';
+import { IconTile } from '@coachos/theme';
 
 type LockedStateProps = {
   title: string;
@@ -16,34 +17,26 @@ type LockedStateProps = {
 
 /** Shown in place of a screen's real content when the client has no accepted coach yet. */
 export function LockedState({ title, refreshing, onRefresh }: LockedStateProps) {
-  const theme = useTheme();
   const router = useRouter();
 
   return (
     <ScreenScaffold includeBottomTabInset refreshing={refreshing} onRefresh={onRefresh}>
       <View style={styles.header}>
-        <ThemedText type="subtitle" style={styles.title}>
-          {title}
-        </ThemedText>
+        <ThemedText type="display">{title}</ThemedText>
       </View>
 
-      <ThemedView type="backgroundElement" style={[styles.panel, { borderColor: theme.border }]}>
-        <ThemedText type="smallBold">You need a coach to unlock this</ThemedText>
+      <Card style={styles.panel}>
+        <IconTile icon={{ ios: 'lock', android: 'lock', web: 'lock' }} />
+        <ThemedText type="heading">You need a coach to unlock this</ThemedText>
         <ThemedText type="small" themeColor="textSecondary" style={styles.copy}>
           Once you accept a coach&apos;s invite, this tab unlocks automatically.
         </ThemedText>
-        <Pressable
-          style={[styles.button, { backgroundColor: theme.accent }]}
-          onPress={() => router.push('/explore-coaches')}>
-          <ThemedText type="smallBold" themeColor="onAccent">
-            Explore coaches
-          </ThemedText>
-        </Pressable>
+        <Button label="Explore coaches" fullWidth onPress={() => router.push('/explore-coaches')} />
         {/* Invites live on the coach screen, which is no longer a tab — this is the way in before there's a coach. */}
-        <Pressable accessibilityRole="button" onPress={() => router.push('/my-coach')} hitSlop={8}>
+        <Pressable accessibilityRole="button" onPress={() => router.push('/my-coach')} hitSlop={12}>
           <ThemedText type="linkPrimary">Invites and requests</ThemedText>
         </Pressable>
-      </ThemedView>
+      </Card>
     </ScreenScaffold>
   );
 }
@@ -53,24 +46,12 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
     paddingTop: Spacing.two,
   },
-  title: {
-    fontSize: 32,
-    lineHeight: 38,
-  },
   panel: {
-    borderRadius: Spacing.two,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: Spacing.three,
-    gap: Spacing.two,
+    gap: Spacing.twoHalf,
     alignItems: 'center',
   },
   copy: {
     textAlign: 'center',
-  },
-  button: {
-    borderRadius: Radii.sm,
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two,
-    marginTop: Spacing.one,
+    marginBottom: Spacing.one,
   },
 });

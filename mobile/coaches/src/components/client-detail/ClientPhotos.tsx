@@ -87,8 +87,6 @@ export function mealPhotos(checkIns: CheckIn[], planByAssignmentId: Map<string, 
 }
 
 function PhotoGroup({ title, emptyMessage, photos, limit, onViewAll }: { title: string; emptyMessage: string; photos: Photo[]; limit?: number; onViewAll?: () => void }) {
-  const theme = useTheme();
-
   return (
     <View style={styles.group}>
       <View style={styles.groupHeader}>
@@ -105,7 +103,7 @@ function PhotoGroup({ title, emptyMessage, photos, limit, onViewAll }: { title: 
       )}
 
       {limit && onViewAll && photos.length > limit ? (
-        <Pressable accessibilityRole="button" onPress={onViewAll} hitSlop={8} style={styles.viewAll}>
+        <Pressable accessibilityRole="button" onPress={onViewAll} hitSlop={12} style={styles.viewAll}>
           <ThemedText type="linkPrimary">View all {photos.length}</ThemedText>
         </Pressable>
       ) : null}
@@ -128,7 +126,7 @@ export function PhotoGrid({ photos }: { photos: Photo[] }) {
           <Image
             source={{ uri: photo.url }}
             accessibilityLabel={photo.accessibilityLabel}
-            style={[styles.image, { backgroundColor: theme.surfaceSunken, borderColor: theme.border }]}
+            style={[styles.image, { backgroundColor: theme.surfaceInset, borderColor: theme.border }]}
           />
           <ThemedText type="small" numberOfLines={1}>
             {photo.title}
@@ -205,6 +203,6 @@ const styles = StyleSheet.create({
     width: 104,
     height: 128,
     borderRadius: Radii.sm,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
   },
 });
