@@ -1,73 +1,103 @@
-import { Container, Cross, Reveal, SectionHeading } from '@/components/ui';
-import { ChatTile, FoldersTile, FormTile, GalleryTile, PdfTile, SheetTile, StickyNote } from '@/components/mockups/scattered-tools';
+import type { ReactNode } from 'react';
 
-const coachPains = [
-  'Client details and progress are spread across several different tools.',
-  'Every new plan starts as a copy of an old PDF, edited by hand.',
-  'Check-ins arrive in chats and are easy to miss.',
-  'Seeing how a client has changed means scrolling back through weeks of messages.',
-  'Each new client adds more admin, not just more coaching.',
+import { Container, Cross, Mark, Reveal, SectionHeading } from '@/components/ui';
+import {
+  CalendarTile,
+  FormTile,
+  GalleryTile,
+  GoogleSheetTile,
+  PdfTile,
+  StickyNote,
+  WhatsAppTile,
+} from '@/components/mockups/scattered-tools';
+
+const coachPains: ReactNode[] = [
+  <>
+    Client info <Mark>scattered across apps</Mark>
+  </>,
+  <>
+    Every plan <Mark>copied from an old PDF</Mark>
+  </>,
+  <>
+    Check-ins <Mark>lost in WhatsApp</Mark>
+  </>,
+  <>
+    Renewals <Mark>depend on reminders</Mark>
+  </>,
+  <>
+    More clients, <Mark>more admin</Mark>
+  </>,
 ];
 
-const clientPains = [
-  "Not sure which workout is today's.",
-  'The plan is a PDF somewhere in the chat.',
-  'Without feedback, momentum fades.',
-  'Advice that ignores your routine is hard to stick to.',
+const clientPains: ReactNode[] = [
+  <>
+    <Mark>Which workout</Mark> is today?
+  </>,
+  <>
+    The plan is <Mark>buried in the chat</Mark>
+  </>,
+  <>
+    <Mark>No feedback</Mark>, so momentum fades
+  </>,
+  <>
+    Advice that <Mark>ignores your routine</Mark>
+  </>,
 ];
 
 export function ProblemSection() {
   return (
-    <section id="problem" aria-labelledby="problem-title" className="border-y border-forest/10 bg-white/60 py-20 sm:py-28">
+    <section id="problem" aria-labelledby="problem-title" className="border-y border-forest/10 bg-white/60 py-16 sm:py-24">
       <Container>
-        <div className="grid gap-14 lg:grid-cols-[0.9fr_1.25fr] lg:items-center lg:gap-14">
-          <div>
-            <SectionHeading
-              id="problem-title"
-              eyebrow="Sound familiar?"
-              title="Most coaching runs on chats, spreadsheets and PDFs."
-              lede="None of these tools were made for coaching, so the coach ends up holding it all together by hand. It costs time every day, and clients feel the confusion too."
-            />
+        <div className="grid gap-10 lg:grid-cols-[1fr_1.1fr] lg:gap-16">
+          <SectionHeading
+            id="problem-title"
+            eyebrow="Sound familiar?"
+            title="Most coaching runs on WhatsApp, spreadsheets and calendar reminders."
+            lede={
+              <>
+                Plans in PDFs, check-ins in chats, fees in a sheet, follow-ups in a calendar.{' '}
+                <Mark>None of it was made for coaching.</Mark>
+              </>
+            }
+          />
 
-            <div className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-1">
-              <PainList title="If you coach" items={coachPains} />
-              <PainList title="If you train with a coach" items={clientPains} />
-            </div>
+          <div className="grid gap-8 sm:grid-cols-2 lg:pt-10">
+            <PainList title="If you coach" items={coachPains} />
+            <PainList title="If you train with a coach" items={clientPains} />
           </div>
-
-          {/* The pile. Loose and overlapping from md up; a tidy two-column stack on a phone. */}
-          <Reveal>
-            <div
-              role="img"
-              aria-label="A pile of tools: a chat app full of unread client messages, a payments spreadsheet, a workout plan PDF, a check-in form, shared folders, a photo gallery and a sticky note of reminders."
-            >
-              <div aria-hidden="true" className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
-                <ChatTile className="sm:-rotate-2" />
-                {/* Full width, and first, in the two-column phone layout. */}
-                <SheetTile className="order-first col-span-2 sm:order-none sm:col-span-1 sm:mt-6 sm:rotate-1" />
-                <PdfTile className="sm:-rotate-1" />
-                <GalleryTile className="sm:-mt-4 sm:rotate-2" />
-                <FormTile className="sm:mt-2 sm:-rotate-1" />
-                <div className="col-span-2 flex items-start gap-3 sm:col-span-1 sm:flex-col sm:items-stretch sm:gap-4">
-                  <FoldersTile className="flex-1 sm:flex-none sm:rotate-1" />
-                  <StickyNote className="flex-1 rotate-2 sm:flex-none sm:-rotate-3" />
-                </div>
-              </div>
-            </div>
-          </Reveal>
         </div>
 
+        {/* The pile, full width: laid out by .tool-pile in globals.css. */}
+        <Reveal className="mt-14 sm:mt-16">
+          <div
+            role="img"
+            aria-label="The tools coaching runs on today: a WhatsApp chat where a client asks which workout is today and the coach points to one of three PDFs, a Google Sheet of client fees with pending payments, a calendar full of client reminders, a phone gallery mixing meal photos, gym selfies and screenshots, a workout plan PDF, a check-in form and a sticky note of to-dos."
+          >
+            <div aria-hidden="true" className="tool-pile">
+              <div className="tool-pile-col">
+                <WhatsAppTile className="[grid-area:chat] md:-rotate-1" />
+                <FormTile className="[grid-area:form] md:rotate-1" />
+              </div>
+              <div className="tool-pile-col">
+                <GoogleSheetTile className="[grid-area:sheet] md:rotate-[0.6deg]" />
+                <PdfTile className="[grid-area:pdf] md:-rotate-1" />
+                <StickyNote className="[grid-area:note] rotate-2 md:ml-auto md:w-3/5 md:-rotate-2" />
+              </div>
+              <div className="tool-pile-col">
+                <CalendarTile className="[grid-area:cal] md:rotate-1" />
+                <GalleryTile className="[grid-area:gallery] md:-rotate-1" />
+              </div>
+            </div>
+          </div>
+        </Reveal>
+
         {/* The turn: from the pile to one workflow. */}
-        <Reveal className="mt-16 sm:mt-20">
+        <Reveal className="mt-14 sm:mt-16">
           <div className="rounded-3xl bg-forest px-6 py-10 text-center sm:px-12 sm:py-12">
             <p className="text-balance mx-auto max-w-3xl font-display text-2xl font-bold leading-snug text-cream sm:text-3xl">
-              CoachOS turns the pile into one clear workflow.
+              CoachOS turns the pile into <Mark tone="dark">one clear workflow</Mark>.
             </p>
-            <p className="text-pretty mx-auto mt-4 max-w-2xl text-base leading-7 text-cream/80 sm:text-lg">
-              The coach sets the plan, the client follows it and checks in, and both see the same progress, all in
-              one place.
-            </p>
-            <ol className="mx-auto mt-8 flex max-w-3xl flex-col items-stretch gap-3 text-left sm:flex-row sm:items-center sm:justify-center sm:gap-2">
+            <ol className="mx-auto mt-7 flex max-w-3xl flex-col items-stretch gap-3 text-left sm:flex-row sm:items-center sm:justify-center sm:gap-2">
               {['Plan', 'Check-in', 'Progress', 'Adjust'].map((step, index, all) => (
                 <li key={step} className="flex items-center gap-2 sm:contents">
                   <span className="flex flex-1 items-center gap-3 rounded-full bg-cream/10 px-4 py-2.5 text-sm font-semibold text-cream ring-1 ring-cream/15 sm:flex-none">
@@ -89,15 +119,15 @@ export function ProblemSection() {
   );
 }
 
-function PainList({ title, items }: { title: string; items: string[] }) {
+function PainList({ title, items }: { title: string; items: ReactNode[] }) {
   return (
     <div>
       <h3 className="font-display text-base font-bold text-forest">{title}</h3>
       <ul className="mt-4 space-y-3">
-        {items.map((item) => (
-          <li key={item} className="flex gap-3 text-[15px] leading-6 text-charcoal/85">
+        {items.map((item, index) => (
+          <li key={index} className="flex gap-3 text-base leading-6 text-charcoal/85">
             <Cross className="mt-0.5" />
-            {item}
+            <span>{item}</span>
           </li>
         ))}
       </ul>

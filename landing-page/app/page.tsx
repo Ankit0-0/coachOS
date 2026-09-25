@@ -2,7 +2,6 @@ import { Footer } from '@/components/footer';
 import { Navbar } from '@/components/navbar';
 import { ClosingCta } from '@/components/sections/closing-cta';
 import { FaqSection } from '@/components/sections/faq';
-import { FeaturesSection } from '@/components/sections/features';
 import { ForClientsSection } from '@/components/sections/for-clients';
 import { ForCoachesSection } from '@/components/sections/for-coaches';
 import { Hero } from '@/components/sections/hero';
@@ -20,7 +19,6 @@ export default function HomePage() {
         <ForCoachesSection />
         <ForClientsSection />
         <HowItWorksSection />
-        <FeaturesSection />
         <TrustSection />
         <FaqSection />
         <ClosingCta />

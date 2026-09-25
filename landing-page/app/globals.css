@@ -80,6 +80,51 @@ body {
   }
 }
 
+/*
+  The "tools coaching runs on" pile in the problem section. Every tile keeps
+  its own height — nothing is stretched to fill a row.
+  - Phone: a two-column grid by named area; the .tool-pile-col wrappers are
+    display: contents, so their tiles take part in that grid directly.
+  - md up: three hand-balanced columns, stacked like masonry.
+*/
+.tool-pile {
+  display: grid;
+  gap: 0.75rem;
+  align-items: start;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-areas:
+    'sheet sheet'
+    'chat chat'
+    'cal gallery'
+    'pdf form'
+    'note .';
+}
+
+.tool-pile-col {
+  display: contents;
+}
+
+@media (min-width: 768px) {
+  .tool-pile {
+    display: flex;
+    align-items: flex-start;
+    gap: 1.25rem;
+  }
+
+  .tool-pile-col {
+    display: flex;
+    flex: 1 1 0;
+    min-width: 0;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  /* The middle column carries the spreadsheet, which needs the width. */
+  .tool-pile-col:nth-child(2) {
+    flex-grow: 1.3;
+  }
+}
+
 /* FAQ disclosure: the default marker is replaced by a rotating plus. */
 .faq-item summary {
   list-style: none;

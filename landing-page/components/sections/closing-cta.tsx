@@ -1,7 +1,7 @@
 'use client';
 
 import { useEarlyAccess } from '@/components/early-access/early-access-provider';
-import { Arrow, Container } from '@/components/ui';
+import { Arrow, Container, Mark } from '@/components/ui';
 
 const paths = [
   {
@@ -30,8 +30,7 @@ export function ClosingCta() {
               Less chasing. Clearer days.
             </h2>
             <p className="text-pretty mt-4 text-lg leading-8 text-charcoal/85">
-              CoachOS is in pre-launch. Join early access and we&apos;ll email you when the app is ready for your
-              phone.
+              Pre-launch. <Mark>Join early access</Mark> and we&apos;ll email you when it&apos;s ready.
             </p>
           </div>
 
@@ -52,9 +51,7 @@ export function ClosingCta() {
             ))}
           </ul>
 
-          <p className="mt-8 text-center text-sm text-charcoal/80">
-            Just your email and phone type. One email when the app is ready, and no newsletters.
-          </p>
+          <p className="mt-8 text-center text-sm text-charcoal/80">Just your email and phone type. No newsletters.</p>
         </div>
       </Container>
     </section>

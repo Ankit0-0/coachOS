@@ -37,7 +37,7 @@ const faqs = [
 
 export function FaqSection() {
   return (
-    <section id="faq" aria-labelledby="faq-title" className="py-20 sm:py-28">
+    <section id="faq" aria-labelledby="faq-title" className="py-16 sm:py-24">
       <Container className="grid gap-12 lg:grid-cols-[1fr_1.6fr] lg:gap-16">
         <SectionHeading id="faq-title" eyebrow="FAQ" title="Questions, answered plainly." />
 

@@ -1,4 +1,4 @@
-import { AudienceButtons, Container } from '@/components/ui';
+import { AudienceButtons, Container, Mark } from '@/components/ui';
 import { ClientTodayScreen, CoachClientsScreen } from '@/components/mockups/app-screens';
 
 export function Hero() {
@@ -8,7 +8,7 @@ export function Hero() {
       {/* A soft sage wash behind the phones, so they sit on something. */}
       <div aria-hidden="true" className="pointer-events-none absolute -right-40 top-10 h-[36rem] w-[36rem] rounded-full bg-sage/70 blur-3xl sm:-right-20" />
 
-      <Container className="relative grid items-center gap-12 pb-16 pt-10 sm:pt-14 lg:grid-cols-[1.05fr_1fr] lg:gap-8 lg:pb-24 lg:pt-16">
+      <Container className="relative grid items-center gap-12 pb-14 pt-10 sm:pt-14 lg:grid-cols-[1.05fr_1fr] lg:gap-8 lg:pb-20 lg:pt-14">
         <div>
           <p className="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1.5 text-sm font-medium text-forest ring-1 ring-forest/10">
             <span className="h-2 w-2 rounded-full bg-terracotta" aria-hidden="true" />
@@ -21,14 +21,12 @@ export function Hero() {
             Coaching, without the chaos.
           </h1>
           <p className="text-pretty mt-6 max-w-xl text-lg leading-8 text-charcoal/85 sm:text-xl sm:leading-9">
-            Keep client plans, progress, and check-ins together — so coaches can focus on coaching and clients know
-            what to do next.
+            Keep <Mark>client plans, progress and check-ins together</Mark> — so coaches can focus on coaching and
+            clients know what to do next.
           </p>
 
           <AudienceButtons className="mt-9" />
-          <p className="mt-4 text-sm text-muted">
-            Both buttons join early access. CoachOS isn&apos;t in the app stores yet.
-          </p>
+          <p className="mt-4 text-sm text-muted">Both join early access. Not in app stores yet.</p>
 
           <p className="mt-10 flex items-center gap-3 border-t border-forest/10 pt-6 text-sm font-medium text-charcoal/80">
             <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" className="shrink-0 text-forest" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

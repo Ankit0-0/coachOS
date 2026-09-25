@@ -8,7 +8,6 @@ const productLinks = [
   { href: '#how-it-works', label: 'How it works' },
   { href: '#for-coaches', label: 'For coaches' },
   { href: '#for-clients', label: 'For clients' },
-  { href: '#features', label: 'Features' },
   { href: '#faq', label: 'FAQ' },
 ];
 
