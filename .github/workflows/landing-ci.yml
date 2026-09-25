@@ -1,0 +1,43 @@
+name: Landing CI
+
+on:
+  pull_request:
+    paths:
+      - 'landing-page/**'
+      - '.github/workflows/landing-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'landing-page/**'
+      - '.github/workflows/landing-ci.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: landing-page
+    steps:
+      - uses: actions/checkout@v4
+
+      # Version comes from the root package.json `packageManager` field.
+      # action-setup v4 refuses to run when it is told twice, so this must not
+      # also carry a `version` input.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      # From the workspace root, filtered by package name (coachos-landing,
+      # not the directory name).
+      - name: Install landing page dependencies
+        run: pnpm install --frozen-lockfile --filter coachos-landing...
+        working-directory: .
+
+      # `next build` typechecks, and proves the static export still writes
+      # out/ — the directory Render publishes.
+      - run: pnpm build
+      - name: Check the static export
+        run: test -f out/index.html
