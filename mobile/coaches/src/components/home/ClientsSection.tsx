@@ -3,6 +3,7 @@ import { useCallback, useImperativeHandle, useState, type Ref } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { ClientListItem } from '@/components/clients/ClientListItem';
+import { SubscriptionPeriodPicker } from '@/components/subscription-period-picker';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { Card, InsetPanel, Row } from '@/components/ui/card';
@@ -12,7 +13,8 @@ import { Radii, Spacing } from '@/constants/theme';
 import type { RefreshHandle } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { coachInviteApi, type CoachInvite } from '@/lib/api';
-import { SegmentedControl, TextField } from '@coachos/theme';
+import { defaultPeriod, type PeriodDraft, periodError, periodInput } from '@/lib/subscription-period';
+import { TextField } from '@coachos/theme';
 
 const PREVIEW_COUNT = 4;
 
@@ -28,8 +30,8 @@ export function ClientsSection({ ref }: { ref?: Ref<RefreshHandle> }) {
   const [pending, setPending] = useState<CoachInvite[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [email, setEmail] = useState('');
-  /** Null means an open-ended relationship: no subscription record is created. */
-  const [durationMonths, setDurationMonths] = useState<number | null>(null);
+  /** The first subscription period; null is open-ended, with no subscription record. */
+  const [period, setPeriod] = useState<PeriodDraft>(() => defaultPeriod());
   const [isSending, setIsSending] = useState(false);
   // Inline rather than Alert, which is a no-op on React Native Web — routed
   // through Alert, none of these messages appeared in a browser at all.
@@ -65,13 +67,15 @@ export function ClientsSection({ ref }: { ref?: Ref<RefreshHandle> }) {
       setFormError('Add the email address your client signs in with.');
       return;
     }
+    // The picker shows why; don't send what the API would refuse.
+    if (periodError(period)) return;
 
     try {
       setIsSending(true);
       setFormError(null);
-      await coachInviteApi.create(trimmed, durationMonths ?? undefined);
+      await coachInviteApi.create(trimmed, periodInput(period));
       setEmail('');
-      setDurationMonths(null);
+      setPeriod(defaultPeriod());
       void loadInvites();
     } catch (error) {
       setFormError(errorMessage(error));
@@ -133,18 +137,7 @@ export function ClientsSection({ ref }: { ref?: Ref<RefreshHandle> }) {
             <Button label="Send" onPress={handleInvite} loading={isSending} />
           </View>
 
-          <View style={styles.durationBlock}>
-            <ThemedText type="label" themeColor="textSecondary">
-              Subscription length
-            </ThemedText>
-            <SegmentedControl
-              options={DURATION_SEGMENTS}
-              value={durationKey(durationMonths)}
-              onChange={(key) => setDurationMonths(key === 'none' ? null : Number(key))}
-              disabled={isSending}
-              accessibilityLabel="Subscription length"
-            />
-          </View>
+          <SubscriptionPeriodPicker value={period} onChange={setPeriod} disabled={isSending} />
 
           {formError ? (
             <View style={[styles.errorBanner, { backgroundColor: theme.dangerSoft }]}>
@@ -172,25 +165,7 @@ export function ClientsSection({ ref }: { ref?: Ref<RefreshHandle> }) {
   );
 }
 
-type DurationKey = '1' | '3' | '6' | '12' | 'none';
-
-/** Short labels so five segments fit a phone; the full wording is read out. */
-const DURATION_SEGMENTS: { value: DurationKey; label: string; accessibilityLabel: string }[] = [
-  { value: '1', label: '1 mo', accessibilityLabel: '1 month' },
-  { value: '3', label: '3 mo', accessibilityLabel: '3 months' },
-  { value: '6', label: '6 mo', accessibilityLabel: '6 months' },
-  { value: '12', label: '12 mo', accessibilityLabel: '12 months' },
-  { value: 'none', label: 'Ongoing', accessibilityLabel: 'No fixed period' },
-];
-
-function durationKey(months: number | null): DurationKey {
-  return months === null ? 'none' : (String(months) as DurationKey);
-}
-
 const styles = StyleSheet.create({
-  durationBlock: {
-    gap: Spacing.two,
-  },
   errorBanner: {
     borderRadius: Radii.sm,
     padding: Spacing.three,

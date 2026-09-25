@@ -3,6 +3,7 @@ import { useCallback, useImperativeHandle, useState, type Ref } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { CountBadge } from '@coachos/theme';
 
+import { SubscriptionPeriodPicker } from '@/components/subscription-period-picker';
 import { ThemedText } from '@/components/themed-text';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,7 @@ import type { RefreshHandle } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError, coachingRequestApi, type CoachingRequest } from '@/lib/api';
 import { longDateLabel } from '@/lib/dates';
+import { defaultPeriod, type PeriodDraft, periodError, periodInput } from '@/lib/subscription-period';
 
 function errorMessage(error: unknown): string {
   if (error instanceof ApiError && error.status === 423) {
@@ -39,6 +41,9 @@ export function RequestsSection({ onAccepted, ref }: RequestsSectionProps) {
   const [requests, setRequests] = useState<CoachingRequest[]>([]);
   const [actioningId, setActioningId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** The request being accepted: its card shows the period step before confirming. */
+  const [acceptingId, setAcceptingId] = useState<string | null>(null);
+  const [period, setPeriod] = useState<PeriodDraft>(() => defaultPeriod());
 
   const load = useCallback(async () => {
     try {
@@ -56,12 +61,19 @@ export function RequestsSection({ onAccepted, ref }: RequestsSectionProps) {
 
   useImperativeHandle(ref, () => ({ reload: load }), [load]);
 
+  function startAccepting(request: CoachingRequest) {
+    setPeriod(defaultPeriod());
+    setAcceptingId(request.id);
+  }
+
   async function respond(request: CoachingRequest, action: 'accept' | 'decline') {
+    if (action === 'accept' && periodError(period)) return;
     setActioningId(request.id);
     setError(null);
     try {
       if (action === 'accept') {
-        await coachingRequestApi.accept(request.id);
+        await coachingRequestApi.accept(request.id, periodInput(period));
+        setAcceptingId(null);
         onAccepted?.();
       } else {
         await coachingRequestApi.decline(request.id);
@@ -89,6 +101,7 @@ export function RequestsSection({ onAccepted, ref }: RequestsSectionProps) {
 
       {requests.map((request) => {
         const isBusy = actioningId === request.id;
+        const isAccepting = acceptingId === request.id;
         return (
           <Card key={request.id} style={styles.card}>
             <View style={styles.header}>
@@ -110,18 +123,30 @@ export function RequestsSection({ onAccepted, ref }: RequestsSectionProps) {
               </View>
             ) : null}
 
+            {isAccepting ? (
+              <SubscriptionPeriodPicker value={period} onChange={setPeriod} disabled={isBusy} />
+            ) : null}
+
             <View style={styles.actions}>
               <View style={styles.action}>
-                <Button
-                  label="Decline"
-                  variant="secondary"
-                  onPress={() => void respond(request, 'decline')}
-                  disabled={isBusy}
-                  fullWidth
-                />
+                {isAccepting ? (
+                  <Button label="Back" variant="secondary" onPress={() => setAcceptingId(null)} disabled={isBusy} fullWidth />
+                ) : (
+                  <Button
+                    label="Decline"
+                    variant="secondary"
+                    onPress={() => void respond(request, 'decline')}
+                    disabled={isBusy}
+                    fullWidth
+                  />
+                )}
               </View>
               <View style={styles.action}>
-                <Button label="Accept" onPress={() => void respond(request, 'accept')} loading={isBusy} fullWidth />
+                {isAccepting ? (
+                  <Button label="Confirm" onPress={() => void respond(request, 'accept')} loading={isBusy} fullWidth />
+                ) : (
+                  <Button label="Accept" onPress={() => startAccepting(request)} disabled={isBusy} fullWidth />
+                )}
               </View>
             </View>
           </Card>

@@ -238,7 +238,15 @@ function queryString(params: Record<string, string>): string {
 // Coach ↔ client invites
 // ---------------------------------------------------------------------------
 
-export type InviteStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED';
+/** ENDED: the relationship happened and is over, because the client accepted another coach. */
+export type InviteStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED' | 'ENDED';
+
+/** The coach a client is with now, sent wherever accepting someone else would replace them. */
+export interface CurrentCoach {
+  id: string;
+  name: string;
+  hasActivePlan: boolean;
+}
 
 export interface InvitePerson {
   id: string;
@@ -266,6 +274,11 @@ export interface ClientInvite {
   status: InviteStatus;
   createdAt: string;
   respondedAt: string | null;
+  /**
+   * On a pending invite: the coach accepting it would replace, so the app can
+   * warn by name first. Null when the client has no coach.
+   */
+  currentCoach: CurrentCoach | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -403,6 +416,11 @@ export interface DirectoryCoach {
   relationship: ExploreRelationship;
   /** Set when `relationship` is REQUESTED, so the request can be cancelled. */
   pendingRequestId: string | null;
+  /**
+   * Detail only: the coach this one would replace if they accept a request,
+   * so the app can warn before it's sent. Null when there's no one.
+   */
+  currentCoach?: CurrentCoach | null;
 }
 
 export interface CoachRequest {

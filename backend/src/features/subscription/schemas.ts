@@ -4,6 +4,23 @@ const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 const dateString = z.string().regex(DATE_PATTERN, "date must be formatted YYYY-MM-DD");
 
+/**
+ * The first subscription period a coach picks when inviting a client or
+ * accepting their request. Both or neither: neither is an open-ended
+ * relationship with no subscription record.
+ */
+export const firstPeriodFields = {
+  subscriptionStartDate: dateString.optional(),
+  subscriptionEndDate: dateString.optional(),
+};
+
+export function isValidFirstPeriod(value: { subscriptionStartDate?: string | undefined; subscriptionEndDate?: string | undefined }) {
+  const { subscriptionStartDate: start, subscriptionEndDate: end } = value;
+  if (start === undefined && end === undefined) return true;
+  // ISO dates sort lexicographically.
+  return start !== undefined && end !== undefined && end > start;
+}
+
 export const createSubscriptionSchema = z
   .object({
     startDate: dateString,

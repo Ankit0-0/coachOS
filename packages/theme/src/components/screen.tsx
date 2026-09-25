@@ -9,7 +9,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets, type EdgeInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '../provider';
 import { BottomTabInset, MaxContentWidth, ScreenPadding, Spacing } from '../tokens';
@@ -26,8 +26,26 @@ type KeyboardFormProps = PropsWithChildren<{
   keyboardVerticalOffset?: number;
 }>;
 
-/** Keeps a form usable with the keyboard open. */
+/**
+ * The caller's vertical padding plus the safe-area insets. Android draws
+ * edge-to-edge, so with 3-button navigation the bar (~48dp) covers whatever
+ * sits at the bottom; with gesture navigation the inset is ~0 and adds nothing.
+ */
+function withVerticalInsets(style: StyleProp<ViewStyle>, insets: EdgeInsets): ViewStyle {
+  const flat = StyleSheet.flatten(style) ?? {};
+  const base = (value: ViewStyle['padding']) => (typeof value === 'number' ? value : 0);
+  return {
+    paddingTop: base(flat.paddingTop ?? flat.paddingVertical ?? flat.padding) + insets.top,
+    paddingBottom: base(flat.paddingBottom ?? flat.paddingVertical ?? flat.padding) + insets.bottom,
+  };
+}
+
+/**
+ * Keeps a form usable with the keyboard open, and clear of the status and
+ * navigation bars, for screens that don't go through `Screen`.
+ */
 export function KeyboardForm({ children, contentContainerStyle, keyboardVerticalOffset = 0 }: KeyboardFormProps) {
+  const insets = useSafeAreaInsets();
   return (
     <KeyboardAvoidingView
       style={styles.fill}
@@ -35,7 +53,7 @@ export function KeyboardForm({ children, contentContainerStyle, keyboardVertical
       keyboardVerticalOffset={keyboardVerticalOffset}>
       <ScrollView
         style={styles.fill}
-        contentContainerStyle={[styles.formContent, contentContainerStyle]}
+        contentContainerStyle={[styles.formContent, contentContainerStyle, withVerticalInsets(contentContainerStyle, insets)]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
         showsVerticalScrollIndicator={false}>
@@ -68,6 +86,9 @@ export function Screen({
   pinnedHeader,
 }: ScreenProps) {
   const theme = useTheme();
+  // Tab screens sit above the native tab bar, which clears the navigation bar
+  // itself; every other screen reaches the bottom edge and needs the inset.
+  const { bottom } = useSafeAreaInsets();
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
@@ -92,7 +113,11 @@ export function Screen({
                 />
               ) : undefined
             }
-            contentContainerStyle={[styles.content, includeBottomTabInset && styles.contentWithTabs, contentStyle]}>
+            contentContainerStyle={[
+              styles.content,
+              includeBottomTabInset ? styles.contentWithTabs : { paddingBottom: Spacing.four + bottom },
+              contentStyle,
+            ]}>
             {children}
           </ScrollView>
         </KeyboardAvoidingView>

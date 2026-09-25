@@ -45,7 +45,7 @@ describe("subscriptions", () => {
   }
 
   describe("creation on invite acceptance", () => {
-    it("creates an ACTIVE period with the right endDate when the invite carried a duration", async () => {
+    it("turns a legacy duration into explicit dates and creates that period on acceptance", async () => {
       const newCoach = await registerUser("COACH", "subdurcoach");
       const newClient = await registerUser("CLIENT", "subdurclient");
       try {
@@ -54,7 +54,9 @@ describe("subscriptions", () => {
           .set("Authorization", `Bearer ${newCoach.token}`)
           .send({ clientEmail: newClient.email, durationMonths: 3 });
         expect(invite.status).toBe(201);
-        expect(invite.body.invite.durationMonths).toBe(3);
+        // Stored as the dates it stands for, starting today.
+        expect(invite.body.invite.durationMonths).toBeNull();
+        expect(invite.body.invite.subscriptionPeriod.startDate.slice(0, 10)).toBe(day(0));
 
         await api
           .post(`/v1/client/invites/${invite.body.invite.id}/accept`)

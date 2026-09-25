@@ -145,7 +145,14 @@ export async function fetchCurrentUser(): Promise<AuthUser> {
 // Coach ↔ client invites
 // ---------------------------------------------------------------------------
 
-export type InviteStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED';
+/** ENDED: the relationship happened and is over, because the client accepted another coach. */
+export type InviteStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED' | 'ENDED';
+
+/** A first subscription period, as the API takes it. Null anywhere means open-ended. */
+export interface SubscriptionPeriodInput {
+  subscriptionStartDate: string;
+  subscriptionEndDate: string;
+}
 
 export interface InvitePerson {
   id: string;
@@ -162,7 +169,10 @@ export interface CoachInvite {
   clientId: string | null;
   client?: InvitePerson;
   status: InviteStatus;
+  /** Legacy length from before explicit dates; null on every invite sent since. */
   durationMonths: number | null;
+  /** The first period the coach chose; null for an open-ended relationship. */
+  subscriptionPeriod: { startDate: string; endDate: string } | null;
   /** Null when this client has no subscription record — an open-ended relationship. */
   subscriptionStatus: 'ACTIVE' | 'EXPIRED' | 'CANCELLED' | null;
   subscriptionEndDate: string | null;
@@ -178,12 +188,11 @@ export const coachInviteApi = {
     );
   },
 
-  create(clientEmail: string, durationMonths?: number): Promise<CoachInvite> {
+  /** `period` null is an open-ended relationship with no subscription record. */
+  create(clientEmail: string, period: SubscriptionPeriodInput | null): Promise<CoachInvite> {
     return apiRequest<{ invite: CoachInvite }>('/coach/invites', {
       method: 'POST',
-      // Omitted entirely when not chosen, which the backend reads as an
-      // open-ended relationship with no subscription record.
-      body: { clientEmail, ...(durationMonths ? { durationMonths } : {}) },
+      body: { clientEmail, ...period },
     }).then((data) => data.invite);
   },
 };
@@ -212,10 +221,10 @@ export const coachingRequestApi = {
   },
 
   /** Forms the coach–client relationship, exactly as an accepted invite would. */
-  accept(requestId: string): Promise<CoachingRequest> {
+  accept(requestId: string, period: SubscriptionPeriodInput | null): Promise<CoachingRequest> {
     return apiRequest<{ request: CoachingRequest }>(
       `/coach/coach-requests/${encodeURIComponent(requestId)}/accept`,
-      { method: 'POST' },
+      { method: 'POST', body: { ...period } },
     ).then((data) => data.request);
   },
 

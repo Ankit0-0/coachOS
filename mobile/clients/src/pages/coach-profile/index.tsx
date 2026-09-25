@@ -15,6 +15,8 @@ import { Radii, Spacing } from '@/constants/theme';
 import { useRefresh } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError, coachRequestApi, exploreApi, type DirectoryCoach } from '@/lib/api';
+import { requestSwitchWarning } from '@/lib/coach-switch';
+import { confirmDestructive } from '@/lib/confirm';
 import { clientCountLabel, experienceLabel, relationshipPill } from '@/lib/explore';
 import { TextField } from '@coachos/theme';
 
@@ -77,6 +79,15 @@ export function CoachProfileScreen({ coachId }: { coachId: string }) {
 
   const handleRequest = async () => {
     if (!coach) return;
+    // If this coach accepts, the current one is ended, so ask before sending.
+    if (coach.currentCoach) {
+      const confirmed = await confirmDestructive({
+        title: 'Switch coach?',
+        message: requestSwitchWarning(coach.currentCoach, coach.name),
+        confirmLabel: 'Send request',
+      });
+      if (!confirmed) return;
+    }
     setIsSubmitting(true);
     setNotice(null);
     try {
