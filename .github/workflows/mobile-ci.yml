@@ -62,3 +62,5 @@ jobs:
           if [ ! -f .expo/types/router.d.ts ]; then cat "$RUNNER_TEMP/expo.log"; exit 1; fi
 
       - run: pnpm typecheck
+      # Pure helpers in src/lib; no native modules, so plain Node.
+      - run: pnpm test
