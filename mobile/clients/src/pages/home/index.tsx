@@ -1,6 +1,7 @@
 import { useFocusEffect, useRouter } from 'expo-router';
+import { SymbolView } from 'expo-symbols';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, View } from 'react-native';
 
 import { CoachStrip } from '@/components/home/CoachStrip';
 import { LockedState } from '@/components/locked-state';
@@ -8,7 +9,9 @@ import { PlanCard, type HomePlanCard } from '@/components/plan-card';
 import { PlanStateCard } from '@/components/plan-state-card';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { Button } from '@/components/ui/button';
+import { Card, InsetPanel, Row } from '@/components/ui/card';
+import { Section } from '@/components/ui/section';
 import { Radii, Spacing } from '@/constants/theme';
 import { useTrackingAssignments } from '@/hooks/use-assignments';
 import { useOnboardingStatus } from '@/hooks/use-onboarding-status';
@@ -21,6 +24,7 @@ import { pickAndUploadImage } from '@/lib/image-upload';
 import { cycleDayLabel, dietDayOf, parseDietContent, parseWorkoutContent, workoutDayOf } from '@/lib/plan-content';
 import { formatCalories, formatDuration } from '@/lib/plan-units';
 import { parseWeightInput } from '@/lib/weight';
+import { IconTile, TextField } from '@coachos/theme';
 
 export function HomeScreen() {
   const theme = useTheme();
@@ -215,7 +219,7 @@ export function HomeScreen() {
   if (onboarding.isLoading) {
     return (
       <ScreenScaffold includeBottomTabInset>
-        <ActivityIndicator color={theme.textSecondary} />
+        <ActivityIndicator color={theme.textMuted} />
       </ScreenScaffold>
     );
   }
@@ -231,12 +235,7 @@ export function HomeScreen() {
       onRefresh={refresh}
       pinnedHeader={onboarding.coach ? <CoachStrip coach={onboarding.coach} /> : null}>
       <View style={styles.header}>
-        <ThemedText type="smallBold" themeColor="accent">
-          Coach OS
-        </ThemedText>
-        <ThemedText type="subtitle" style={styles.headline}>
-          Ready for today?
-        </ThemedText>
+        <ThemedText type="display">Ready for today?</ThemedText>
         <ThemedText themeColor="textSecondary">
           {planCards.length > 0
             ? 'Here is what your coach has lined up for today.'
@@ -244,131 +243,112 @@ export function HomeScreen() {
         </ThemedText>
       </View>
 
-      <View style={styles.sectionHeader}>
-        <ThemedText type="smallBold" themeColor="textSecondary">
-          Today
-        </ThemedText>
-      </View>
+      <Section title="Today">
+        {tracking.isLoading || schedule.isLoading ? (
+          <ActivityIndicator color={theme.textMuted} />
+        ) : planCards.length > 0 ? (
+          <View style={styles.cards}>
+            {tracking.error ? (
+              <PlanStateCard
+                tone="danger"
+                title="Couldn't refresh your plans"
+                message={`${tracking.error.message} Showing the last version loaded.`}
+              />
+            ) : null}
+            {planCards.map((plan) => (
+              <PlanCard key={plan.id} plan={plan} />
+            ))}
+          </View>
+        ) : tracking.error ? (
+          <PlanStateCard
+            tone="danger"
+            title="Couldn't load your plans"
+            message={`${tracking.error.message} Pull down to try again.`}
+          />
+        ) : (
+          <PlanStateCard
+            title="No plans assigned yet"
+            message="Your coach hasn't assigned a workout or diet plan. Pull down to check again."
+          />
+        )}
+      </Section>
 
-      {tracking.isLoading || schedule.isLoading ? (
-        <ActivityIndicator color={theme.textSecondary} />
-      ) : planCards.length > 0 ? (
-        <View style={styles.cards}>
-          {tracking.error ? (
-            <PlanStateCard
-              tone="danger"
-              title="Couldn't refresh your plans"
-              message={`${tracking.error.message} Showing the last version loaded.`}
+      <Card style={styles.updateCard}>
+        <View style={styles.updateTitle}>
+          <ThemedText type="heading">Today&apos;s update</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            Log a weigh-in or a physique photo. Your coach sees it.
+          </ThemedText>
+        </View>
+
+        <InsetPanel>
+          <Row>
+            <ThemedText type="smallBold" style={styles.label}>
+              Physique photo
+            </ThemedText>
+            <Button
+              label={shownPhoto ? 'Change' : 'Upload'}
+              variant="secondary"
+              size="sm"
+              loading={isUploadingPhoto}
+              accessibilityLabel={shownPhoto ? 'Change physique photo' : 'Upload physique photo'}
+              onPress={() => void pickPhysiquePhoto()}
+            />
+          </Row>
+
+          {shownPhoto ? (
+            <Image
+              source={{ uri: shownPhoto }}
+              accessibilityLabel="Physique photo for today"
+              style={[styles.previewImage, { backgroundColor: theme.surface }]}
             />
           ) : null}
-          {planCards.map((plan) => (
-            <PlanCard key={plan.id} plan={plan} />
-          ))}
-        </View>
-      ) : tracking.error ? (
-        <PlanStateCard
-          tone="danger"
-          title="Couldn't load your plans"
-          message={`${tracking.error.message} Pull down to try again.`}
-        />
-      ) : (
-        <PlanStateCard
-          title="No plans assigned yet"
-          message="Your coach hasn't assigned a workout or diet plan. Pull down to check again."
-        />
-      )}
 
-      <ThemedView type="backgroundElement" style={[styles.updateCard, { borderColor: theme.border }]}>
-        <ThemedText type="smallBold">Today&apos;s update</ThemedText>
+          <Row>
+            <ThemedText type="smallBold" style={styles.label}>
+              Weight
+            </ThemedText>
+            <TextField
+              value={shownWeight}
+              onChangeText={setWeightValue}
+              placeholder="Add kg"
+              keyboardType="decimal-pad"
+              accessibilityLabel="Today's weight in kilograms"
+              style={styles.weightInput}
+            />
+          </Row>
+        </InsetPanel>
 
-        <View style={styles.updateRow}>
-          <ThemedText type="small" themeColor="textSecondary" style={styles.label}>
-            Physique update
+        {savedMessage ? (
+          <ThemedText
+            type="small"
+            themeColor={savedMessage.startsWith('Saved') ? 'success' : 'warning'}
+            numberOfLines={2}>
+            {savedMessage}
           </ThemedText>
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={shownPhoto ? 'Change physique photo' : 'Upload physique photo'}
-            onPress={() => void pickPhysiquePhoto()}
-            disabled={isUploadingPhoto}
-            style={[styles.uploadButton, { borderColor: theme.border }]}>
-            {isUploadingPhoto ? (
-              <ActivityIndicator size="small" color={theme.textSecondary} />
-            ) : (
-              <ThemedText type="meta">{shownPhoto ? 'Change image' : 'Upload'}</ThemedText>
-            )}
-          </Pressable>
-        </View>
-
-        {shownPhoto ? (
-          <Image
-            source={{ uri: shownPhoto }}
-            accessibilityLabel="Physique photo for today"
-            style={[styles.previewImage, { backgroundColor: theme.surfaceSunken }]}
-          />
         ) : null}
+        <Button label={isSaving ? 'Saving…' : 'Save update'} loading={isSaving} onPress={handleSaveUpdate} />
+      </Card>
 
-        <View style={styles.updateRow}>
-          <ThemedText type="small" themeColor="textSecondary" style={styles.label}>
-            Weight update
-          </ThemedText>
-          <TextInput
-            value={shownWeight}
-            onChangeText={setWeightValue}
-            placeholder="Add value"
-            keyboardType="decimal-pad"
-            placeholderTextColor={theme.textSecondary}
-            style={[
-              styles.input,
-              styles.weightInput,
-              { color: theme.text, borderColor: theme.border, backgroundColor: theme.surfaceSunken },
-            ]}
-          />
-        </View>
-
-        <View style={[styles.saveRow, { borderTopColor: theme.border }]}>
-          {savedMessage ? (
-            <ThemedText
-              type="small"
-              themeColor={savedMessage.startsWith('Saved') ? 'success' : 'warning'}
-              style={styles.saveMessage}
-              numberOfLines={2}>
-              {savedMessage}
-            </ThemedText>
-          ) : null}
-          <Pressable
-            accessibilityRole="button"
-            onPress={handleSaveUpdate}
-            disabled={isSaving}
-            style={({ pressed }) => [
-              styles.saveButton,
-              { backgroundColor: theme.accent, opacity: isSaving ? 0.6 : pressed ? 0.8 : 1 },
-            ]}>
-            <ThemedText type="smallBold" themeColor="onAccent">
-              {isSaving ? 'Saving…' : 'Save update'}
-            </ThemedText>
-          </Pressable>
-        </View>
-      </ThemedView>
-
-      <View style={styles.sectionHeader}>
-        <ThemedText type="smallBold" themeColor="textSecondary">
-          History
-        </ThemedText>
-      </View>
-
-      <Pressable onPress={() => router.push('/history')}>
-        <ThemedView type="backgroundElement" style={[styles.historyCard, { borderColor: theme.border }]}>
-          <View style={styles.historyTopRow}>
-            <ThemedText type="smallBold">History</ThemedText>
-            <ThemedText type="smallBold" style={{ color: theme.accent }}>
-              Open
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Open history"
+        onPress={() => router.push('/history')}
+        style={({ pressed }) => pressed && styles.pressed}>
+        <Card style={styles.historyCard}>
+          <IconTile icon={{ ios: 'chart.line.uptrend.xyaxis', android: 'show_chart', web: 'show_chart' }} />
+          <View style={styles.historyCopy}>
+            <ThemedText type="heading">History</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              Previous weigh-ins, physique updates, and your check-in calendar.
             </ThemedText>
           </View>
-          <ThemedText themeColor="textSecondary">
-            View previous weigh-ins, physique updates, and coaching notes.
-          </ThemedText>
-        </ThemedView>
+          <SymbolView
+            name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
+            size={18}
+            tintColor={theme.textMuted}
+          />
+        </Card>
       </Pressable>
     </ScreenScaffold>
   );
@@ -376,90 +356,39 @@ export function HomeScreen() {
 
 const styles = StyleSheet.create({
   header: {
-    gap: Spacing.one,
+    gap: Spacing.two,
     paddingTop: Spacing.two,
   },
-  headline: {
-    fontSize: 34,
-    lineHeight: 40,
+  cards: {
+    gap: Spacing.three,
   },
   updateCard: {
-    borderRadius: Spacing.two,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: Spacing.three,
-    gap: Spacing.two,
+    gap: Spacing.three,
   },
-  updateRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: Spacing.half,
-    gap: Spacing.two,
+  updateTitle: {
+    gap: Spacing.one,
   },
   label: {
     flex: 1,
   },
-  uploadButton: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: Radii.sm,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.two,
-    minWidth: 72,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   previewImage: {
     width: '100%',
-    height: 110,
-    borderRadius: Spacing.two,
-    marginTop: -Spacing.half,
-  },
-  input: {
-    minWidth: 110,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    textAlign: 'right',
-    fontSize: 12,
+    height: 140,
+    borderRadius: Radii.md,
   },
   weightInput: {
-    width: 96,
+    width: 110,
   },
-  saveRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: Spacing.two,
-    paddingTop: Spacing.one,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  saveMessage: {
-    flex: 1,
-  },
-  saveButton: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
+  pressed: {
+    opacity: 0.85,
   },
   historyCard: {
-    borderRadius: Spacing.two,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: Spacing.three,
-    marginBottom: Spacing.two,
-    gap: Spacing.one,
-  },
-  historyTopRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: Spacing.twoHalf,
   },
-  sectionHeader: {
-    marginBottom: Spacing.one,
-  },
-  cards: {
-    gap: Spacing.three,
+  historyCopy: {
+    flex: 1,
+    gap: Spacing.one,
   },
 });

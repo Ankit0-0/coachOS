@@ -86,9 +86,9 @@ export function ClientPhotosScreen() {
               style={[
                 styles.filter,
                 { borderColor: theme.border },
-                selected && { backgroundColor: theme.accentSoft, borderColor: theme.accent },
+                selected && { backgroundColor: theme.chipBg, borderColor: theme.primary },
               ]}>
-              <ThemedText type="smallBold" themeColor={selected ? 'accent' : 'text'}>
+              <ThemedText type="smallBold" themeColor={selected ? 'primary' : 'textPrimary'}>
                 {option.label}
               </ThemedText>
             </Pressable>
@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   filter: {
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderRadius: Radii.sm,
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two,

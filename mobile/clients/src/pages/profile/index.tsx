@@ -1,6 +1,6 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
@@ -8,7 +8,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { FieldRow } from '@/components/ui/field-row';
-import { Pill } from '@/components/ui/pill';
+import { Chip } from '@/components/ui/pill';
 import { Section } from '@/components/ui/section';
 import { Radii, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth';
@@ -18,6 +18,7 @@ import { clientProfileApi, trackingApi, type ClientProfile } from '@/lib/api';
 import { pickAndUploadImage } from '@/lib/image-upload';
 import { formatPhone, INVALID_PHONE_MESSAGE, parsePhone, phoneFieldHint, phoneForEditing } from '@/lib/phone';
 import { MAX_WEIGHT_KG } from '@/lib/weight';
+import { AppearanceSection, TextField } from '@coachos/theme';
 
 /** The profile's starting weight has a floor the API also enforces; weigh-ins only need to be above 0. */
 const MIN_PROFILE_WEIGHT_KG = 20;
@@ -229,9 +230,9 @@ export function ProfileScreen() {
           onPress={() => void handleAvatarPress()}
           disabled={isUploadingAvatar}
           style={styles.avatarButton}>
-          <Avatar name={profile.name} size="lg" imageUrl={profile.avatarUrl} />
+          <Avatar name={profile.name} size="lg" imageUrl={profile.avatarUrl} tone="warm" />
           {isUploadingAvatar ? (
-            <View style={[styles.avatarOverlay, { backgroundColor: theme.surfaceSunken }]}>
+            <View style={[styles.avatarOverlay, { backgroundColor: theme.surfaceInset }]}>
               <ActivityIndicator size="small" color={theme.textSecondary} />
             </View>
           ) : null}
@@ -240,7 +241,7 @@ export function ProfileScreen() {
         <View style={styles.identityText}>
           <ThemedText type="display">{profile.name}</ThemedText>
           <View style={styles.identityMeta}>
-            <Pill label="Client" />
+            <Chip label="Client" tone="terracotta" />
             <ThemedText type="meta">Member since {formatMemberSince(profile.memberSince)}</ThemedText>
           </View>
           <ThemedText type="meta">
@@ -281,12 +282,10 @@ export function ProfileScreen() {
               <ThemedText type="label" themeColor="textSecondary">
                 Name
               </ThemedText>
-              <TextInput
-                style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+              <TextField
                 value={draft.name}
                 onChangeText={(value) => setDraft({ ...draft, name: value })}
                 placeholder="Your full name"
-                placeholderTextColor={theme.textMuted}
                 editable={!isSaving}
               />
             </View>
@@ -295,12 +294,10 @@ export function ProfileScreen() {
               <ThemedText type="label" themeColor="textSecondary">
                 Phone
               </ThemedText>
-              <TextInput
-                style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+              <TextField
                 value={draft.phone}
                 onChangeText={(value) => setDraft({ ...draft, phone: value })}
                 placeholder="98765 43210"
-                placeholderTextColor={theme.textMuted}
                 keyboardType="phone-pad"
                 autoComplete="tel"
                 textContentType="telephoneNumber"
@@ -314,12 +311,10 @@ export function ProfileScreen() {
               <ThemedText type="label" themeColor="textSecondary">
                 Height (cm)
               </ThemedText>
-              <TextInput
-                style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+              <TextField
                 value={draft.heightCm}
                 onChangeText={(value) => setDraft({ ...draft, heightCm: value })}
                 placeholder="e.g. 178"
-                placeholderTextColor={theme.textMuted}
                 keyboardType="decimal-pad"
                 editable={!isSaving}
               />
@@ -329,12 +324,10 @@ export function ProfileScreen() {
               <ThemedText type="label" themeColor="textSecondary">
                 Weight (kg)
               </ThemedText>
-              <TextInput
-                style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+              <TextField
                 value={draft.weightKg}
                 onChangeText={(value) => setDraft({ ...draft, weightKg: value })}
                 placeholder="e.g. 74.5"
-                placeholderTextColor={theme.textMuted}
                 keyboardType="decimal-pad"
                 editable={!isSaving}
               />
@@ -347,12 +340,10 @@ export function ProfileScreen() {
               <ThemedText type="label" themeColor="textSecondary">
                 Goals
               </ThemedText>
-              <TextInput
-                style={[styles.input, styles.multiline, { borderColor: theme.border, color: theme.text }]}
+              <TextField
                 value={draft.goals}
                 onChangeText={(value) => setDraft({ ...draft, goals: value })}
                 placeholder="What you want to get out of your training"
-                placeholderTextColor={theme.textMuted}
                 multiline
                 editable={!isSaving}
               />
@@ -392,6 +383,8 @@ export function ProfileScreen() {
           ) : null}
         </Section>
       )}
+
+      <AppearanceSection />
 
       <Section title="Account">
         <Card>
@@ -481,19 +474,6 @@ const styles = StyleSheet.create({
   },
   field: {
     gap: Spacing.one,
-  },
-  input: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: Radii.sm,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    fontSize: 16,
-    minHeight: 44,
-  },
-  multiline: {
-    minHeight: 96,
-    textAlignVertical: 'top',
-    paddingTop: Spacing.two,
   },
   formActions: {
     flexDirection: 'row',

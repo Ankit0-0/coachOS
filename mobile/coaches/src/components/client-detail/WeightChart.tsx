@@ -261,7 +261,7 @@ export function WeightChart({ entries, from, to }: WeightChartProps) {
                 key={`run-${run[0]?.date}`}
                 points={run.map((entry) => `${xOf(entry.date)},${yOf(entry.weightKg)}`).join(' ')}
                 fill="none"
-                stroke={theme.chartWorkout}
+                stroke={theme.chartBar}
                 strokeWidth={2.5}
                 strokeLinejoin="round"
                 strokeLinecap="round"
@@ -274,7 +274,7 @@ export function WeightChart({ entries, from, to }: WeightChartProps) {
               cx={xOf(entry.date)}
               cy={yOf(entry.weightKg)}
               r={dotRadius}
-              fill={theme.chartWorkout}
+              fill={theme.chartBar}
               stroke={theme.surface}
               strokeWidth={1.5}
             />

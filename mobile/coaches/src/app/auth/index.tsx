@@ -4,7 +4,7 @@ import { StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
-import { Pill } from '@/components/ui/pill';
+import { Chip } from '@/components/ui/pill';
 import { Spacing } from '@/constants/theme';
 
 export default function AuthScreen() {
@@ -13,7 +13,7 @@ export default function AuthScreen() {
   return (
     <ThemedView style={styles.container}>
       <View style={styles.header}>
-        <Pill label="Coach app" />
+        <Chip label="Coach app" tone="green" />
         <ThemedText type="title" style={styles.headline}>
           Coach OS
         </ThemedText>

@@ -9,7 +9,8 @@
     "dev:backend": "turbo dev --filter=backend",
     "dev:admin": "turbo dev --filter=admin-website",
     "build": "turbo build",
-    "lint": "turbo lint"
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck"
   },
   "devDependencies": {
     "turbo": "^2.10.10"

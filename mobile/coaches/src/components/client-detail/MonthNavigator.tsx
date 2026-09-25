@@ -1,7 +1,8 @@
+import { SymbolView } from 'expo-symbols';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Radii, Spacing } from '@/constants/theme';
+import { HitTarget, Radii, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 type MonthNavigatorProps = {
@@ -15,6 +16,10 @@ type MonthNavigatorProps = {
 /** Previous / next stepper over the month the activity calendar is showing. */
 export function MonthNavigator({ label, onPrevious, onNext, isAtCurrentMonth }: MonthNavigatorProps) {
   const theme = useTheme();
+  const step = (pressed: boolean) => [
+    styles.step,
+    { borderColor: theme.border, backgroundColor: pressed ? theme.surfaceInset : theme.surface },
+  ];
 
   return (
     <View style={styles.row}>
@@ -22,30 +27,29 @@ export function MonthNavigator({ label, onPrevious, onNext, isAtCurrentMonth }: 
         accessibilityRole="button"
         accessibilityLabel="Previous month"
         onPress={onPrevious}
-        hitSlop={8}
-        style={({ pressed }) => [styles.step, { borderColor: theme.border }, pressed && styles.pressed]}>
-        <ThemedText type="smallBold">‹</ThemedText>
+        style={({ pressed }) => step(pressed)}>
+        <SymbolView
+          name={{ ios: 'chevron.left', android: 'chevron_left', web: 'chevron_left' }}
+          size={16}
+          tintColor={theme.textPrimary}
+        />
       </Pressable>
 
-      <ThemedText type="smallBold">{label}</ThemedText>
+      <ThemedText type="heading">{label}</ThemedText>
 
+      {/* Kept in place when disabled so the label stays centred. */}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Next month"
+        aria-disabled={isAtCurrentMonth}
         onPress={onNext}
         disabled={isAtCurrentMonth}
-        hitSlop={8}
-        style={({ pressed }) => [
-          styles.step,
-          { borderColor: theme.border },
-          // Kept in place rather than hidden so the label stays centred as
-          // the user pages back and forth.
-          isAtCurrentMonth && styles.disabled,
-          pressed && !isAtCurrentMonth && styles.pressed,
-        ]}>
-        <ThemedText type="smallBold" themeColor={isAtCurrentMonth ? 'textMuted' : 'text'}>
-          ›
-        </ThemedText>
+        style={({ pressed }) => [...step(pressed && !isAtCurrentMonth), isAtCurrentMonth && styles.disabled]}>
+        <SymbolView
+          name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
+          size={16}
+          tintColor={theme.textPrimary}
+        />
       </Pressable>
     </View>
   );
@@ -57,19 +61,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: Spacing.three,
+    alignSelf: 'stretch',
   },
   step: {
-    minWidth: 32,
-    minHeight: 32,
+    width: HitTarget,
+    height: HitTarget,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: Radii.sm,
+    borderWidth: 1,
+    borderRadius: Radii.pill,
   },
   disabled: {
     opacity: 0.4,
-  },
-  pressed: {
-    opacity: 0.6,
   },
 });

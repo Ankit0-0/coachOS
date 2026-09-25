@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -10,6 +10,7 @@ import { Radii, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { authApi } from '@/lib/api';
 import { describeError } from '@/lib/api-errors';
+import { TextField } from '@coachos/theme';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
@@ -43,7 +44,7 @@ export default function ForgotPasswordScreen() {
     <ThemedView style={styles.screen}>
       <KeyboardForm contentContainerStyle={styles.container}>
         <View style={styles.top}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()} hitSlop={8} style={styles.back}>
+          <Pressable accessibilityRole="button" onPress={() => router.back()} hitSlop={12} style={styles.back}>
             <ThemedText type="linkPrimary">Back</ThemedText>
           </Pressable>
 
@@ -58,10 +59,8 @@ export default function ForgotPasswordScreen() {
             <ThemedText type="label" themeColor="textSecondary">
               Email
             </ThemedText>
-            <TextInput
-              style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+            <TextField
               placeholder="you@example.com"
-              placeholderTextColor={theme.textMuted}
               value={email}
               onChangeText={setEmail}
               editable={!isLoading}
@@ -90,7 +89,7 @@ export default function ForgotPasswordScreen() {
             <Pressable
               accessibilityRole="button"
               onPress={() => router.push('/auth/reset-password')}
-              hitSlop={8}>
+              hitSlop={12}>
               <ThemedText type="linkPrimary">Enter it</ThemedText>
             </Pressable>
           </View>
@@ -122,14 +121,6 @@ const styles = StyleSheet.create({
   },
   field: {
     gap: Spacing.one,
-  },
-  input: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: Radii.sm,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    fontSize: 16,
-    minHeight: 48,
   },
   actions: {
     gap: Spacing.three,

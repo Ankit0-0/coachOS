@@ -45,9 +45,9 @@ export function DayStrip({ days, selectedIndex, onSelect }: DayStripProps) {
             style={[
               styles.day,
               { borderColor: theme.border },
-              isSelected && { backgroundColor: theme.accentSoft, borderColor: theme.accent },
+              isSelected && { backgroundColor: theme.chipBg, borderColor: theme.primary },
             ]}>
-            <ThemedText type="smallBold" themeColor={isSelected ? 'accent' : 'text'}>
+            <ThemedText type="smallBold" themeColor={isSelected ? 'primary' : 'textPrimary'}>
               {index + 1}
             </ThemedText>
             <View
@@ -57,7 +57,7 @@ export function DayStrip({ days, selectedIndex, onSelect }: DayStripProps) {
                   ? { backgroundColor: theme.textMuted, width: 10, height: 2 }
                   : day.isFilled
                     ? { backgroundColor: theme.textSecondary }
-                    : { borderWidth: StyleSheet.hairlineWidth, borderColor: theme.border },
+                    : { borderWidth: 1, borderColor: theme.border },
               ]}
             />
           </Pressable>
@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
   },
   day: {
     minWidth: 44,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderRadius: Radii.sm,
     paddingVertical: Spacing.two,
     paddingHorizontal: Spacing.two,

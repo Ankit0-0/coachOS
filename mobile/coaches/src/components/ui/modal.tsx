@@ -14,8 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { MaxContentWidth, Radii, Spacing } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useTheme } from '@/hooks/use-theme';
+import { useAppearance, useTheme } from '@/hooks/use-theme';
 
 type ModalProps = {
   visible: boolean;
@@ -39,7 +38,7 @@ const MAX_HEIGHT_RATIO = 0.8;
  */
 export function Modal({ visible, onClose, title, children }: ModalProps) {
   const theme = useTheme();
-  const scheme = useColorScheme();
+  const { scheme } = useAppearance();
   const { height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
 
@@ -77,7 +76,7 @@ export function Modal({ visible, onClose, title, children }: ModalProps) {
               accessibilityRole="button"
               accessibilityLabel="Close"
               onPress={onClose}
-              hitSlop={8}
+              hitSlop={12}
               style={({ pressed }) => [styles.close, { borderColor: theme.border }, pressed && styles.pressed]}>
               <SymbolView
                 name={{ ios: 'xmark', android: 'close', web: 'close' }}
@@ -107,7 +106,7 @@ const styles = StyleSheet.create({
     maxWidth: MaxContentWidth,
     borderTopLeftRadius: Radii.lg,
     borderTopRightRadius: Radii.lg,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     borderBottomWidth: 0,
     overflow: 'hidden',
   },
@@ -127,7 +126,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: Radii.pill,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
