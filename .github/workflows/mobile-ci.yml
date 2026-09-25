@@ -1,0 +1,64 @@
+name: Mobile CI
+
+on:
+  pull_request:
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/mobile-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/mobile-ci.yml'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # package.json names, not directories: --filter matches on name.
+        include:
+          - package: clients
+            dir: mobile/clients
+          - package: coaches
+            dir: mobile/coaches
+    name: check (${{ matrix.package }})
+    defaults:
+      run:
+        working-directory: ${{ matrix.dir }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Version comes from the root package.json `packageManager` field.
+      # action-setup v4 refuses to run when it is told twice, so this must not
+      # also carry a `version` input.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      # From the workspace root: inside the app it would resolve to the root
+      # anyway and install all five projects.
+      - name: Install ${{ matrix.package }} dependencies
+        run: pnpm install --frozen-lockfile --filter ${{ matrix.package }}...
+        working-directory: .
+
+      # expo-env.d.ts and .expo/types (typed routes) are gitignored, and only
+      # the dev server writes them — `expo export` doesn't. Start it offline,
+      # wait for both files (a few seconds), then stop it.
+      - name: Generate Expo types
+        env:
+          CI: '1'
+        run: |
+          pnpm exec expo start --offline --port 8081 > "$RUNNER_TEMP/expo.log" 2>&1 &
+          for _ in $(seq 1 90); do
+            if [ -f expo-env.d.ts ] && [ -f .expo/types/router.d.ts ]; then break; fi
+            sleep 1
+          done
+          pkill -f "expo start" || true
+          if [ ! -f .expo/types/router.d.ts ]; then cat "$RUNNER_TEMP/expo.log"; exit 1; fi
+
+      - run: pnpm typecheck
