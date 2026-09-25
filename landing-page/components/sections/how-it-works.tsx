@@ -1,43 +1,59 @@
 import type { ReactNode } from 'react';
 
-import { Container, Reveal, SectionHeading } from '@/components/ui';
+import { Container, Mark, Reveal, SectionHeading } from '@/components/ui';
 
-type Step = { who: 'Coach' | 'Client'; title: string; body: string; visual: ReactNode };
+type Step = { who: 'Coach' | 'Client'; title: string; body: ReactNode; visual: ReactNode };
 
 const steps: Step[] = [
   {
     who: 'Coach',
-    title: 'Set up the client and assign a plan',
-    body: 'Invite a client by email, or accept a request from Explore. Pick a workout and a diet plan from your library, or build your own cycle of 1 to 31 days.',
+    title: 'Assign a plan',
+    body: (
+      <>
+        Invite a client, pick a <Mark>workout and diet plan</Mark>.
+      </>
+    ),
     visual: <AssignVisual />,
   },
   {
     who: 'Client',
-    title: 'Follow the plan and check in',
-    body: "Each day the app shows that day of the plan. The client ticks off sets and meals, adds meal photos, and logs weight when they weigh in.",
+    title: 'Follow and check in',
+    body: (
+      <>
+        Tick off <Mark>today&apos;s sets and meals</Mark>, log weight.
+      </>
+    ),
     visual: <CheckInVisual />,
   },
   {
     who: 'Coach',
-    title: 'Review, then adjust',
-    body: "See the week's check-ins, the weight trend and photos together. Change the plan where it needs changing, and the client sees the new version.",
+    title: 'Review and adjust',
+    body: (
+      <>
+        See the week, <Mark>tweak the plan</Mark>.
+      </>
+    ),
     visual: <ReviewVisual />,
   },
 ];
 
 export function HowItWorksSection() {
   return (
-    <section id="how-it-works" aria-labelledby="how-it-works-title" className="py-20 sm:py-28">
+    <section id="how-it-works" aria-labelledby="how-it-works-title" className="py-16 sm:py-24">
       <Container>
         <SectionHeading
           id="how-it-works-title"
           align="center"
           eyebrow="How it works"
           title="Three steps, repeated every week."
-          lede="Coach and client each have their own app, both working from the same plan."
+          lede={
+            <>
+              Two apps, <Mark>one shared plan</Mark>.
+            </>
+          }
         />
 
-        <ol className="relative mt-14 grid gap-6 lg:grid-cols-3">
+        <ol className="relative mt-12 grid gap-6 lg:grid-cols-3">
           {steps.map((step, index) => (
             <li key={step.title}>
               <Reveal delay={index * 0.08} className="flex h-full flex-col rounded-3xl border border-forest/10 bg-white p-6 shadow-card sm:p-7">
@@ -54,7 +70,7 @@ export function HowItWorksSection() {
                   </span>
                 </div>
                 <h3 className="mt-5 font-display text-xl font-bold text-forest">{step.title}</h3>
-                <p className="mt-3 flex-1 text-[15px] leading-6 text-charcoal/80">{step.body}</p>
+                <p className="mt-2 flex-1 text-base leading-6 text-charcoal/80">{step.body}</p>
                 <div aria-hidden="true" className="mt-6 rounded-2xl bg-cream p-4">
                   {step.visual}
                 </div>

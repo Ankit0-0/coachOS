@@ -1,35 +1,57 @@
 'use client';
 
+import type { ReactNode } from 'react';
+
 import { useEarlyAccess } from '@/components/early-access/early-access-provider';
 import { CoachClientDetailScreen, CoachClientsScreen } from '@/components/mockups/app-screens';
-import { Arrow, Container, Reveal, SectionHeading } from '@/components/ui';
+import { Arrow, Container, Mark, Reveal, SectionHeading } from '@/components/ui';
 
 /** A coaching day, moment by moment: how it goes now, and with CoachOS. */
-const day = [
+const day: { moment: string; before: string; after: ReactNode }[] = [
   {
     moment: 'Morning check-ins',
-    before: 'Scroll through a dozen chats to see who trained and who went quiet.',
-    after: "Open a client and see yesterday's ticked sets and meals.",
+    before: 'Scroll a dozen chats',
+    after: (
+      <>
+        See <Mark>who trained</Mark> in one tap
+      </>
+    ),
   },
   {
-    moment: 'A new client signs up',
-    before: 'Copy last month’s PDF, change the name, and hope nothing old is left in it.',
-    after: 'Invite them by email and assign a plan from your library.',
+    moment: 'New client',
+    before: 'Copy and edit an old PDF',
+    after: (
+      <>
+        Invite, then <Mark>assign a plan</Mark>
+      </>
+    ),
   },
   {
-    moment: 'The plan needs a change',
-    before: "Edit the file, re-send it, and explain which version is the current one.",
-    after: 'Edit the plan once. There is only ever one version.',
+    moment: 'Plan change',
+    before: 'Re-send a new file',
+    after: (
+      <>
+        Edit once, <Mark>one version</Mark>
+      </>
+    ),
   },
   {
-    moment: 'Weekly progress review',
-    before: 'Dig through your gallery for this week’s photos and a spreadsheet for weights.',
-    after: 'Weight trend, check-in calendar and photos on one screen.',
+    moment: 'Progress review',
+    before: 'Dig through gallery and sheet',
+    after: (
+      <>
+        <Mark>Trend and photos</Mark> on one screen
+      </>
+    ),
   },
   {
     moment: 'Renewals',
-    before: 'Check the sheet, and remember to ask.',
-    after: "Each client's subscription period sits on their page.",
+    before: 'Check the sheet, remember to ask',
+    after: (
+      <>
+        <Mark>Subscription dates</Mark> on each client
+      </>
+    ),
   },
 ];
 
@@ -37,16 +59,20 @@ export function ForCoachesSection() {
   const earlyAccess = useEarlyAccess();
 
   return (
-    <section id="for-coaches" aria-labelledby="for-coaches-title" className="py-20 sm:py-28">
+    <section id="for-coaches" aria-labelledby="for-coaches-title" className="py-16 sm:py-24">
       <Container>
         <SectionHeading
           id="for-coaches-title"
           eyebrow="For coaches"
           title="Spend your day coaching, not chasing."
-          lede="Your clients, their plans and their check-ins, organised the way you already work. Less time searching, more time on the part only you can do."
+          lede={
+            <>
+              Clients, plans and check-ins <Mark>in one place</Mark>. Less searching, more coaching.
+            </>
+          }
         />
 
-        <div className="mt-14 grid gap-14 lg:grid-cols-[1.25fr_1fr] lg:items-start lg:gap-16">
+        <div className="mt-12 grid gap-14 lg:grid-cols-[1.25fr_1fr] lg:items-start lg:gap-16">
           {/* Before and after, one row per moment of the day. */}
           <div className="overflow-hidden rounded-3xl border border-forest/10 bg-white shadow-card">
             <div className="hidden grid-cols-[9rem_1fr_1fr] border-b border-forest/10 bg-cream text-sm font-semibold sm:grid">
@@ -60,7 +86,7 @@ export function ForCoachesSection() {
                   <p className="font-display text-sm font-bold text-forest sm:px-5 sm:py-5">{row.moment}</p>
                   <p className="text-[15px] leading-6 text-muted sm:px-5 sm:py-5">
                     <span className="mr-1 font-semibold text-terracotta-deep sm:hidden">Today:</span>
-                    {row.before}
+                    <span className="line-through decoration-terracotta/50">{row.before}</span>
                   </p>
                   <p className="rounded-xl bg-sage-soft px-3 py-2 text-[15px] leading-6 text-charcoal sm:rounded-none sm:px-5 sm:py-5">
                     <span className="mr-1 font-semibold text-forest sm:hidden">With CoachOS:</span>
@@ -92,7 +118,7 @@ export function ForCoachesSection() {
             Join early access as a coach
             <Arrow />
           </button>
-          <p className="text-sm text-muted">Takes your email and phone type. Nothing else.</p>
+          <p className="text-sm text-muted">Just your email and phone type.</p>
         </div>
       </Container>
     </section>

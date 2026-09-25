@@ -49,6 +49,25 @@ export function SectionHeading({
 }
 
 /**
+ * A highlighter stroke behind the key phrase of a line, so the page can be
+ * skimmed: someone who reads only the marked words still gets the point.
+ * Use it once or twice per block, not on whole sentences.
+ */
+export function Mark({ children, tone = 'light' }: { children: ReactNode; tone?: 'light' | 'dark' }) {
+  return (
+    <mark
+      className={`box-decoration-clone rounded-[0.15em] bg-transparent px-[0.1em] font-semibold ${
+        tone === 'dark'
+          ? 'bg-[linear-gradient(transparent_62%,rgba(201,111,74,0.55)_62%)] text-cream'
+          : 'bg-[linear-gradient(transparent_55%,#F4D4C2_55%)] text-forest'
+      }`}
+    >
+      {children}
+    </mark>
+  );
+}
+
+/**
  * Fades content up as it scrolls into view — see .reveal in globals.css and
  * the script in layout.tsx. The script adds .is-visible before React
  * hydrates, hence suppressHydrationWarning.
