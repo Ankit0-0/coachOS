@@ -4,7 +4,7 @@ import { CLIENTS_ICON, EXPERIENCE_ICON, StatChip } from '@/components/explore/St
 import { ThemedText } from '@/components/themed-text';
 import { Avatar } from '@/components/ui/avatar';
 import { Card } from '@/components/ui/card';
-import { Pill } from '@/components/ui/pill';
+import { Chip, Pill } from '@/components/ui/pill';
 import { Spacing } from '@/constants/theme';
 import type { DirectoryCoach } from '@/lib/api';
 import { clientCountLabel, experienceLabel, relationshipPill } from '@/lib/explore';
@@ -34,7 +34,7 @@ export function CoachCard({ coach, onPress }: CoachCardProps) {
       accessibilityRole="button"
       accessibilityLabel={`View ${coach.name}'s profile`}
       onPress={onPress}
-      style={({ pressed }) => [pressed && styles.pressed]}>
+      style={({ pressed }) => pressed && styles.pressed}>
       <Card style={styles.card}>
         <View style={styles.identity}>
           <Avatar name={coach.name} size="md" imageUrl={coach.avatarUrl} />
@@ -57,9 +57,9 @@ export function CoachCard({ coach, onPress }: CoachCardProps) {
         {badges.length > 0 ? (
           <View style={styles.wrapRow}>
             {badges.map((specialty) => (
-              <Pill key={specialty} label={specialty} />
+              <Chip key={specialty} label={specialty} tone="green" />
             ))}
-            {hiddenBadges > 0 ? <Pill label={`+${hiddenBadges}`} /> : null}
+            {hiddenBadges > 0 ? <Chip label={`+${hiddenBadges}`} tone="neutral" /> : null}
           </View>
         ) : null}
 
@@ -102,6 +102,6 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   pressed: {
-    opacity: 0.72,
+    opacity: 0.85,
   },
 });

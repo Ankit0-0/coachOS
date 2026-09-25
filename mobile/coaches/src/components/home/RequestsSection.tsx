@@ -1,8 +1,10 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useImperativeHandle, useState, type Ref } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { CountBadge } from '@coachos/theme';
 
 import { ThemedText } from '@/components/themed-text';
+import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Section } from '@/components/ui/section';
@@ -76,7 +78,7 @@ export function RequestsSection({ onAccepted, ref }: RequestsSectionProps) {
   if (requests.length === 0 && !error) return null;
 
   return (
-    <Section title={`Requests (${requests.length})`}>
+    <Section title="Requests" trailing={<CountBadge count={requests.length} accessibilityLabel={`${requests.length} pending`} />}>
       {error ? (
         <View style={[styles.errorBanner, { backgroundColor: theme.dangerSoft }]}>
           <ThemedText type="small" themeColor="danger">
@@ -90,10 +92,11 @@ export function RequestsSection({ onAccepted, ref }: RequestsSectionProps) {
         return (
           <Card key={request.id} style={styles.card}>
             <View style={styles.header}>
+              <Avatar name={request.client?.name ?? 'A client'} size="row" tone="warm" />
               <View style={styles.who}>
                 <ThemedText type="smallBold">{request.client?.name ?? 'A client'}</ThemedText>
                 {request.client?.email ? (
-                  <ThemedText type="small" themeColor="textSecondary">
+                  <ThemedText type="meta" numberOfLines={1}>
                     {request.client.email}
                   </ThemedText>
                 ) : null}
@@ -102,7 +105,7 @@ export function RequestsSection({ onAccepted, ref }: RequestsSectionProps) {
             </View>
 
             {request.message ? (
-              <View style={[styles.message, { backgroundColor: theme.surfaceSunken }]}>
+              <View style={[styles.message, { backgroundColor: theme.surfaceInset }]}>
                 <ThemedText type="small">{request.message}</ThemedText>
               </View>
             ) : null}
@@ -135,16 +138,16 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: Spacing.three,
+    alignItems: 'center',
+    gap: Spacing.twoHalf,
   },
   who: {
     flex: 1,
     gap: Spacing.half,
   },
   message: {
-    borderRadius: Radii.sm,
-    padding: Spacing.three,
+    borderRadius: Radii.md,
+    padding: Spacing.twoHalf,
   },
   actions: {
     flexDirection: 'row',

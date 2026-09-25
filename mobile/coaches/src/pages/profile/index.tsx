@@ -1,6 +1,6 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Switch, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Switch, View } from 'react-native';
 
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
@@ -8,7 +8,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { FieldRow } from '@/components/ui/field-row';
-import { Pill } from '@/components/ui/pill';
+import { Chip } from '@/components/ui/pill';
 import { Section } from '@/components/ui/section';
 import { Radii, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth';
@@ -17,6 +17,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { coachInviteApi, coachProfileApi, planApi, type CoachProfile } from '@/lib/api';
 import { pickAndUploadImage } from '@/lib/image-upload';
 import { formatPhone, INVALID_PHONE_MESSAGE, parsePhone, phoneFieldHint, phoneForEditing } from '@/lib/phone';
+import { AppearanceSection, TextField } from '@coachos/theme';
 
 type Stats = { clients: number; workoutPlans: number; dietPlans: number };
 
@@ -230,7 +231,7 @@ export function ProfileScreen() {
           style={styles.avatarButton}>
           <Avatar name={profile.name} size="lg" imageUrl={profile.avatarUrl} />
           {isUploadingAvatar ? (
-            <View style={[styles.avatarOverlay, { backgroundColor: theme.surfaceSunken }]}>
+            <View style={[styles.avatarOverlay, { backgroundColor: theme.surfaceInset }]}>
               <ActivityIndicator size="small" color={theme.textSecondary} />
             </View>
           ) : null}
@@ -239,7 +240,7 @@ export function ProfileScreen() {
         <View style={styles.identityText}>
           <ThemedText type="display">{profile.name}</ThemedText>
           <View style={styles.identityMeta}>
-            <Pill label="Coach" />
+            <Chip label="Coach" tone="green" />
             <ThemedText type="meta">Coaching since {formatMemberSince(profile.memberSince)}</ThemedText>
           </View>
           <ThemedText type="meta">
@@ -280,12 +281,10 @@ export function ProfileScreen() {
               <ThemedText type="label" themeColor="textSecondary">
                 Name
               </ThemedText>
-              <TextInput
-                style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+              <TextField
                 value={draft.name}
                 onChangeText={(value) => setDraft({ ...draft, name: value })}
                 placeholder="Your full name"
-                placeholderTextColor={theme.textMuted}
                 editable={!isSaving}
               />
             </View>
@@ -294,12 +293,10 @@ export function ProfileScreen() {
               <ThemedText type="label" themeColor="textSecondary">
                 Phone
               </ThemedText>
-              <TextInput
-                style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+              <TextField
                 value={draft.phone}
                 onChangeText={(value) => setDraft({ ...draft, phone: value })}
                 placeholder="98765 43210"
-                placeholderTextColor={theme.textMuted}
                 keyboardType="phone-pad"
                 autoComplete="tel"
                 textContentType="telephoneNumber"
@@ -313,12 +310,10 @@ export function ProfileScreen() {
               <ThemedText type="label" themeColor="textSecondary">
                 Years of experience
               </ThemedText>
-              <TextInput
-                style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+              <TextField
                 value={draft.yearsExperience}
                 onChangeText={(value) => setDraft({ ...draft, yearsExperience: value })}
                 placeholder="e.g. 7"
-                placeholderTextColor={theme.textMuted}
                 keyboardType="number-pad"
                 editable={!isSaving}
               />
@@ -328,12 +323,10 @@ export function ProfileScreen() {
               <ThemedText type="label" themeColor="textSecondary">
                 Specialties
               </ThemedText>
-              <TextInput
-                style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+              <TextField
                 value={draft.specialties}
                 onChangeText={(value) => setDraft({ ...draft, specialties: value })}
                 placeholder="Strength, Mobility, Nutrition"
-                placeholderTextColor={theme.textMuted}
                 editable={!isSaving}
               />
               <ThemedText type="meta">Separate each one with a comma.</ThemedText>
@@ -343,12 +336,10 @@ export function ProfileScreen() {
               <ThemedText type="label" themeColor="textSecondary">
                 Bio
               </ThemedText>
-              <TextInput
-                style={[styles.input, styles.multiline, { borderColor: theme.border, color: theme.text }]}
+              <TextField
                 value={draft.bio}
                 onChangeText={(value) => setDraft({ ...draft, bio: value })}
                 placeholder="What you focus on, who you work best with"
-                placeholderTextColor={theme.textMuted}
                 multiline
                 editable={!isSaving}
               />
@@ -393,7 +384,7 @@ export function ProfileScreen() {
               ) : (
                 <View style={styles.specialtyPills}>
                   {profile.specialties.map((specialty) => (
-                    <Pill key={specialty} label={specialty} tone="neutral" />
+                    <Chip key={specialty} label={specialty} tone="green" />
                   ))}
                 </View>
               )}
@@ -418,13 +409,13 @@ export function ProfileScreen() {
               value={profile.listedInExplore}
               onValueChange={(listed) => void handleListingChange(listed)}
               disabled={isSavingListing}
-              trackColor={{ false: theme.border, true: theme.accent }}
+              trackColor={{ false: theme.border, true: theme.primary }}
               // Not `surface`: in dark mode that is the card colour itself, so the
-              // thumb vanished. Muted when off, and onAccent on the accent track.
-              thumbColor={profile.listedInExplore ? theme.onAccent : theme.textMuted}
+              // thumb vanished. Muted when off, and onPrimary on the accent track.
+              thumbColor={profile.listedInExplore ? theme.onPrimary : theme.textMuted}
               // React Native Web ignores thumbColor while on and falls back to its own
-              // teal (#009688); activeThumbColor is its web-only override.
-              {...({ activeThumbColor: theme.onAccent } as object)}
+              // Material teal; activeThumbColor is its web-only override.
+              {...({ activeThumbColor: theme.onPrimary } as object)}
             />
           </View>
           {profile.listedInExplore && profile.approvalStatus !== 'APPROVED' ? (
@@ -439,6 +430,8 @@ export function ProfileScreen() {
           ) : null}
         </Card>
       </Section>
+
+      <AppearanceSection />
 
       <Section title="Account">
         <Card>
@@ -538,19 +531,6 @@ const styles = StyleSheet.create({
   },
   field: {
     gap: Spacing.one,
-  },
-  input: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: Radii.sm,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    fontSize: 16,
-    minHeight: 44,
-  },
-  multiline: {
-    minHeight: 96,
-    textAlignVertical: 'top',
-    paddingTop: Spacing.two,
   },
   formActions: {
     flexDirection: 'row',

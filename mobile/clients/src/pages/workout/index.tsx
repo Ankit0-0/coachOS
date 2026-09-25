@@ -1,6 +1,6 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { DetailHeader } from '@/components/detail-header';
 import { LockedState } from '@/components/locked-state';
@@ -8,7 +8,9 @@ import { PlanStateCard } from '@/components/plan-state-card';
 import { RestDayCard } from '@/components/rest-day-card';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Chip } from '@/components/ui/pill';
 import { ExerciseCard } from '@/components/workout/exercise-card';
 import { SetFeedbackPanel } from '@/components/workout/set-feedback-panel';
 import { Spacing } from '@/constants/theme';
@@ -20,6 +22,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { trackingApi } from '@/lib/api';
 import { todayKey } from '@/lib/dates';
 import { formatDuration } from '@/lib/plan-units';
+import { ProgressBar } from '@coachos/theme';
 import {
   cycleDayLabel,
   workoutDayOf,
@@ -214,8 +217,6 @@ export function WorkoutDetailsScreen() {
     <ScreenScaffold refreshing={isRefreshing} onRefresh={refresh}>
       <DetailHeader title="Workout" subtitle={workoutAssignment.title} />
 
-      <ThemedText type="meta">{cycleDayLabel(today)}</ThemedText>
-
       {tracking.error ? (
         <PlanStateCard
           tone="danger"
@@ -224,20 +225,21 @@ export function WorkoutDetailsScreen() {
         />
       ) : null}
 
-      <ThemedView type="backgroundElement" style={[styles.summary, { borderColor: theme.border }]}>
-        <View style={styles.summaryHeader}>
-          <ThemedText type="smallBold" themeColor="accent">
-            {formatDuration(day?.duration ?? '')}
-          </ThemedText>
-          <ThemedText type="smallBold" themeColor="textSecondary">
-            {completedSets}/{totalSets} sets checked
-          </ThemedText>
+      <Card style={styles.summary}>
+        <View style={styles.summaryChips}>
+          <Chip label={`Workout · ${cycleDayLabel(today)}`} tone="green" />
+          {day?.duration ? <Chip label={formatDuration(day.duration)} tone="neutral" /> : null}
         </View>
-        {day?.label ? <ThemedText>{day.label}</ThemedText> : null}
+        {day?.label ? <ThemedText type="heading">{day.label}</ThemedText> : null}
+        <ProgressBar
+          value={totalSets > 0 ? completedSets / totalSets : 0}
+          color="chartWorkout"
+          label={`${completedSets} of ${totalSets} sets checked`}
+        />
         <ThemedText type="small" themeColor="textSecondary">
-          Tap a set row to add temporary comments or a video reference for your coach.
+          Tap a set to leave a comment or a video reference for your coach.
         </ThemedText>
-      </ThemedView>
+      </Card>
 
       <View style={styles.list}>
         {exercises.map((exercise) => (
@@ -260,18 +262,11 @@ export function WorkoutDetailsScreen() {
             {saveMessage}
           </ThemedText>
         ) : null}
-        <Pressable
-          accessibilityRole="button"
+        <Button
+          label={isSavingLog ? 'Saving…' : 'Save workout log'}
+          loading={isSavingLog}
           onPress={handleSaveWorkoutLog}
-          disabled={isSavingLog}
-          style={({ pressed }) => [
-            styles.saveLogButton,
-            { backgroundColor: theme.accent, opacity: isSavingLog ? 0.6 : pressed ? 0.8 : 1 },
-          ]}>
-          <ThemedText type="smallBold" themeColor="onAccent">
-            {isSavingLog ? 'Saving…' : 'Save workout log'}
-          </ThemedText>
-        </Pressable>
+        />
       </View>
 
       <SetFeedbackPanel
@@ -292,30 +287,21 @@ export function WorkoutDetailsScreen() {
 
 const styles = StyleSheet.create({
   summary: {
-    borderRadius: Spacing.two,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: Spacing.three,
-    gap: Spacing.one,
+    gap: Spacing.twoHalf,
   },
-  summaryHeader: {
+  summaryChips: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: Spacing.three,
+    flexWrap: 'wrap',
+    gap: Spacing.two,
   },
   list: {
     gap: Spacing.three,
   },
   footer: {
-    marginTop: Spacing.three,
-    gap: Spacing.one,
+    marginTop: Spacing.two,
+    gap: Spacing.two,
   },
   footerMessage: {
     textAlign: 'center',
-  },
-  saveLogButton: {
-    paddingVertical: Spacing.three,
-    borderRadius: Spacing.two,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });

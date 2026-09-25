@@ -1,18 +1,17 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 
 import { DetailHeader } from '@/components/detail-header';
 import { EXPERIENCE_ICON, StatChip } from '@/components/explore/StatChip';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, InsetPanel, Row } from '@/components/ui/card';
 import { FieldRow } from '@/components/ui/field-row';
 import { InlineNotice } from '@/components/ui/inline-notice';
-import { Pill } from '@/components/ui/pill';
+import { Chip, Pill } from '@/components/ui/pill';
 import { Section } from '@/components/ui/section';
 import { Spacing } from '@/constants/theme';
 import { useRefresh } from '@/hooks/use-refresh';
@@ -191,13 +190,13 @@ export function MyCoachScreen() {
 
           <Section title="About">
             <Card style={styles.aboutCard}>
-              <ThemedText type="small" themeColor={coach.bio ? 'text' : 'textSecondary'}>
+              <ThemedText type="small" themeColor={coach.bio ? 'textPrimary' : 'textSecondary'}>
                 {coach.bio ?? `${coach.name} hasn’t written a bio yet.`}
               </ThemedText>
               {coach.specialties && coach.specialties.length > 0 ? (
                 <View style={styles.specialties}>
                   {coach.specialties.map((specialty) => (
-                    <Pill key={specialty} label={specialty} />
+                    <Chip key={specialty} label={specialty} tone="green" />
                   ))}
                 </View>
               ) : null}
@@ -220,85 +219,71 @@ export function MyCoachScreen() {
           ) : null}
         </>
       ) : pendingInvites.length > 0 ? (
-        <View style={styles.section}>
-          <ThemedText type="smallBold">Pending invites</ThemedText>
-          {pendingInvites.map((invite) => (
-            <ThemedView key={invite.id} type="backgroundElement" style={[styles.inviteRow, { borderColor: theme.border }]}>
-              <View style={styles.inviteInfo}>
-                <ThemedText type="smallBold">{invite.coach?.name ?? 'A coach'}</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  {invite.coach?.email ?? ''}
-                </ThemedText>
-              </View>
-              <View style={styles.inviteActions}>
-                <Pressable
-                  style={[styles.actionButton, { backgroundColor: theme.accent }]}
-                  onPress={() => handleAccept(invite)}
-                  disabled={actioningId === invite.id}>
-                  {actioningId === invite.id ? (
-                    <ActivityIndicator color={theme.onAccent} size="small" />
-                  ) : (
-                    <ThemedText type="small" themeColor="onAccent">
-                      Accept
+        <Section title="Pending invites">
+          <Card style={styles.listCard}>
+            <InsetPanel>
+              {pendingInvites.map((invite) => (
+                <Row key={invite.id} style={styles.inviteRow}>
+                  <Avatar name={invite.coach?.name ?? 'A coach'} size="row" imageUrl={invite.coach?.avatarUrl ?? null} />
+                  <View style={styles.inviteInfo}>
+                    <ThemedText type="smallBold">{invite.coach?.name ?? 'A coach'}</ThemedText>
+                    <ThemedText type="meta" numberOfLines={1}>
+                      {invite.coach?.email ?? ''}
                     </ThemedText>
-                  )}
-                </Pressable>
-                <Pressable
-                  style={[styles.actionButton, { borderColor: theme.border, borderWidth: 1 }]}
-                  onPress={() => handleDecline(invite)}
-                  disabled={actioningId === invite.id}>
-                  <ThemedText type="small" themeColor="textSecondary">
-                    Decline
-                  </ThemedText>
-                </Pressable>
-              </View>
-            </ThemedView>
-          ))}
-        </View>
+                  </View>
+                  <View style={styles.inviteActions}>
+                    <Button
+                      label="Decline"
+                      variant="secondary"
+                      size="sm"
+                      onPress={() => handleDecline(invite)}
+                      disabled={actioningId === invite.id}
+                    />
+                    <Button
+                      label="Accept"
+                      size="sm"
+                      loading={actioningId === invite.id}
+                      onPress={() => handleAccept(invite)}
+                    />
+                  </View>
+                </Row>
+              ))}
+            </InsetPanel>
+          </Card>
+        </Section>
       ) : (
-        <ThemedView type="backgroundElement" style={[styles.panel, styles.emptyPanel, { borderColor: theme.border }]}>
-          <ThemedText type="smallBold">No coach yet</ThemedText>
+        <Card style={styles.emptyPanel}>
+          <ThemedText type="heading">No coach yet</ThemedText>
           <ThemedText type="small" themeColor="textSecondary" style={styles.emptyText}>
             Browse coaches and find the right fit for your goals.
           </ThemedText>
-          <Pressable
-            style={[styles.exploreButton, { backgroundColor: theme.accent }]}
-            onPress={() => router.push('/explore-coaches')}>
-            <ThemedText type="smallBold" themeColor="onAccent">
-              Explore coaches
-            </ThemedText>
-          </Pressable>
-        </ThemedView>
+          <Button label="Explore coaches" fullWidth onPress={() => router.push('/explore-coaches')} />
+        </Card>
       )}
 
       {!isLoading && sentRequests.length > 0 ? (
-        <View style={styles.section}>
-          <ThemedText type="smallBold">Requests you&apos;ve sent</ThemedText>
-          {sentRequests.map((request) => (
-            <ThemedView key={request.id} type="backgroundElement" style={[styles.inviteRow, { borderColor: theme.border }]}>
-              <View style={styles.inviteInfo}>
-                <ThemedText type="smallBold">{request.coach?.name ?? 'A coach'}</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  Waiting for a reply · sent {longDateLabel(request.createdAt)}
-                </ThemedText>
-              </View>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Cancel request to ${request.coach?.name ?? 'coach'}`}
-                style={[styles.actionButton, { borderColor: theme.border, borderWidth: 1 }]}
-                onPress={() => void handleCancelRequest(request)}
-                disabled={actioningId === request.id}>
-                {actioningId === request.id ? (
-                  <ActivityIndicator color={theme.textSecondary} size="small" />
-                ) : (
-                  <ThemedText type="small" themeColor="textSecondary">
-                    Cancel
-                  </ThemedText>
-                )}
-              </Pressable>
-            </ThemedView>
-          ))}
-        </View>
+        <Section title="Requests you've sent">
+          <Card style={styles.listCard}>
+            <InsetPanel>
+              {sentRequests.map((request) => (
+                <Row key={request.id} style={styles.inviteRow}>
+                  <View style={styles.inviteInfo}>
+                    <ThemedText type="smallBold">{request.coach?.name ?? 'A coach'}</ThemedText>
+                    <ThemedText type="meta">Waiting for a reply · sent {longDateLabel(request.createdAt)}</ThemedText>
+                  </View>
+                  <Button
+                    label="Cancel"
+                    variant="secondary"
+                    size="sm"
+                    accessibilityLabel={`Cancel request to ${request.coach?.name ?? 'coach'}`}
+                    loading={actioningId === request.id}
+                    onPress={() => void handleCancelRequest(request)}
+                  />
+                </Row>
+              ))}
+            </InsetPanel>
+          </Card>
+        </Section>
       ) : null}
     </ScreenScaffold>
   );
@@ -342,41 +327,23 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     paddingVertical: Spacing.three,
   },
-  panel: {
-    borderRadius: Spacing.two,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: Spacing.three,
-    gap: Spacing.two,
-  },
   emptyPanel: {
     alignItems: 'center',
-    paddingVertical: Spacing.four,
+    gap: Spacing.twoHalf,
   },
   emptyText: {
     textAlign: 'center',
   },
-  exploreButton: {
-    borderRadius: Spacing.two,
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two,
-    marginTop: Spacing.one,
+  listCard: {
+    padding: Spacing.twoHalf,
   },
   actionRow: {
     flexDirection: 'row',
     gap: Spacing.two,
     paddingTop: Spacing.one,
   },
-  section: {
-    gap: Spacing.two,
-  },
   inviteRow: {
-    borderRadius: Spacing.two,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: Spacing.three,
-    gap: Spacing.two,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    paddingVertical: Spacing.twoHalf,
   },
   inviteInfo: {
     flex: 1,
@@ -385,12 +352,5 @@ const styles = StyleSheet.create({
   inviteActions: {
     flexDirection: 'row',
     gap: Spacing.two,
-  },
-  actionButton: {
-    borderRadius: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });

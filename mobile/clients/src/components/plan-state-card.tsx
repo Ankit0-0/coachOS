@@ -1,8 +1,8 @@
 import { StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Radii, Spacing } from '@/constants/theme';
+import { Card } from '@/components/ui/card';
+import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 type PlanStateCardProps = {
@@ -20,28 +20,19 @@ export function PlanStateCard({ title, message, tone = 'neutral' }: PlanStateCar
   const theme = useTheme();
 
   return (
-    <ThemedView
-      type="backgroundElement"
-      style={[
-        styles.panel,
-        { borderColor: theme.border },
-        tone === 'danger' && { backgroundColor: theme.dangerSoft },
-      ]}>
-      <ThemedText type="smallBold" themeColor={tone === 'danger' ? 'danger' : 'text'}>
+    <Card style={[styles.panel, tone === 'danger' && { backgroundColor: theme.dangerSoft }]}>
+      <ThemedText type="smallBold" themeColor={tone === 'danger' ? 'danger' : 'textPrimary'}>
         {title}
       </ThemedText>
       <ThemedText type="small" themeColor={tone === 'danger' ? 'danger' : 'textSecondary'}>
         {message}
       </ThemedText>
-    </ThemedView>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
   panel: {
-    borderRadius: Radii.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: Spacing.four,
     gap: Spacing.one,
   },
 });

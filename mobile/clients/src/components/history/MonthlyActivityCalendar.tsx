@@ -82,10 +82,10 @@ export function MonthlyActivityCalendar({
             <View key={dayNumber} style={styles.dayCell}>
               <View style={styles.dayIndicatorWrap}>
                 {isRest ? (
-                  <View style={[styles.restDayMark, { backgroundColor: theme.chartTrack }]} />
+                  <View style={[styles.restDayMark, { backgroundColor: theme.chartEmpty }]} />
                 ) : isActive ? (
                   <Svg width={28} height={28} viewBox="0 0 28 28">
-                    <Circle cx={14} cy={14} r={9} fill="none" stroke={theme.chartTrack} strokeWidth={2} opacity={0.5} />
+                    <Circle cx={14} cy={14} r={9} fill="none" stroke={theme.chartEmpty} strokeWidth={2} opacity={0.5} />
                     <Circle
                       cx={14}
                       cy={14}
@@ -103,7 +103,7 @@ export function MonthlyActivityCalendar({
                       cy={14}
                       r={6}
                       fill="none"
-                      stroke={theme.chartTrack}
+                      stroke={theme.chartEmpty}
                       strokeWidth={2}
                       opacity={0.45}
                     />
@@ -121,7 +121,7 @@ export function MonthlyActivityCalendar({
                     />
                   </Svg>
                 ) : (
-                  <View style={[styles.emptyDayCircle, { borderColor: theme.chartTrack }]} />
+                  <View style={[styles.emptyDayCircle, { borderColor: theme.chartEmpty }]} />
                 )}
               </View>
               <ThemedText type="meta" themeColor="chartAxis" style={styles.dayNumber}>

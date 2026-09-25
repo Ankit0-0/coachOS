@@ -1,10 +1,11 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { GoogleSignInButton } from '@/components/auth/google-sign-in-button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { Chip } from '@/components/ui/pill';
 import { Button } from '@/components/ui/button';
 import { KeyboardForm } from '@/components/ui/keyboard-form';
 import { PasswordInput } from '@/components/ui/password-input';
@@ -12,6 +13,7 @@ import { Radii, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth';
 import { useTheme } from '@/hooks/use-theme';
 import { describeError } from '@/lib/api-errors';
+import { TextField } from '@coachos/theme';
 
 export default function SignInScreen() {
   const router = useRouter();
@@ -45,12 +47,12 @@ export default function SignInScreen() {
     <ThemedView style={styles.screen}>
       <KeyboardForm contentContainerStyle={styles.container}>
         <View style={styles.top}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()} hitSlop={8} style={styles.back}>
+          <Pressable accessibilityRole="button" onPress={() => router.back()} hitSlop={12} style={styles.back}>
             <ThemedText type="linkPrimary">Back</ThemedText>
           </Pressable>
 
           <View style={styles.header}>
-            <ThemedText type="meta">COACH OS · CLIENT APP</ThemedText>
+            <Chip label="Client app" tone="terracotta" />
             <ThemedText type="display">Sign in</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
               Welcome back.
@@ -62,10 +64,8 @@ export default function SignInScreen() {
               <ThemedText type="label" themeColor="textSecondary">
                 Email
               </ThemedText>
-              <TextInput
-                style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+              <TextField
                 placeholder="you@example.com"
-                placeholderTextColor={theme.textMuted}
                 value={email}
                 onChangeText={setEmail}
                 editable={!isLoading}
@@ -92,7 +92,7 @@ export default function SignInScreen() {
             <Pressable
               accessibilityRole="button"
               onPress={() => router.push('/auth/forgot-password')}
-              hitSlop={8}
+              hitSlop={12}
               style={styles.forgot}>
               <ThemedText type="linkPrimary">Forgot password?</ThemedText>
             </Pressable>
@@ -122,7 +122,7 @@ export default function SignInScreen() {
             <ThemedText type="small" themeColor="textSecondary">
               Don&apos;t have an account?
             </ThemedText>
-            <Pressable accessibilityRole="button" onPress={() => router.push('/auth/signup')} hitSlop={8}>
+            <Pressable accessibilityRole="button" onPress={() => router.push('/auth/signup')} hitSlop={12}>
               <ThemedText type="linkPrimary">Create one</ThemedText>
             </Pressable>
           </View>
@@ -160,14 +160,6 @@ const styles = StyleSheet.create({
   },
   forgot: {
     alignSelf: 'flex-end',
-  },
-  input: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: Radii.sm,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    fontSize: 16,
-    minHeight: 48,
   },
   actions: {
     gap: Spacing.three,

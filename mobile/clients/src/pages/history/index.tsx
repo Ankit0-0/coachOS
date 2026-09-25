@@ -1,6 +1,6 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, View } from 'react-native';
 
 import { MonthNavigator } from '@/components/history/MonthNavigator';
 import { MonthlyActivityCalendar, type DailyActivity } from '@/components/history/MonthlyActivityCalendar';
@@ -10,8 +10,9 @@ import { LockedState } from '@/components/locked-state';
 import { PlanStateCard } from '@/components/plan-state-card';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Radii, Spacing } from '@/constants/theme';
 import { useOnboardingStatus } from '@/hooks/use-onboarding-status';
 import { useScheduleRange } from '@/hooks/use-schedule';
 import { useTheme } from '@/hooks/use-theme';
@@ -23,6 +24,7 @@ import { confirmDestructive } from '@/lib/confirm';
 import { pickAndUploadImage } from '@/lib/image-upload';
 import { parseWeightInput } from '@/lib/weight';
 import { DEFAULT_WEIGHT_RANGE, weightRangeDates, type WeightRangeKey } from '@/lib/weight-range';
+import { TextField } from '@coachos/theme';
 
 export function HistoryScreen() {
   const theme = useTheme();
@@ -296,12 +298,8 @@ export function HistoryScreen() {
   return (
     <ScreenScaffold refreshing={isRefreshing} onRefresh={refresh}>
       <View style={styles.header}>
-        <ThemedText type="smallBold" themeColor="accent">
-          History
-        </ThemedText>
-        <ThemedText type="subtitle" style={styles.title}>
-          Weight trend
-        </ThemedText>
+        <ThemedText type="display">History</ThemedText>
+        <ThemedText themeColor="textSecondary">Your weight trend and check-ins.</ThemedText>
       </View>
 
       {loadError ? (
@@ -312,9 +310,9 @@ export function HistoryScreen() {
         />
       ) : null}
 
-      <ThemedView type="backgroundElement" style={[styles.chartCard, { borderColor: theme.border }]}>
+      <Card style={styles.chartCard}>
         <View style={styles.chartHeader}>
-          <ThemedText type="smallBold">Weight</ThemedText>
+          <ThemedText type="heading">Weight</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
             {isLoadingWeights ? 'Loading…' : average !== null ? `${average.toFixed(1)} kg avg` : 'No data yet'}
           </ThemedText>
@@ -325,62 +323,43 @@ export function HistoryScreen() {
         <WeightChart entries={weights} from={chartRange.from} to={chartRange.to} />
 
         <View style={styles.weightForm}>
-          <TextInput
-            style={[
-              styles.weightInput,
-              { color: theme.text, borderColor: theme.border, backgroundColor: theme.backgroundElement },
-            ]}
+          <TextField
+            style={styles.weightInput}
             value={weightInput}
             onChangeText={setWeightInput}
             keyboardType="decimal-pad"
             placeholder={todayEntry ? `Today: ${todayEntry.weightKg} kg` : "Today's weight (kg)"}
-            placeholderTextColor={theme.textSecondary}
+            accessibilityLabel="Today's weight in kilograms"
             editable={!isLoggingWeight}
           />
-          <Pressable
-            accessibilityRole="button"
+          <Button
+            label={isLoggingWeight ? 'Saving…' : 'Save'}
+            loading={isLoggingWeight}
             onPress={handleLogWeight}
-            disabled={isLoggingWeight}
-            style={({ pressed }) => [
-              styles.logButton,
-              { backgroundColor: theme.accent, opacity: isLoggingWeight ? 0.6 : pressed ? 0.8 : 1 },
-            ]}
-          >
-            <ThemedText type="smallBold" themeColor="onAccent">
-              {isLoggingWeight ? 'Saving…' : 'Save weight'}
-            </ThemedText>
-          </Pressable>
+          />
         </View>
-        <Pressable
-          accessibilityRole="button"
+        <Button
+          label={photoDisplayUri ? 'Change progress photo' : 'Add a progress photo'}
+          variant="secondary"
+          icon={{ ios: 'camera', android: 'photo_camera', web: 'photo_camera' }}
           accessibilityLabel={photoDisplayUri ? 'Change progress photo' : 'Add progress photo'}
-          onPress={() => void handlePickPhoto()}
+          loading={isUploadingPhoto}
           disabled={isUploadingPhoto || isLoggingWeight}
-          style={({ pressed }) => [
-            styles.photoButton,
-            { borderColor: theme.border, opacity: isUploadingPhoto ? 0.6 : pressed ? 0.8 : 1 },
-          ]}>
-          {isUploadingPhoto ? (
-            <ActivityIndicator size="small" color={theme.accent} />
-          ) : (
-            <ThemedText type="small" themeColor="textSecondary">
-              {photoDisplayUri ? 'Change progress photo' : 'Add a progress photo (optional)'}
-            </ThemedText>
-          )}
-        </Pressable>
+          onPress={() => void handlePickPhoto()}
+        />
 
         {photoDisplayUri ? (
           <>
             <Image
               source={{ uri: photoDisplayUri }}
               accessibilityLabel="Progress photo for today"
-              style={[styles.photoPreview, { backgroundColor: theme.surfaceSunken }]}
+              style={[styles.photoPreview, { backgroundColor: theme.surfaceInset }]}
             />
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Remove progress photo"
               onPress={() => void handleRemovePhoto()}
-              hitSlop={8}
+              hitSlop={12}
               style={styles.removePhoto}>
               <ThemedText type="small" themeColor="danger">
                 Remove photo
@@ -397,9 +376,9 @@ export function HistoryScreen() {
             {weightMessage}
           </ThemedText>
         ) : null}
-      </ThemedView>
+      </Card>
 
-      <ThemedView type="backgroundElement" style={[styles.activityCard, { borderColor: theme.border }]}>
+      <Card style={styles.activityCard}>
         <View style={styles.activityHeader}>
           <MonthNavigator
             label={month.monthYearLabel}
@@ -445,7 +424,7 @@ export function HistoryScreen() {
             />
           </>
         )}
-      </ThemedView>
+      </Card>
     </ScreenScaffold>
   );
 }
@@ -455,12 +434,8 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     paddingVertical: Spacing.one,
   },
-  header: { gap: Spacing.one },
-  title: { fontSize: 32, lineHeight: 38 },
+  header: { gap: Spacing.two, paddingTop: Spacing.two },
   chartCard: {
-    borderRadius: Spacing.two,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: Spacing.three,
     gap: Spacing.three,
   },
   chartHeader: {
@@ -473,44 +448,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
   },
-  photoButton: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: Spacing.two,
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.two,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 40,
-  },
   photoPreview: {
     width: '100%',
     height: 140,
-    borderRadius: Spacing.two,
+    borderRadius: Radii.md,
   },
   weightInput: {
     flex: 1,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: Spacing.two,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.two,
-    fontSize: 14,
-  },
-  logButton: {
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    borderRadius: Spacing.two,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   weightMessage: {
     textAlign: 'center',
   },
   activityCard: {
-    borderRadius: Spacing.two,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: Spacing.three,
-    marginTop: Spacing.three,
-    gap: Spacing.one,
+    gap: Spacing.two,
   },
   activityHeader: { alignItems: 'center' },
   summaryText: { marginBottom: Spacing.one },
@@ -520,6 +470,6 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     marginBottom: Spacing.one,
   },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  legendDot: { width: 10, height: 10, borderRadius: 5 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one + Spacing.half },
+  legendDot: { width: 10, height: 10, borderRadius: Radii.pill },
 });

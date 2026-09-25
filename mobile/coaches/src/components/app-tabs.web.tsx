@@ -8,12 +8,12 @@ import {
 } from 'expo-router/ui';
 import { SymbolView } from 'expo-symbols';
 import { ComponentProps } from 'react';
-import { Pressable, useColorScheme, View, StyleSheet } from 'react-native';
+import { Pressable, View, StyleSheet } from 'react-native';
 
 import { ThemedText } from './themed-text';
-import { ThemedView } from './themed-view';
 
-import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Radii, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 type TabIconName = ComponentProps<typeof SymbolView>['name'];
 
@@ -53,34 +53,26 @@ export function TabButton({
   label,
   ...props
 }: TabTriggerSlotProps & { iconName: TabIconName; label: string }) {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const theme = useTheme();
 
   return (
     <Pressable {...props} style={({ pressed }) => [styles.tabButton, pressed && styles.pressed]}>
-      <ThemedView type="background" style={styles.tabButtonView}>
-        <SymbolView
-          name={iconName}
-          size={22}
-          tintColor={isFocused ? colors.accent : colors.textSecondary}
-        />
-        <ThemedText type="small" themeColor={isFocused ? 'text' : 'textSecondary'} style={styles.tabLabel}>
+      <View style={[styles.tabButtonView, isFocused && { backgroundColor: theme.tabActiveBg }]}>
+        <SymbolView name={iconName} size={22} tintColor={isFocused ? theme.primary : theme.textMuted} />
+        <ThemedText type="chip" themeColor={isFocused ? 'primary' : 'textMuted'} style={styles.tabLabel}>
           {label}
         </ThemedText>
-      </ThemedView>
+      </View>
     </Pressable>
   );
 }
 
 export function CustomTabList(props: TabListProps) {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const theme = useTheme();
 
   return (
-    <View {...props} style={[styles.tabListContainer, { backgroundColor: colors.background }]}>
-      <ThemedView type="background" style={[styles.innerContainer, { borderTopColor: colors.border }]}>
-        {props.children}
-      </ThemedView>
+    <View {...props} style={[styles.tabListContainer, { backgroundColor: theme.surface, borderTopColor: theme.border }]}>
+      <View style={styles.innerContainer}>{props.children}</View>
     </View>
   );
 }
@@ -93,6 +85,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',
+    borderTopWidth: 1,
   },
   innerContainer: {
     paddingTop: Spacing.two,
@@ -102,8 +95,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexGrow: 1,
     justifyContent: 'space-around',
+    gap: Spacing.two,
     maxWidth: MaxContentWidth,
-    borderTopWidth: StyleSheet.hairlineWidth,
   },
   tabButton: {
     flex: 1,
@@ -115,11 +108,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.half,
-    minHeight: 48,
+    minHeight: 52,
+    borderRadius: Radii.lg,
   },
   tabLabel: {
-    fontSize: 11,
-    lineHeight: 14,
     textAlign: 'center',
   },
 });

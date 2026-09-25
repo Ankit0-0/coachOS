@@ -56,14 +56,17 @@ export function CoachStrip({ coach }: CoachStripProps) {
           accessibilityRole="button"
           accessibilityLabel={`Your coach, ${coach.name}. Open coach details`}
           onPress={() => router.push('/my-coach')}
-          style={({ pressed }) => [StyleSheet.absoluteFill, pressed && { backgroundColor: theme.backgroundSelected }]}
+          style={({ pressed }) => [StyleSheet.absoluteFill, pressed && { backgroundColor: theme.surfaceInset }]}
         />
         <View style={styles.row}>
           <View style={[styles.identity, styles.passThrough]} aria-hidden>
-            <Avatar name={coach.name} size="sm" imageUrl={coach.avatarUrl ?? null} />
-            <ThemedText type="smallBold" numberOfLines={1} style={styles.name}>
-              {coach.name}
-            </ThemedText>
+            <Avatar name={coach.name} size="row" imageUrl={coach.avatarUrl ?? null} />
+            <View style={styles.name}>
+              <ThemedText type="meta">Your coach</ThemedText>
+              <ThemedText type="smallBold" numberOfLines={1}>
+                {coach.name}
+              </ThemedText>
+            </View>
           </View>
           {hasNumber ? (
             <View style={styles.actions}>
@@ -78,8 +81,8 @@ export function CoachStrip({ coach }: CoachStripProps) {
           <View style={styles.passThrough} aria-hidden>
             <SymbolView
               name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }}
-              size={20}
-              tintColor={theme.accent}
+              size={18}
+              tintColor={theme.textMuted}
             />
           </View>
         </View>
@@ -94,15 +97,16 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
   },
   strip: {
-    borderRadius: Radii.md,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: Radii.xl,
+    borderWidth: 1,
     overflow: 'hidden',
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
-    padding: Spacing.two,
+    gap: Spacing.twoHalf,
+    paddingVertical: Spacing.twoHalf,
+    paddingHorizontal: Spacing.three,
     // Taps land on the press layer behind, except where a child claims them.
     pointerEvents: 'box-none',
   },
@@ -117,6 +121,7 @@ const styles = StyleSheet.create({
   },
   name: {
     flex: 1,
+    gap: Spacing.half,
   },
   actions: {
     flexDirection: 'row',

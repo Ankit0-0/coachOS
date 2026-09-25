@@ -2,16 +2,17 @@
 import { Sentry, useNavigationBreadcrumbs } from '@/lib/sentry';
 
 import {
-  Inter_400Regular,
-  Inter_500Medium,
-  Inter_600SemiBold,
-  Inter_700Bold,
-  useFonts,
-} from '@expo-google-fonts/inter';
+  FontAssets,
+  ThemeProvider as AppearanceProvider,
+  ThemedStatusBar,
+  navigationColors,
+  useAppearance,
+  useTheme,
+} from '@coachos/theme';
+import { useFonts } from 'expo-font';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider, usePathname, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
-import { useColorScheme } from 'react-native';
+import { useEffect, useMemo } from 'react';
 
 import { ErrorFallback } from '@/components/error-fallback';
 import { AuthProvider, useAuth } from '@/contexts/auth';
@@ -24,24 +25,25 @@ function isAuthRoute(pathname: string): boolean {
 
 function RootLayoutNav() {
   const { isSignedIn, isLoading } = useAuth();
-  const colorScheme = useColorScheme();
+  const { scheme, ready: appearanceReady } = useAppearance();
+  const theme = useTheme();
   const router = useRouter();
   const pathname = usePathname();
   useNavigationBreadcrumbs();
 
-  // Inter is the app's only typeface, and every text style names one of these
-  // families directly. Rendering before they resolve would show a frame of the
-  // system font at Inter's metrics, so this gates the first paint alongside auth.
-  const [fontsLoaded] = useFonts({
-    Inter_400Regular,
-    Inter_500Medium,
-    Inter_600SemiBold,
-    Inter_700Bold,
-  });
+  // Every text style names one of these families directly, so rendering before
+  // they resolve would flash the system font. The stored appearance gates too,
+  // or a dark-mode user would see a frame of the light theme.
+  const [fontsLoaded] = useFonts(FontAssets);
 
-  const isReady = !isLoading && fontsLoaded;
+  const isReady = !isLoading && fontsLoaded && appearanceReady;
 
-  // Keep the splash screen up until the session is restored and Inter is ready.
+  const navigationTheme = useMemo(() => {
+    const base = scheme === 'dark' ? DarkTheme : DefaultTheme;
+    return { ...base, colors: { ...base.colors, ...navigationColors(theme) } };
+  }, [scheme, theme]);
+
+  // Keep the splash screen up until the session, fonts and appearance are ready.
   useEffect(() => {
     if (isReady) {
       SplashScreen.hideAsync();
@@ -68,7 +70,8 @@ function RootLayoutNav() {
   }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={navigationTheme}>
+      <ThemedStatusBar />
       <Stack screenOptions={{ headerShown: false }}>
         {isSignedIn ? <Stack.Screen name="(tabs)" /> : <Stack.Screen name="auth" />}
       </Stack>
@@ -80,11 +83,13 @@ function RootLayout() {
   return (
     // A render error anywhere below shows a recoverable screen instead of a
     // blank one, and is reported to Sentry on the way.
-    <Sentry.ErrorBoundary fallback={({ resetError }) => <ErrorFallback resetError={resetError} />}>
-      <AuthProvider>
-        <RootLayoutNav />
-      </AuthProvider>
-    </Sentry.ErrorBoundary>
+    <AppearanceProvider storageKey="coachos.client.appearance">
+      <Sentry.ErrorBoundary fallback={({ resetError }) => <ErrorFallback resetError={resetError} />}>
+        <AuthProvider>
+          <RootLayoutNav />
+        </AuthProvider>
+      </Sentry.ErrorBoundary>
+    </AppearanceProvider>
   );
 }
 

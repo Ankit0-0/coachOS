@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -11,6 +11,7 @@ import { Radii, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { authApi } from '@/lib/api';
 import { describeError } from '@/lib/api-errors';
+import { TextField } from '@coachos/theme';
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
@@ -78,7 +79,7 @@ export default function ResetPasswordScreen() {
   return (
     <ThemedView style={styles.container}>
       <KeyboardForm contentContainerStyle={styles.content}>
-        <Pressable accessibilityRole="button" onPress={() => router.back()} hitSlop={8} style={styles.back}>
+        <Pressable accessibilityRole="button" onPress={() => router.back()} hitSlop={12} style={styles.back}>
           <ThemedText type="linkPrimary">Back</ThemedText>
         </Pressable>
 
@@ -94,10 +95,8 @@ export default function ResetPasswordScreen() {
             <ThemedText type="label" themeColor="textSecondary">
               Email
             </ThemedText>
-            <TextInput
-              style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+            <TextField
               placeholder="you@example.com"
-              placeholderTextColor={theme.textMuted}
               value={email}
               onChangeText={setEmail}
               editable={!isLoading}
@@ -111,10 +110,9 @@ export default function ResetPasswordScreen() {
             <ThemedText type="label" themeColor="textSecondary">
               Reset code
             </ThemedText>
-            <TextInput
-              style={[styles.input, styles.codeInput, { borderColor: theme.border, color: theme.text }]}
+            <TextField
+              inputStyle={styles.codeInput}
               placeholder="ABCD2345"
-              placeholderTextColor={theme.textMuted}
               value={code}
               onChangeText={(value) => setCode(value.toUpperCase())}
               editable={!isLoading}
@@ -171,7 +169,7 @@ export default function ResetPasswordScreen() {
             <Pressable
               accessibilityRole="button"
               onPress={() => router.replace('/auth/forgot-password')}
-              hitSlop={8}>
+              hitSlop={12}>
               <ThemedText type="linkPrimary">Request one</ThemedText>
             </Pressable>
           </View>
@@ -207,14 +205,6 @@ const styles = StyleSheet.create({
   },
   field: {
     gap: Spacing.one,
-  },
-  input: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: Radii.sm,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    fontSize: 16,
-    minHeight: 48,
   },
   codeInput: {
     letterSpacing: 4,

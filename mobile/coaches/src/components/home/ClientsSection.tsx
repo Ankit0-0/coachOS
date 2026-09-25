@@ -1,17 +1,18 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useImperativeHandle, useState, type Ref } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { ClientListItem } from '@/components/clients/ClientListItem';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { Pill } from '@/components/ui/pill';
+import { Card, InsetPanel, Row } from '@/components/ui/card';
+import { Chip } from '@/components/ui/pill';
 import { Section } from '@/components/ui/section';
 import { Radii, Spacing } from '@/constants/theme';
 import type { RefreshHandle } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { coachInviteApi, type CoachInvite } from '@/lib/api';
+import { SegmentedControl, TextField } from '@coachos/theme';
 
 const PREVIEW_COUNT = 4;
 
@@ -85,41 +86,43 @@ export function ClientsSection({ ref }: { ref?: Ref<RefreshHandle> }) {
   return (
     <View style={styles.container}>
       <Section
-        title={clients.length > 0 ? `Roster (${clients.length})` : 'Roster'}
+        title="Roster"
+        trailing={clients.length > 0 ? <Chip label={`${clients.length}`} tone="terracotta" /> : undefined}
         {...(hasMore ? { actionLabel: 'View all', onActionPress: () => router.push('/clients') } : {})}>
         {isLoading ? (
           <ActivityIndicator color={theme.textSecondary} />
         ) : preview.length === 0 ? (
-          <Card>
-            <ThemedText type="smallBold">No clients yet</ThemedText>
+          <Card style={styles.emptyCard}>
+            <ThemedText type="heading">No clients yet</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
               Invite someone below and they&apos;ll appear here once they accept.
             </ThemedText>
           </Card>
         ) : (
-          <Card padded={false}>
-            {preview.map((invite, index) => (
-              <ClientListItem
-                key={invite.id}
-                clientId={invite.clientId ?? invite.client?.id ?? ''}
-                name={invite.client?.name ?? invite.clientEmail}
-                email={invite.client?.email ?? invite.clientEmail}
-                avatarUrl={invite.client?.avatarUrl}
-                subscriptionStatus={invite.subscriptionStatus}
-                divider={index < preview.length - 1}
-              />
-            ))}
+          <Card style={styles.listCard}>
+            <InsetPanel>
+              {preview.map((invite) => (
+                <ClientListItem
+                  key={invite.id}
+                  clientId={invite.clientId ?? invite.client?.id ?? ''}
+                  name={invite.client?.name ?? invite.clientEmail}
+                  email={invite.client?.email ?? invite.clientEmail}
+                  avatarUrl={invite.client?.avatarUrl}
+                  subscriptionStatus={invite.subscriptionStatus}
+                />
+              ))}
+            </InsetPanel>
           </Card>
         )}
       </Section>
 
       <Section title="Invite a client">
-        <Card>
+        <Card style={styles.inviteCard}>
           <View style={styles.inviteRow}>
-            <TextInput
-              style={[styles.input, { borderColor: theme.border, color: theme.text }]}
+            <TextField
+              style={styles.emailInput}
+              accessibilityLabel="Client email"
               placeholder="client@example.com"
-              placeholderTextColor={theme.textMuted}
               value={email}
               onChangeText={setEmail}
               editable={!isSending}
@@ -134,27 +137,13 @@ export function ClientsSection({ ref }: { ref?: Ref<RefreshHandle> }) {
             <ThemedText type="label" themeColor="textSecondary">
               Subscription length
             </ThemedText>
-            <View style={styles.durationRow}>
-              {DURATION_OPTIONS.map((option) => {
-                const isSelected = durationMonths === option.value;
-                return (
-                  <Pressable
-                    key={option.label}
-                    accessibilityRole="button"
-                    onPress={() => setDurationMonths(option.value)}
-                    disabled={isSending}
-                    style={[
-                      styles.durationChip,
-                      { borderColor: isSelected ? theme.accent : theme.border },
-                      isSelected && { backgroundColor: theme.accentSoft },
-                    ]}>
-                    <ThemedText type="meta" themeColor={isSelected ? 'accent' : 'textSecondary'}>
-                      {option.label}
-                    </ThemedText>
-                  </Pressable>
-                );
-              })}
-            </View>
+            <SegmentedControl
+              options={DURATION_SEGMENTS}
+              value={durationKey(durationMonths)}
+              onChange={(key) => setDurationMonths(key === 'none' ? null : Number(key))}
+              disabled={isSending}
+              accessibilityLabel="Subscription length"
+            />
           </View>
 
           {formError ? (
@@ -166,16 +155,16 @@ export function ClientsSection({ ref }: { ref?: Ref<RefreshHandle> }) {
           ) : null}
 
           {pending.length > 0 ? (
-            <View style={styles.pendingList}>
+            <InsetPanel>
               {pending.map((invite) => (
-                <View key={invite.id} style={styles.pendingRow}>
-                  <ThemedText type="small" themeColor="textSecondary" numberOfLines={1} style={styles.pendingEmail}>
+                <Row key={invite.id}>
+                  <ThemedText type="small" numberOfLines={1} style={styles.pendingEmail}>
                     {invite.clientEmail}
                   </ThemedText>
-                  <Pill label="Awaiting reply" tone="warning" />
-                </View>
+                  <Chip label="Awaiting reply" tone="warning" />
+                </Row>
               ))}
-            </View>
+            </InsetPanel>
           ) : null}
         </Card>
       </Section>
@@ -183,35 +172,40 @@ export function ClientsSection({ ref }: { ref?: Ref<RefreshHandle> }) {
   );
 }
 
-/** A selected chip is a genuine active state, which is what the accent is for. */
-const DURATION_OPTIONS: { label: string; value: number | null }[] = [
-  { label: '1 month', value: 1 },
-  { label: '3 months', value: 3 },
-  { label: '6 months', value: 6 },
-  { label: '12 months', value: 12 },
-  { label: 'No fixed period', value: null },
+type DurationKey = '1' | '3' | '6' | '12' | 'none';
+
+/** Short labels so five segments fit a phone; the full wording is read out. */
+const DURATION_SEGMENTS: { value: DurationKey; label: string; accessibilityLabel: string }[] = [
+  { value: '1', label: '1 mo', accessibilityLabel: '1 month' },
+  { value: '3', label: '3 mo', accessibilityLabel: '3 months' },
+  { value: '6', label: '6 mo', accessibilityLabel: '6 months' },
+  { value: '12', label: '12 mo', accessibilityLabel: '12 months' },
+  { value: 'none', label: 'Ongoing', accessibilityLabel: 'No fixed period' },
 ];
+
+function durationKey(months: number | null): DurationKey {
+  return months === null ? 'none' : (String(months) as DurationKey);
+}
 
 const styles = StyleSheet.create({
   durationBlock: {
     gap: Spacing.two,
-    marginTop: Spacing.three,
-  },
-  durationRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-  },
-  durationChip: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: Radii.sm,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.one,
   },
   errorBanner: {
     borderRadius: Radii.sm,
     padding: Spacing.three,
-    marginTop: Spacing.three,
+  },
+  emptyCard: {
+    gap: Spacing.one,
+  },
+  listCard: {
+    padding: Spacing.twoHalf,
+  },
+  inviteCard: {
+    gap: Spacing.three,
+  },
+  emailInput: {
+    flex: 1,
   },
   container: {
     gap: Spacing.four,
@@ -220,25 +214,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: Spacing.two,
     alignItems: 'center',
-  },
-  input: {
-    flex: 1,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: Radii.sm,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    fontSize: 16,
-    minHeight: 48,
-  },
-  pendingList: {
-    gap: Spacing.two,
-    paddingTop: Spacing.one,
-  },
-  pendingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.two,
   },
   pendingEmail: {
     flexShrink: 1,

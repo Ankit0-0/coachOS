@@ -1,9 +1,9 @@
 import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Radii, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { Card } from '@/components/ui/card';
+import { Chip } from '@/components/ui/pill';
+import { Spacing } from '@/constants/theme';
 
 type RestDayCardProps = {
   /** "Day 3 of 7 · Active recovery" — carries the coach's label, so the heading need not repeat it. */
@@ -15,28 +15,21 @@ type RestDayCardProps = {
  * train — so it gets its own state rather than an empty list or a 0% ring.
  */
 export function RestDayCard({ cycleLabel }: RestDayCardProps) {
-  const theme = useTheme();
-
   return (
-    <ThemedView type="backgroundElement" style={[styles.card, { borderColor: theme.border }]}>
+    <Card>
       <View style={styles.copy}>
-        {cycleLabel ? <ThemedText type="meta">{cycleLabel}</ThemedText> : null}
+        {cycleLabel ? <Chip label={cycleLabel} tone="neutral" /> : null}
         <ThemedText type="heading">Rest day</ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
           Nothing scheduled today. Recovery is part of the plan — eat well, sleep, and come back tomorrow.
         </ThemedText>
       </View>
-    </ThemedView>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    borderRadius: Radii.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: Spacing.four,
-  },
   copy: {
-    gap: Spacing.one,
+    gap: Spacing.two,
   },
 });

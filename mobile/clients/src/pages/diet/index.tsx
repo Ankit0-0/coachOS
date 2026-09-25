@@ -1,6 +1,7 @@
 import { useFocusEffect } from 'expo-router';
+import { SymbolView } from 'expo-symbols';
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, View } from 'react-native';
 
 import { DetailHeader } from '@/components/detail-header';
 import { LockedState } from '@/components/locked-state';
@@ -8,8 +9,10 @@ import { PlanStateCard } from '@/components/plan-state-card';
 import { RestDayCard } from '@/components/rest-day-card';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Fonts, Radii, Spacing } from '@/constants/theme';
+import { Button } from '@/components/ui/button';
+import { Card, InsetPanel } from '@/components/ui/card';
+import { Chip } from '@/components/ui/pill';
+import { Radii, Spacing } from '@/constants/theme';
 import { useTrackingAssignments } from '@/hooks/use-assignments';
 import { useOnboardingStatus } from '@/hooks/use-onboarding-status';
 import { useTodaySchedule } from '@/hooks/use-schedule';
@@ -21,6 +24,7 @@ import { confirmDestructive } from '@/lib/confirm';
 import { pickAndUploadImage } from '@/lib/image-upload';
 import { cycleDayLabel, dietDayOf } from '@/lib/plan-content';
 import { formatCalories } from '@/lib/plan-units';
+import { Checkbox, ProgressBar, TextField } from '@coachos/theme';
 
 export function DietDetailsScreen() {
   const theme = useTheme();
@@ -243,11 +247,11 @@ export function DietDetailsScreen() {
     );
   }
 
+  const mealsDone = meals.filter((meal) => checkedIds.has(meal.id)).length;
+
   return (
     <ScreenScaffold refreshing={isRefreshing} onRefresh={refresh}>
       <DetailHeader title="Diet" subtitle={dietAssignment.title} />
-
-      <ThemedText type="meta">{cycleDayLabel(today)}</ThemedText>
 
       {tracking.error ? (
         <PlanStateCard
@@ -257,56 +261,45 @@ export function DietDetailsScreen() {
         />
       ) : null}
 
-      <ThemedView type="backgroundElement" style={[styles.summary, { borderColor: theme.border }]}>
-        {day?.calories ? (
-          <ThemedText type="smallBold" style={{ color: theme.warning }}>
-            {formatCalories(day.calories)}
-          </ThemedText>
-        ) : null}
-        {dietAssignment.title ? <ThemedText>{day?.label}</ThemedText> : null}
-      </ThemedView>
+      <Card style={styles.summary}>
+        <View style={styles.summaryChips}>
+          <Chip label={`Diet · ${cycleDayLabel(today)}`} tone="terracotta" />
+          {day?.calories ? <Chip label={formatCalories(day.calories)} tone="neutral" /> : null}
+        </View>
+        {day?.label ? <ThemedText type="heading">{day.label}</ThemedText> : null}
+        <ProgressBar
+          value={meals.length > 0 ? mealsDone / meals.length : 0}
+          color="chartDiet"
+          label={`${mealsDone} of ${meals.length} meals done`}
+        />
+      </Card>
 
-      <View style={styles.list}>
-        {meals.map((meal) => {
-          const checked = checkedIds.has(meal.id);
-          const imageUri = photoUris[meal.id];
-          return (
-            <ThemedView key={meal.id} type="backgroundElement" style={[styles.row, { borderColor: theme.border }]}>
-              <Pressable
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked }}
-                accessibilityLabel={meal.label}
-                onPress={() => handleToggleMeal(meal.id)}
-                style={[
-                  styles.checkbox,
-                  { borderColor: checked ? theme.accent : theme.textMuted },
-                  checked && { backgroundColor: theme.accent },
-                ]}>
-                {checked ? (
-                  <ThemedText themeColor="onAccent" style={styles.checkText}>
-                    ✓
+      <Card style={styles.mealsCard}>
+        <ThemedText type="heading">Meals</ThemedText>
+        <InsetPanel>
+          {meals.map((meal) => {
+            const checked = checkedIds.has(meal.id);
+            const imageUri = photoUris[meal.id];
+            return (
+              <View key={meal.id} style={[styles.row, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                <View style={styles.rowTop}>
+                  <Checkbox checked={checked} accessibilityLabel={meal.label} onPress={() => handleToggleMeal(meal.id)} />
+                  <ThemedText
+                    type="smallBold"
+                    themeColor={checked ? 'textMuted' : 'textPrimary'}
+                    style={[styles.rowText, checked && styles.done]}>
+                    {meal.label}
                   </ThemedText>
-                ) : null}
-              </Pressable>
-
-              <View style={styles.mealContent}>
-                <View style={styles.mealHeaderRow}>
-                  <ThemedText style={styles.rowText}>{meal.label}</ThemedText>
-
-                  <Pressable
-                    accessibilityRole="button"
+                  <Button
+                    label={imageUri ? 'Change' : 'Photo'}
+                    variant="secondary"
+                    size="sm"
+                    icon={{ ios: 'camera', android: 'photo_camera', web: 'photo_camera' }}
+                    loading={uploadingMealId === meal.id}
+                    disabled={uploadingMealId !== null}
                     accessibilityLabel={`${imageUri ? 'Change' : 'Add'} photo for ${meal.label}`}
                     onPress={() => void handlePhotoPick(meal.id)}
-                    disabled={uploadingMealId !== null}
-                    style={[styles.photoButton, { borderColor: theme.border }]}>
-                    {uploadingMealId === meal.id ? (
-                      <ActivityIndicator size="small" color={theme.textSecondary} />
-                    ) : (
-                      <ThemedText type="smallBold" themeColor="textSecondary" style={styles.photoButtonText}>
-                        {imageUri ? 'Change photo' : 'Add photo'}
-                      </ThemedText>
-                    )}
-                  </Pressable>
+                  />
                 </View>
 
                 {imageUri ? (
@@ -314,44 +307,44 @@ export function DietDetailsScreen() {
                     <Image
                       source={{ uri: imageUri }}
                       accessibilityLabel={`Photo of ${meal.label}`}
-                      style={[styles.thumbnail, { backgroundColor: theme.surfaceSunken }]}
+                      style={[styles.thumbnail, { backgroundColor: theme.surfaceInset }]}
                     />
                     <Pressable
                       accessibilityRole="button"
                       accessibilityLabel={`Remove photo for ${meal.label}`}
                       onPress={() => void handleRemovePhoto(meal.id, meal.label)}
-                      hitSlop={8}
-                      style={[styles.removeBadge, { backgroundColor: theme.background, borderColor: theme.border }]}>
-                      <ThemedText type="smallBold" themeColor="text">
-                        ×
-                      </ThemedText>
+                      hitSlop={10}
+                      style={[styles.removeBadge, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                      <SymbolView
+                        name={{ ios: 'xmark', android: 'close', web: 'close' }}
+                        size={12}
+                        tintColor={theme.textPrimary}
+                      />
                     </Pressable>
                   </View>
                 ) : null}
               </View>
-            </ThemedView>
-          );
-        })}
-      </View>
+            );
+          })}
+        </InsetPanel>
+        {photoError ? (
+          <ThemedText type="small" themeColor="warning">
+            {photoError}
+          </ThemedText>
+        ) : null}
+      </Card>
 
-      {photoError ? (
-        <ThemedText type="small" themeColor="warning">
-          {photoError}
-        </ThemedText>
-      ) : null}
-
-      <ThemedView type="backgroundElement" style={[styles.commentCard, { borderColor: theme.border }]}>
-        <ThemedText type="smallBold">Comment</ThemedText>
-        <TextInput
+      <Card style={styles.commentCard}>
+        <ThemedText type="heading">Comment</ThemedText>
+        <TextField
           value={comment}
           onChangeText={setComment}
           placeholder="How was today's diet?"
           multiline
           numberOfLines={4}
-          style={[styles.textInput, { color: theme.text, borderColor: theme.border }]}
-          placeholderTextColor={theme.textSecondary}
+          accessibilityLabel="Comment on today's diet"
         />
-      </ThemedView>
+      </Card>
 
       <View style={styles.footer}>
         {saveMessage ? (
@@ -362,126 +355,69 @@ export function DietDetailsScreen() {
             {saveMessage}
           </ThemedText>
         ) : null}
-        <Pressable
-          accessibilityRole="button"
-          onPress={handleSaveDietLog}
-          disabled={isSavingLog}
-          style={({ pressed }) => [
-            styles.saveLogButton,
-            { backgroundColor: theme.accent, opacity: isSavingLog ? 0.6 : pressed ? 0.8 : 1 },
-          ]}>
-          <ThemedText type="smallBold" themeColor="onAccent">
-            {isSavingLog ? 'Saving…' : 'Save diet log'}
-          </ThemedText>
-        </Pressable>
+        <Button label={isSavingLog ? 'Saving…' : 'Save diet log'} loading={isSavingLog} onPress={handleSaveDietLog} />
       </View>
     </ScreenScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  thumbnailWrap: {
-    alignSelf: 'flex-start',
-  },
-  removeBadge: {
-    position: 'absolute',
-    top: Spacing.one,
-    right: Spacing.one,
-    width: 24,
-    height: 24,
-    borderRadius: Radii.pill,
-    borderWidth: StyleSheet.hairlineWidth,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   summary: {
-    borderRadius: Spacing.two,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: Spacing.three,
-    gap: Spacing.one,
+    gap: Spacing.twoHalf,
   },
-  list: {
+  summaryChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: Spacing.two,
   },
-  row: {
-    borderRadius: Spacing.two,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: Spacing.three,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+  mealsCard: {
     gap: Spacing.three,
   },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: Radii.pill,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 2,
+  row: {
+    borderRadius: Radii.md,
+    borderWidth: 1,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.twoHalf,
+    gap: Spacing.twoHalf,
   },
-  checkText: {
-    fontFamily: Fonts.sansBold,
-    fontSize: 12,
-  },
-  mealContent: {
-    flex: 1,
-    gap: Spacing.one,
-  },
-  mealHeaderRow: {
+  rowTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.two,
+    gap: Spacing.twoHalf,
+    minHeight: 36,
   },
   rowText: {
     flex: 1,
-    lineHeight: 20,
   },
-  photoButton: {
-    paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.two,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: Radii.sm,
-    alignSelf: 'flex-end',
-    minHeight: 28,
-    minWidth: 92,
-    alignItems: 'center',
-    justifyContent: 'center',
+  done: {
+    textDecorationLine: 'line-through',
   },
-  photoButtonText: {
-    fontSize: 11,
+  thumbnailWrap: {
+    alignSelf: 'stretch',
   },
   thumbnail: {
     width: '100%',
-    height: 90,
-    borderRadius: Spacing.two,
+    height: 120,
+    borderRadius: Radii.sm,
+  },
+  removeBadge: {
+    position: 'absolute',
+    top: Spacing.two,
+    right: Spacing.two,
+    width: 28,
+    height: 28,
+    borderRadius: Radii.pill,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   commentCard: {
-    borderRadius: Spacing.two,
-    borderWidth: StyleSheet.hairlineWidth,
-    padding: Spacing.three,
-    marginTop: Spacing.three,
-    gap: Spacing.one,
-  },
-  textInput: {
-    minHeight: 96,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: Spacing.two,
-    padding: Spacing.two,
-    textAlignVertical: 'top',
+    gap: Spacing.twoHalf,
   },
   footer: {
-    marginTop: Spacing.three,
-    gap: Spacing.one,
+    gap: Spacing.two,
   },
   footerMessage: {
     textAlign: 'center',
-  },
-  saveLogButton: {
-    paddingVertical: Spacing.three,
-    borderRadius: Radii.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });
