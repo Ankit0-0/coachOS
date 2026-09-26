@@ -67,26 +67,29 @@ export function ProblemSection() {
           </div>
         </div>
 
-        {/* The pile, full width: laid out by .tool-pile in globals.css. */}
-        <Reveal className="mt-14 sm:mt-16">
+        {/*
+          The pile: balanced columns laid out by .tool-pile in globals.css, and
+          scaled down as a whole on a phone. The drawn tiles are hidden from
+          assistive tech and described in one sentence instead.
+        */}
+        <Reveal className="mt-12 sm:mt-16">
           <div
             role="img"
             aria-label="The tools coaching runs on today: a WhatsApp chat where a client asks which workout is today and the coach points to one of three PDFs, a Google Sheet of client fees with pending payments, a calendar full of client reminders, a phone gallery mixing meal photos, gym selfies and screenshots, a workout plan PDF, a check-in form and a sticky note of to-dos."
+            className="tool-pile"
           >
-            <div aria-hidden="true" className="tool-pile">
-              <div className="tool-pile-col">
-                <WhatsAppTile className="[grid-area:chat] md:-rotate-1" />
-                <FormTile className="[grid-area:form] md:rotate-1" />
-              </div>
-              <div className="tool-pile-col">
-                <GoogleSheetTile className="[grid-area:sheet] md:rotate-[0.6deg]" />
-                <PdfTile className="[grid-area:pdf] md:-rotate-1" />
-                <StickyNote className="[grid-area:note] rotate-2 md:ml-auto md:w-3/5 md:-rotate-2" />
-              </div>
-              <div className="tool-pile-col">
-                <CalendarTile className="[grid-area:cal] md:rotate-1" />
-                <GalleryTile className="[grid-area:gallery] md:-rotate-1" />
-              </div>
+            <div className="tool-pile-col">
+              <WhatsAppTile className="-rotate-1" />
+              <FormTile className="rotate-1" />
+            </div>
+            <div className="tool-pile-col tool-pile-col-wide">
+              <GoogleSheetTile className="rotate-[0.6deg]" />
+              <PdfTile className="-rotate-1" />
+              <StickyNote className="ml-auto w-3/5 -rotate-2" />
+            </div>
+            <div className="tool-pile-col">
+              <CalendarTile className="rotate-1" />
+              <GalleryTile className="-rotate-1" />
             </div>
           </div>
         </Reveal>

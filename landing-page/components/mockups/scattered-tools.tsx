@@ -4,7 +4,8 @@ import type { ReactNode } from 'react';
   The tools coaching runs on today — WhatsApp, a Google Sheet, a calendar of
   reminders, a phone gallery, a PDF plan and a check-in form — drawn in HTML
   to look like screenshots of each. Every name, number and photo is made up;
-  the "photos" are illustrations.
+  the "photos" are illustrations. Each tile is decorative and hides itself
+  from assistive tech; the section that uses them describes them in text.
 */
 
 type TileProps = { className?: string };
@@ -51,7 +52,7 @@ function Bubble({
 
 export function WhatsAppTile({ className = '' }: TileProps) {
   return (
-    <div className={`flex flex-col overflow-hidden rounded-2xl shadow-lift ring-1 ring-black/10 ${className}`}>
+    <div aria-hidden="true" className={`flex flex-col overflow-hidden rounded-2xl shadow-lift ring-1 ring-black/10 ${className}`}>
       {/* Header */}
       <div className="flex items-center gap-2 bg-[#008069] px-2.5 py-2 text-white">
         <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -161,7 +162,7 @@ const paymentFill = {
 export function GoogleSheetTile({ className = '' }: TileProps) {
   const cell = 'h-[19px] border-b border-r border-[#E2E3E3] px-1 align-middle';
   return (
-    <div className={`overflow-hidden rounded-2xl bg-white font-[Arial,Helvetica,sans-serif] shadow-lift ring-1 ring-black/10 ${className}`}>
+    <div aria-hidden="true" className={`overflow-hidden rounded-2xl bg-white font-[Arial,Helvetica,sans-serif] shadow-lift ring-1 ring-black/10 ${className}`}>
       {/* Title and menus */}
       <div className="flex items-start gap-2 bg-[#F9FBFD] px-2.5 pb-1 pt-2">
         <svg viewBox="0 0 24 32" className="mt-0.5 h-6 w-[18px] shrink-0">
@@ -313,7 +314,7 @@ export function CalendarTile({ className = '' }: TileProps) {
   };
 
   return (
-    <div className={`overflow-hidden rounded-2xl bg-white font-[Arial,Helvetica,sans-serif] shadow-lift ring-1 ring-black/10 ${className}`}>
+    <div aria-hidden="true" className={`overflow-hidden rounded-2xl bg-white font-[Arial,Helvetica,sans-serif] shadow-lift ring-1 ring-black/10 ${className}`}>
       <div className="flex items-center gap-2 px-2.5 py-2 text-[#1F1F1F]">
         <svg viewBox="0 0 24 24" className="h-4 w-4 text-[#444746]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
           <path d="M4 7h16M4 12h16M4 17h16" />
@@ -579,7 +580,7 @@ export function GalleryTile({ className = '' }: TileProps) {
   ];
   const yesterday: ReactNode[] = [<PaymentScreenshot key="payment" />, <PhysiqueFlex key="flex" />, <RandomSunset key="sunset" />];
   return (
-    <div className={`overflow-hidden rounded-2xl bg-[#101010] text-white shadow-lift ring-1 ring-black/10 ${className}`}>
+    <div aria-hidden="true" className={`overflow-hidden rounded-2xl bg-[#101010] text-white shadow-lift ring-1 ring-black/10 ${className}`}>
       <div className="flex items-center justify-between px-2.5 pb-1.5 pt-2.5">
         <span className="text-[13px] font-semibold">Pictures</span>
         <span className="flex gap-2 text-white/80">
@@ -606,7 +607,7 @@ export function GalleryTile({ className = '' }: TileProps) {
 
 function Tile({ app, icon, children, className = '' }: { app: string; icon: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <div className={`overflow-hidden rounded-2xl border border-forest/10 bg-white shadow-card ${className}`}>
+    <div aria-hidden="true" className={`overflow-hidden rounded-2xl border border-forest/10 bg-white shadow-card ${className}`}>
       <div className="flex items-center gap-2 border-b border-forest/10 bg-cream px-3 py-2">
         <span className="flex h-5 w-5 items-center justify-center rounded-md bg-sage text-forest">{icon}</span>
         <span className="truncate text-xs font-semibold text-charcoal">{app}</span>
@@ -645,7 +646,7 @@ export function PdfTile({ className }: TileProps) {
 /** A check-in form in the style of Google Forms: purple rule, white cards on lilac. */
 export function FormTile({ className = '' }: TileProps) {
   return (
-    <div className={`overflow-hidden rounded-2xl bg-[#F0EBF8] p-2 font-[Arial,Helvetica,sans-serif] shadow-card ring-1 ring-black/5 ${className}`}>
+    <div aria-hidden="true" className={`overflow-hidden rounded-2xl bg-[#F0EBF8] p-2 font-[Arial,Helvetica,sans-serif] shadow-card ring-1 ring-black/5 ${className}`}>
       <div className="overflow-hidden rounded-lg border-t-[6px] border-[#673AB7] bg-white px-3 py-2">
         <p className="text-[13px] text-[#202124]">Weekly check-in</p>
         <p className="mt-0.5 text-[9px] text-[#5F6368]">Fill this every Sunday night</p>
@@ -669,7 +670,7 @@ export function FormTile({ className = '' }: TileProps) {
 
 export function StickyNote({ className = '' }: TileProps) {
   return (
-    <div className={`rounded-md bg-[#F6E7B4] p-3 font-medium text-[#4A3F16] shadow-card ${className}`}>
+    <div aria-hidden="true" className={`rounded-md bg-[#F6E7B4] p-3 font-medium text-[#4A3F16] shadow-card ${className}`}>
       <p className="text-xs leading-5">
         Rahul — renewal due Fri?
         <br />
