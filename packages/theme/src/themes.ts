@@ -32,6 +32,8 @@ export type Theme = {
   accentWorkout: string;
   accentDiet: string;
   accentClient: string;
+  /** accentClient for text; AA on bg and surface (light terracotta alone is 3.3:1). */
+  accentClientText: string;
 
   /** Green chip: Coach, Workout, Diet; also selected/active tints. */
   chipBg: string;
@@ -97,6 +99,8 @@ export const light: Theme = {
   accentWorkout: '#3F6B5A',
   accentDiet: Palette.terracotta,
   accentClient: Palette.terracotta,
+  // 5.2:1 on bg, 5.6:1 on surface
+  accentClientText: Palette.terracottaDeep,
 
   chipBg: Palette.sage,
   chipText: Palette.forest,
@@ -155,6 +159,8 @@ export const dark: Theme = {
   accentWorkout: Palette.sageMid,
   accentDiet: Palette.terracottaLight,
   accentClient: Palette.terracottaLight,
+  // 8.0:1 on bg, 7.3:1 on surface
+  accentClientText: Palette.terracottaLight,
 
   // sage at 18%, terracotta at 20%, over `surface`
   chipBg: 'rgba(159, 193, 174, 0.18)',

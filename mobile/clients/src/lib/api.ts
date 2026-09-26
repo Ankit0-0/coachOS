@@ -285,6 +285,8 @@ export interface ClientInvite {
 // Client profile
 // ---------------------------------------------------------------------------
 
+export type DietPreference = 'VEGETARIAN' | 'NON_VEGETARIAN';
+
 export interface ClientProfile {
   id: string;
   name: string;
@@ -297,6 +299,8 @@ export interface ClientProfile {
   /** Self-reported. Separate from WeightEntry, which is the tracked history. */
   weightKg: number | null;
   goals: string | null;
+  /** Null until answered. */
+  dietPreference: DietPreference | null;
   /** Digits only with the country code, e.g. 919876543210. Empty or null when not added. */
   phone: string | null;
 }
@@ -306,6 +310,7 @@ export interface ClientProfileUpdate {
   heightCm?: number | null;
   weightKg?: number | null;
   goals?: string;
+  dietPreference?: DietPreference | null;
   /** Digits only with the country code (see lib/phone). An empty string removes it. */
   phone?: string;
   /** An S3 key from uploadApi.presign. Null removes the avatar. */

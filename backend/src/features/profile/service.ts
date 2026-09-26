@@ -1,4 +1,4 @@
-import type { ClientProfile, CoachProfile, User } from "@prisma/client";
+import type { ClientProfile, CoachProfile, DietPreference, User } from "@prisma/client";
 
 import { getLogger } from "../../config/logger.js";
 import { prisma } from "../../config/prisma.config.js";
@@ -109,6 +109,7 @@ async function serializeClientProfile(user: User, profile: ClientProfile | null)
     heightCm: profile?.heightCm ?? null,
     weightKg: profile?.weightKg ?? null,
     goals: profile?.goals ?? null,
+    dietPreference: profile?.dietPreference ?? null,
     phone: profile?.phone ?? null,
   };
 }
@@ -132,6 +133,7 @@ export async function updateClientProfile(
     heightCm?: number | null | undefined;
     weightKg?: number | null | undefined;
     goals?: string | undefined;
+    dietPreference?: DietPreference | null | undefined;
     phone?: string | undefined;
     avatarKey?: string | null | undefined;
   },
@@ -158,6 +160,7 @@ export async function updateClientProfile(
           ...(profileFields.heightCm !== undefined ? { heightCm: profileFields.heightCm } : {}),
           ...(profileFields.weightKg !== undefined ? { weightKg: profileFields.weightKg } : {}),
           ...(profileFields.goals !== undefined ? { goals: profileFields.goals } : {}),
+          ...(profileFields.dietPreference !== undefined ? { dietPreference: profileFields.dietPreference } : {}),
           ...(profileFields.phone !== undefined ? { phone: profileFields.phone } : {}),
           ...(profileFields.avatarKey !== undefined ? { avatarKey: profileFields.avatarKey } : {}),
         },
@@ -166,6 +169,7 @@ export async function updateClientProfile(
           heightCm: profileFields.heightCm ?? null,
           weightKg: profileFields.weightKg ?? null,
           goals: profileFields.goals ?? null,
+          dietPreference: profileFields.dietPreference ?? null,
           phone: profileFields.phone ?? null,
           avatarKey: profileFields.avatarKey ?? null,
         },

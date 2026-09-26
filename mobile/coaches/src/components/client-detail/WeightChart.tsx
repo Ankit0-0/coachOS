@@ -14,6 +14,7 @@ import {
   shortMonthLabel,
   weekdayLabel,
 } from '@/lib/dates';
+import { weightAxis } from '@coachos/theme';
 
 export type WeightChartEntry = {
   /** YYYY-MM-DD, a calendar date. */
@@ -28,49 +29,12 @@ type WeightChartProps = {
   to: string;
 };
 
-/**
- * Where the weight axis starts.
- *
- * - 'zero'   The axis runs up from 0 kg. Heights are honest proportions of body
- *            weight, but a 1–2 kg change — real progress — is close to a flat line.
- * - 'padded' The axis hugs the data's own lowest and highest values with some
- *            headroom, so small changes read clearly; the labels keep the scale plain.
- *
- * Zero is what was asked for. Switching is this one line.
- */
-export const WEIGHT_AXIS_BASELINE: 'zero' | 'padded' = 'zero';
-
 const CHART_HEIGHT = 208;
 /** Left leaves room for the kg labels, bottom for the date labels, top for the unit. */
 const MARGIN = { top: 22, right: 14, bottom: 26, left: 38 };
-const TARGET_WEIGHT_TICKS = 4;
 /** Date labels narrower than this apart are thinned out; their gridlines stay. */
 const MIN_LABEL_SPACING = 30;
 const AXIS_FONT_SIZE = 10;
-
-/** 1, 2, 2.5 or 5 times a power of ten: steps that make readable axis labels. */
-function niceStep(rough: number): number {
-  const magnitude = 10 ** Math.floor(Math.log10(rough));
-  const fraction = rough / magnitude;
-  const nice = fraction <= 1 ? 1 : fraction <= 2 ? 2 : fraction <= 2.5 ? 2.5 : fraction <= 5 ? 5 : 10;
-  return nice * magnitude;
-}
-
-function weightAxis(values: number[]): { min: number; max: number; ticks: number[] } {
-  const lowest = Math.min(...values);
-  const highest = Math.max(...values);
-  const headroom = Math.max(1, (highest - lowest) * 0.25);
-  const low = WEIGHT_AXIS_BASELINE === 'zero' ? 0 : lowest - headroom;
-  const high = WEIGHT_AXIS_BASELINE === 'zero' ? highest : highest + headroom;
-
-  const step = niceStep(Math.max(high - low, 1) / TARGET_WEIGHT_TICKS);
-  const min = Math.max(0, Math.floor(low / step) * step);
-  const max = Math.ceil(high / step) * step;
-  const ticks: number[] = [];
-  // Rounded as it goes, so 2.5 kg steps don't accumulate float error.
-  for (let value = min; value <= max + step / 1000; value += step) ticks.push(Math.round(value * 100) / 100);
-  return { min, max, ticks };
-}
 
 type DateTick = { date: string; label: string };
 

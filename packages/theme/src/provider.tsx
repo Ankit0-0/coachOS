@@ -6,6 +6,9 @@ import { Themes, type ColorSchemeName, type Theme } from './themes';
 
 export type AppearanceMode = 'system' | 'light' | 'dark';
 
+/** Until the user picks; never written to storage, so a stored choice always wins. */
+export const DEFAULT_APPEARANCE_MODE: AppearanceMode = 'light';
+
 type ThemeContextValue = {
   mode: AppearanceMode;
   setMode: (mode: AppearanceMode) => void;
@@ -29,7 +32,7 @@ function applyNativeAppearance(mode: AppearanceMode) {
 }
 
 export function ThemeProvider({ storageKey, children }: { storageKey: string; children: ReactNode }) {
-  const [mode, setModeState] = useState<AppearanceMode>('system');
+  const [mode, setModeState] = useState<AppearanceMode>(DEFAULT_APPEARANCE_MODE);
   const [ready, setReady] = useState(false);
   const system = useColorScheme();
 
@@ -37,10 +40,10 @@ export function ThemeProvider({ storageKey, children }: { storageKey: string; ch
     let cancelled = false;
     loadMode(storageKey).then((stored) => {
       if (cancelled) return;
-      if (stored) {
-        applyNativeAppearance(stored);
-        setModeState(stored);
-      }
+      const initial = stored ?? DEFAULT_APPEARANCE_MODE;
+      // Also when nothing is stored: native UI would otherwise follow the system.
+      applyNativeAppearance(initial);
+      setModeState(initial);
       setReady(true);
     });
     return () => {
@@ -70,15 +73,16 @@ export function ThemeProvider({ storageKey, children }: { storageKey: string; ch
 const noop = () => {};
 
 /**
- * Outside a provider (an error boundary's fallback, say) this follows the
- * system scheme instead of throwing, so the fallback can still render.
+ * Outside a provider (an error boundary's fallback, say) this uses the
+ * default mode instead of throwing, so the fallback can still render.
  */
 function useThemeContext(): ThemeContextValue {
   const context = useContext(ThemeContext);
   const system = useColorScheme();
   if (context) return context;
-  const scheme: ColorSchemeName = system === 'dark' ? 'dark' : 'light';
-  return { mode: 'system', setMode: noop, scheme, theme: Themes[scheme], ready: true };
+  const mode = DEFAULT_APPEARANCE_MODE;
+  const scheme: ColorSchemeName = mode === 'system' ? (system === 'dark' ? 'dark' : 'light') : mode;
+  return { mode, setMode: noop, scheme, theme: Themes[scheme], ready: true };
 }
 
 /** The resolved semantic colours for the current scheme. */

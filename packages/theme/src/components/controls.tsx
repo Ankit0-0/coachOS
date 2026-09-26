@@ -121,6 +121,7 @@ export function IconButton({ icon, label, onPress }: IconButtonProps) {
 export const CALL_ICON: SymbolName = { ios: 'phone', android: 'call', web: 'call' };
 export const MESSAGE_ICON: SymbolName = { ios: 'message', android: 'chat', web: 'chat' };
 export const CLOSE_ICON: SymbolName = { ios: 'xmark', android: 'close', web: 'close' };
+export const EDIT_ICON: SymbolName = { ios: 'pencil', android: 'edit', web: 'edit' };
 
 const CHECK: SymbolName = { ios: 'checkmark', android: 'check', web: 'check' };
 

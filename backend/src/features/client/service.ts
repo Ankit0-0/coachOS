@@ -97,6 +97,7 @@ export async function getClientProfile(coachId: string, clientId: string) {
     heightCm: profile?.heightCm ?? null,
     weightKg: profile?.weightKg ?? null,
     goals: profile?.goals ?? null,
+    dietPreference: profile?.dietPreference ?? null,
     // Safe here and nowhere looser: assertAccess above requires an accepted invite.
     phone: profile?.phone ?? null,
     onboardedAt: invite.respondedAt,

@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, View, type StyleProp, type ViewProps, type ViewS
 import { SymbolView } from 'expo-symbols';
 
 import { useTheme } from '../provider';
+import type { ThemeColor } from '../themes';
 import { Radii, Spacing } from '../tokens';
 import { ThemedText } from './text';
 
@@ -86,12 +87,24 @@ type SectionProps = {
   /** Optional right-aligned affordance, e.g. "View all". */
   actionLabel?: string;
   onActionPress?: () => void;
+  /** Action label colour; `primary` unless the action needs to stand out. */
+  actionColor?: ThemeColor;
+  /** Leading icon for the action, in the same colour. */
+  actionIcon?: SymbolName;
   /** Right-aligned element in place of an action, e.g. a count chip. */
   trailing?: ReactNode;
   children?: ReactNode;
 };
 
-export function SectionHeader({ title, actionLabel, onActionPress, trailing }: Omit<SectionProps, 'children'>) {
+export function SectionHeader({
+  title,
+  actionLabel,
+  onActionPress,
+  actionColor = 'primary',
+  actionIcon,
+  trailing,
+}: Omit<SectionProps, 'children'>) {
+  const theme = useTheme();
   return (
     <View style={styles.header}>
       <ThemedText type="heading" accessibilityRole="header" style={styles.headerTitle}>
@@ -99,8 +112,11 @@ export function SectionHeader({ title, actionLabel, onActionPress, trailing }: O
       </ThemedText>
       {trailing}
       {actionLabel && onActionPress ? (
-        <Pressable accessibilityRole="button" onPress={onActionPress} hitSlop={12}>
-          <ThemedText type="linkPrimary">{actionLabel}</ThemedText>
+        <Pressable accessibilityRole="button" onPress={onActionPress} hitSlop={12} style={styles.headerAction}>
+          {actionIcon ? <SymbolView name={actionIcon} size={16} tintColor={theme[actionColor]} /> : null}
+          <ThemedText type="linkPrimary" themeColor={actionColor}>
+            {actionLabel}
+          </ThemedText>
         </Pressable>
       ) : null}
     </View>
@@ -157,5 +173,10 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     flex: 1,
+  },
+  headerAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
   },
 });

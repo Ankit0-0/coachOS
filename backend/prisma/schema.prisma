@@ -261,6 +261,13 @@ model ClientProfile {
   phone     String?
   /// S3 object key for the avatar; see WeightEntry.photoKey.
   avatarKey String?
+  /// Null until the client answers; not the same as non-vegetarian.
+  dietPreference DietPreference?
+}
+
+enum DietPreference {
+  VEGETARIAN
+  NON_VEGETARIAN
 }
 
 model CheckIn {
