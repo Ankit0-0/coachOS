@@ -1,5 +1,8 @@
 import { Stack } from 'expo-router';
 
+// Root beneath deep links and reloads, so back always lands on the tab's root.
+export const unstable_settings = { initialRouteName: 'explore-coaches' };
+
 /**
  * The Explore tab's own stack, so a coach's profile opens inside the tab and
  * the tab bar stays on screen.

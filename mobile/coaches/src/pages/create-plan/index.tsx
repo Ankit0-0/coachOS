@@ -473,7 +473,7 @@ export function CreatePlanScreen() {
 
   if (isLoading) {
     return (
-      <ScreenScaffold>
+      <ScreenScaffold includeBottomTabInset>
         <DetailHeader title="Plan" subtitle="Loading…" />
         <ActivityIndicator color={theme.textSecondary} />
       </ScreenScaffold>
@@ -482,7 +482,7 @@ export function CreatePlanScreen() {
 
   if (loadFailed) {
     return (
-      <ScreenScaffold>
+      <ScreenScaffold includeBottomTabInset>
         <DetailHeader title="Plan" subtitle="This plan could not be opened." />
         <Card>
           <ThemedText type="smallBold">We couldn&apos;t load that plan</ThemedText>
@@ -506,7 +506,7 @@ export function CreatePlanScreen() {
   const itemCount = type === 'WORKOUT' ? day.exercises.filter((row) => row.name.trim()).length : day.meals.filter((row) => row.label.trim()).length;
 
   return (
-    <ScreenScaffold>
+    <ScreenScaffold includeBottomTabInset>
       <DetailHeader title={header.title} subtitle={header.subtitle} />
 
       {/* The type is fixed once a plan exists — its stored content has to keep

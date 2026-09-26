@@ -162,7 +162,7 @@ export function WorkoutDetailsScreen() {
 
   if (onboarding.isLoading) {
     return (
-      <ScreenScaffold>
+      <ScreenScaffold includeBottomTabInset>
         <ActivityIndicator color={theme.textSecondary} />
       </ScreenScaffold>
     );
@@ -174,7 +174,7 @@ export function WorkoutDetailsScreen() {
 
   if (tracking.isLoading || schedule.isLoading) {
     return (
-      <ScreenScaffold>
+      <ScreenScaffold includeBottomTabInset>
         <DetailHeader title="Workout" subtitle="Loading your plan…" />
         <ActivityIndicator color={theme.textSecondary} />
       </ScreenScaffold>
@@ -184,7 +184,7 @@ export function WorkoutDetailsScreen() {
   // A rest day is scheduled, not missing: it gets its own state.
   if (today?.isRestDay) {
     return (
-      <ScreenScaffold refreshing={isRefreshing} onRefresh={refresh}>
+      <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh}>
         <DetailHeader title="Workout" subtitle={today.title} />
         <RestDayCard cycleLabel={cycleDayLabel(today)} />
       </ScreenScaffold>
@@ -195,7 +195,7 @@ export function WorkoutDetailsScreen() {
   if (!workoutAssignment || !today || exercises.length === 0) {
     const failed = !workoutAssignment && tracking.error;
     return (
-      <ScreenScaffold refreshing={isRefreshing} onRefresh={refresh}>
+      <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh}>
         <DetailHeader title="Workout" subtitle={failed ? 'Something went wrong' : 'No plan yet'} />
         {failed ? (
           <PlanStateCard
@@ -214,7 +214,7 @@ export function WorkoutDetailsScreen() {
   }
 
   return (
-    <ScreenScaffold refreshing={isRefreshing} onRefresh={refresh}>
+    <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh}>
       <DetailHeader title="Workout" subtitle={workoutAssignment.title} />
 
       {tracking.error ? (

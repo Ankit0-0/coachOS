@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
 import { ThemedText } from '@/components/themed-text';
@@ -25,6 +25,10 @@ type MonthlyActivityCalendarProps = {
    * under the wrong weekday.
    */
   firstWeekday?: number;
+  /** Opens a day; without it the calendar is display-only. */
+  onDayPress?: (dayNumber: number) => void;
+  /** Days after this one are not pressable: they have not happened yet. */
+  lastPressableDay?: number;
 };
 
 const weekDays = [
@@ -41,6 +45,8 @@ export function MonthlyActivityCalendar({
   entries,
   daysInMonth = 30,
   firstWeekday = 0,
+  onDayPress,
+  lastPressableDay = daysInMonth,
 }: MonthlyActivityCalendarProps) {
   const theme = useTheme();
 
@@ -72,6 +78,10 @@ export function MonthlyActivityCalendar({
           // Rest is a plan state, not a miss — unless something was logged
           // anyway, in which case show what was done.
           const isRest = Boolean(entry?.isRestDay) && !isActive;
+          const isPressable = onDayPress !== undefined && dayNumber <= lastPressableDay;
+          const summary = isRest
+            ? 'rest day'
+            : `workout ${Math.round(workoutPct * 100)}%, diet ${Math.round(dietPct * 100)}%`;
 
           const ringRadius = 9;
           const ringCircumference = 2 * Math.PI * ringRadius;
@@ -79,7 +89,13 @@ export function MonthlyActivityCalendar({
           const dietDash = ringCircumference * dietPct;
 
           return (
-            <View key={dayNumber} style={styles.dayCell}>
+            <Pressable
+              key={dayNumber}
+              disabled={!isPressable}
+              accessibilityRole={isPressable ? 'button' : undefined}
+              accessibilityLabel={isPressable ? `Day ${dayNumber}: ${summary}. Open details` : undefined}
+              onPress={() => onDayPress?.(dayNumber)}
+              style={({ pressed }) => [styles.dayCell, pressed && styles.pressed]}>
               <View style={styles.dayIndicatorWrap}>
                 {isRest ? (
                   <View style={[styles.restDayMark, { backgroundColor: theme.chartEmpty }]} />
@@ -127,7 +143,7 @@ export function MonthlyActivityCalendar({
               <ThemedText type="meta" themeColor="chartAxis" style={styles.dayNumber}>
                 {dayNumber}
               </ThemedText>
-            </View>
+            </Pressable>
           );
         })}
       </View>
@@ -153,6 +169,9 @@ const styles = StyleSheet.create({
     // Seven 14.28% cells fill the row exactly, so packing left is correct.
     justifyContent: 'flex-start',
     rowGap: Spacing.two,
+  },
+  pressed: {
+    opacity: 0.6,
   },
   dayCell: {
     width: '14.28%',

@@ -37,7 +37,7 @@ export function ExploreWorkoutPlansScreen() {
   const { isRefreshing, refresh } = useRefresh(load);
 
   return (
-    <ScreenScaffold refreshing={isRefreshing} onRefresh={refresh}>
+    <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh}>
       <DetailHeader title="Shared workout plans" subtitle="Prebuilt plans any coach can assign." />
       {isLoading ? (
         <ActivityIndicator color={theme.textSecondary} />

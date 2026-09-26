@@ -198,7 +198,7 @@ export function MyCoachScreen() {
   );
 
   return (
-    <ScreenScaffold refreshing={isRefreshing} onRefresh={refresh}>
+    <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh}>
       <DetailHeader
         title="Your coach"
         subtitle={

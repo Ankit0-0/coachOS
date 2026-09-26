@@ -185,6 +185,11 @@ export function dietDayOf(entry: ScheduleEntry | undefined): DietDayContent | nu
   return entry && entry.type === 'DIET' ? parseDietDay(entry.content) : null;
 }
 
+/** "Day 6 of 7"; null for a one-day plan, where it says nothing. */
+export function cyclePositionLabel(entry: Pick<ScheduleEntry, 'dayIndex' | 'cycleLengthDays'>): string | null {
+  return entry.cycleLengthDays > 1 ? `Day ${entry.dayIndex + 1} of ${entry.cycleLengthDays}` : null;
+}
+
 /**
  * "Day 3 · Pull", or just "Day 3" when the coach left the label blank. Shown so
  * a client understands the rotation rather than wondering why today differs.

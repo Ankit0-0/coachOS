@@ -11,7 +11,8 @@ export default function AppTabs() {
       indicatorColor={colors.indicatorColor}
       iconColor={colors.iconColor}
       labelStyle={colors.labelStyle}>
-      <NativeTabs.Trigger name="index">
+      {/* Each tab is a group with its own Stack, so pushed screens keep the bar. */}
+      <NativeTabs.Trigger name="(home)">
         <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           sf={{ default: 'house', selected: 'house.fill' }}
@@ -19,7 +20,6 @@ export default function AppTabs() {
         />
       </NativeTabs.Trigger>
 
-      {/* A group with its own Stack, so a coach's profile opens inside this tab. */}
       <NativeTabs.Trigger name="(explore)">
         <NativeTabs.Trigger.Label>Explore</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
@@ -28,7 +28,7 @@ export default function AppTabs() {
         />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="profile">
+      <NativeTabs.Trigger name="(profile)">
         <NativeTabs.Trigger.Label>Me</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           sf={{ default: 'person.circle', selected: 'person.circle.fill' }}

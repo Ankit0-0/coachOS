@@ -71,7 +71,7 @@ export function ClientPhotosScreen() {
   ].sort((a, b) => b.date.localeCompare(a.date));
 
   return (
-    <ScreenScaffold refreshing={isRefreshing} onRefresh={refresh}>
+    <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh}>
       <DetailHeader title="Photos" subtitle={params.name ? `${params.name} · last 12 months` : 'Last 12 months'} />
 
       <View style={styles.filters} accessibilityRole="tablist">

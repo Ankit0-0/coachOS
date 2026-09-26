@@ -21,7 +21,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { trackingApi, type WeightEntry } from '@/lib/api';
 import { todayKey } from '@/lib/dates';
 import { pickAndUploadImage } from '@/lib/image-upload';
-import { cycleDayLabel, dietDayOf, parseDietContent, parseWorkoutContent, workoutDayOf } from '@/lib/plan-content';
+import { cyclePositionLabel, dietDayOf, parseDietContent, parseWorkoutContent, workoutDayOf } from '@/lib/plan-content';
 import { formatCalories, formatDuration } from '@/lib/plan-units';
 import { parseWeightInput } from '@/lib/weight';
 import { IconTile, TextField } from '@coachos/theme';
@@ -117,17 +117,20 @@ export function HomeScreen() {
       id: 'workout',
       kind: 'Workout',
       title: workoutToday.title,
-      dayLabel: cycleDayLabel(workoutToday),
+      dayLabel: workoutToday.label,
       isRestDay: workoutToday.isRestDay,
       // The day's label is already in `dayLabel`; the plan's own summary says what it is for.
       summary: parseWorkoutContent(workoutAssignment.content)?.summary ?? '',
-      chips: workoutToday.isRestDay
-        ? []
-        : [
-            formatDuration(workoutDay?.duration ?? ''),
-            `${exerciseCount} ${exerciseCount === 1 ? 'exercise' : 'exercises'}`,
-            `${workoutToday.itemCount} ${workoutToday.itemCount === 1 ? 'set' : 'sets'}`,
-          ].filter(Boolean),
+      chips: [
+        cyclePositionLabel(workoutToday),
+        ...(workoutToday.isRestDay
+          ? []
+          : [
+              formatDuration(workoutDay?.duration ?? ''),
+              `${exerciseCount} ${exerciseCount === 1 ? 'exercise' : 'exercises'}`,
+              `${workoutToday.itemCount} ${workoutToday.itemCount === 1 ? 'set' : 'sets'}`,
+            ]),
+      ].filter((chip): chip is string => Boolean(chip)),
       route: '/workout',
       iconName: { ios: 'figure.strengthtraining.traditional', android: 'fitness_center', web: 'fitness_center' },
       progressPercent: workoutToday.itemCount > 0 ? (setsDone / workoutToday.itemCount) * 100 : 0,
@@ -145,15 +148,18 @@ export function HomeScreen() {
       id: 'diet',
       kind: 'Diet',
       title: dietToday.title,
-      dayLabel: cycleDayLabel(dietToday),
+      dayLabel: dietToday.label,
       isRestDay: dietToday.isRestDay,
       summary: parseDietContent(dietAssignment.content)?.summary ?? '',
-      chips: dietToday.isRestDay
-        ? []
-        : [
-            formatCalories(dietDay?.calories ?? ''),
-            `${dietToday.itemCount} ${dietToday.itemCount === 1 ? 'meal' : 'meals'}`,
-          ].filter(Boolean),
+      chips: [
+        cyclePositionLabel(dietToday),
+        ...(dietToday.isRestDay
+          ? []
+          : [
+              formatCalories(dietDay?.calories ?? ''),
+              `${dietToday.itemCount} ${dietToday.itemCount === 1 ? 'meal' : 'meals'}`,
+            ]),
+      ].filter((chip): chip is string => Boolean(chip)),
       route: '/diet',
       iconName: { ios: 'fork.knife.circle', android: 'restaurant', web: 'restaurant' },
       progressPercent: dietToday.itemCount > 0 ? (mealsDone / dietToday.itemCount) * 100 : 0,

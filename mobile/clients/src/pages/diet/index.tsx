@@ -195,7 +195,7 @@ export function DietDetailsScreen() {
 
   if (onboarding.isLoading) {
     return (
-      <ScreenScaffold>
+      <ScreenScaffold includeBottomTabInset>
         <ActivityIndicator color={theme.textSecondary} />
       </ScreenScaffold>
     );
@@ -207,7 +207,7 @@ export function DietDetailsScreen() {
 
   if (tracking.isLoading || schedule.isLoading) {
     return (
-      <ScreenScaffold>
+      <ScreenScaffold includeBottomTabInset>
         <DetailHeader title="Diet" subtitle="Loading your plan…" />
         <ActivityIndicator color={theme.textSecondary} />
       </ScreenScaffold>
@@ -218,7 +218,7 @@ export function DietDetailsScreen() {
   // left it so; treat that the same way.
   if (today?.isRestDay) {
     return (
-      <ScreenScaffold refreshing={isRefreshing} onRefresh={refresh}>
+      <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh}>
         <DetailHeader title="Diet" subtitle={today.title} />
         <RestDayCard cycleLabel={cycleDayLabel(today)} />
       </ScreenScaffold>
@@ -229,7 +229,7 @@ export function DietDetailsScreen() {
   if (!dietAssignment || !today || meals.length === 0) {
     const failed = !dietAssignment && tracking.error;
     return (
-      <ScreenScaffold refreshing={isRefreshing} onRefresh={refresh}>
+      <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh}>
         <DetailHeader title="Diet" subtitle={failed ? 'Something went wrong' : 'No plan yet'} />
         {failed ? (
           <PlanStateCard
@@ -250,7 +250,7 @@ export function DietDetailsScreen() {
   const mealsDone = meals.filter((meal) => checkedIds.has(meal.id)).length;
 
   return (
-    <ScreenScaffold refreshing={isRefreshing} onRefresh={refresh}>
+    <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh}>
       <DetailHeader title="Diet" subtitle={dietAssignment.title} />
 
       {tracking.error ? (

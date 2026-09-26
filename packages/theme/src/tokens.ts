@@ -127,4 +127,5 @@ export const Type = {
 export const CardShadow = '0 1px 2px rgba(24, 59, 50, 0.06), 0 8px 24px -12px rgba(24, 59, 50, 0.18)';
 
 export const MaxContentWidth = 800;
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
+// Web: the app-tabs.web bar floats over content (8 + 52 + 8 padding and button, 1 border).
+export const BottomTabInset = Platform.select({ ios: 50, android: 80, web: 69 }) ?? 0;
