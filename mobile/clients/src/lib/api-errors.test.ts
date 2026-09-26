@@ -9,7 +9,7 @@ import {
   type ApiErrorContext,
 } from '@/lib/api-errors';
 
-const CONTEXTS: ApiErrorContext[] = ['login', 'signup', 'forgotPassword', 'resetPassword', 'googleSignIn', 'session'];
+const CONTEXTS: ApiErrorContext[] = ['login', 'signup', 'forgotPassword', 'resetPassword', 'googleSignIn', 'appleSignIn', 'session'];
 
 describe('contextForRequest', () => {
   it('recognises the login endpoint regardless of method case and query', () => {

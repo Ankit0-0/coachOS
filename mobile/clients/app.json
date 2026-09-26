@@ -1,24 +1,37 @@
 {
   "expo": {
-    "name": "clients",
+    "name": "CoachOS",
     "slug": "clients",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "clients",
+    "scheme": [
+      "clients",
+      "com.ankit00.clients"
+    ],
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/images/icon.png"
+      "icon": "./assets/images/icon.png",
+      "bundleIdentifier": "com.ankit00.clients",
+      "supportsTablet": false,
+      "usesAppleSignIn": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#7ec8ff",
+        "backgroundColor": "#183B32",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.ankit00.clients"
+      "package": "com.ankit00.clients",
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA"
+      ]
     },
     "web": {
       "output": "static",
@@ -43,9 +56,19 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "CoachOS needs access to your photos so you can attach progress and meal photos."
+          "photosPermission": "CoachOS needs access to your photos so you can attach progress and meal photos.",
+          "cameraPermission": false,
+          "microphonePermission": false
         }
-      ]
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#183B32"
+        }
+      ],
+      "expo-apple-authentication"
     ],
     "experiments": {
       "typedRoutes": true,

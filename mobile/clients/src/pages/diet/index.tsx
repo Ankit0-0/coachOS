@@ -51,7 +51,7 @@ export function DietDetailsScreen() {
   const [uploadingMealId, setUploadingMealId] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
 
-  /** Today's saved check-in: ticks and photos, so progress survives restarts. */
+  /** Today's saved check-in: ticks, photos and the comment, so progress survives restarts. */
   const loadToday = useCallback(async () => {
     if (!assignmentId) return;
     try {
@@ -61,6 +61,7 @@ export function DietDetailsScreen() {
       // Reads carry signed URLs only, never keys — which is fine, because
       // adding a photo sends just that meal's key and the server merges.
       setPhotoUris(checkIn?.photoUrls ?? {});
+      setComment(checkIn?.notes ?? '');
     } catch {
       // Could not restore — keep whatever is on screen.
     }
@@ -182,6 +183,8 @@ export function DietDetailsScreen() {
         assignmentId,
         date: todayKey(),
         completedItemIds: completedItemIds(checkedIds),
+        // The day's comment goes to the coach with the log.
+        notes: comment.trim(),
       });
       setSaveMessage('Diet log saved to your history.');
     } catch (error) {
@@ -342,8 +345,10 @@ export function DietDetailsScreen() {
           placeholder="How was today's diet?"
           multiline
           numberOfLines={4}
+          maxLength={2000}
           accessibilityLabel="Comment on today's diet"
         />
+        <ThemedText type="meta">Your coach sees this when you save the diet log.</ThemedText>
       </Card>
 
       <View style={styles.footer}>

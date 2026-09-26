@@ -54,9 +54,27 @@ describe('buildDaySections', () => {
     expect(section?.cycleLabel).toBe('Every day');
     expect(section?.percent).toBe(50);
     expect(section?.items).toEqual([
-      { id: 'breakfast', name: 'Poha', detail: null, done: 0, total: 1, photoUrl: null },
-      { id: 'lunch', name: 'Dal chawal', detail: null, done: 1, total: 1, photoUrl: 'https://x/lunch.jpg' },
+      { id: 'breakfast', name: 'Poha', detail: null, done: 0, total: 1, photoUrl: null, comments: [] },
+      { id: 'lunch', name: 'Dal chawal', detail: null, done: 1, total: 1, photoUrl: 'https://x/lunch.jpg', comments: [] },
     ]);
+  });
+
+  it('attaches the client’s comments to the set and meal they were about', () => {
+    const [workoutSection, dietSection] = buildDaySections(
+      [workout, diet],
+      [
+        {
+          assignmentId: 'a-workout',
+          completedItemIds: ['d5-row-set1'],
+          notes: null,
+          itemNotes: { 'd5-row-set2': ' Left knee felt off ', 'd5-plank-set1': '   ' },
+          photoUrls: null,
+        },
+        { assignmentId: 'a-diet', completedItemIds: [], notes: null, itemNotes: { lunch: 'Skipped the rice' }, photoUrls: null },
+      ],
+    );
+    expect(workoutSection?.items.map((item) => item.comments)).toEqual([['Set 2: Left knee felt off'], []]);
+    expect(dietSection?.items.map((item) => item.comments)).toEqual([[], ['Skipped the rice']]);
   });
 
   it('keeps an unlogged day apart from a rest day', () => {

@@ -187,6 +187,11 @@ function ItemRow({
       <View style={styles.itemText}>
         <ThemedText type="smallBold">{item.name}</ThemedText>
         <ThemedText type="meta">{[item.detail, progress].filter(Boolean).join(' · ')}</ThemedText>
+        {item.comments.map((comment) => (
+          <ThemedText key={comment} type="small" themeColor="textSecondary">
+            “{comment}”
+          </ThemedText>
+        ))}
       </View>
       {photoUrl ? (
         <Pressable

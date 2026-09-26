@@ -1,5 +1,5 @@
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { DetailHeader } from '@/components/detail-header';
@@ -40,7 +40,6 @@ type SelectedSet = {
 const emptyFeedback: SetFeedback = {
   completed: false,
   comment: '',
-  videoReference: '',
 };
 
 export function WorkoutDetailsScreen() {
@@ -60,6 +59,8 @@ export function WorkoutDetailsScreen() {
   const [selectedSet, setSelectedSet] = useState<SelectedSet | null>(null);
   const [isSavingLog, setIsSavingLog] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  /** The open set's comment as it was when the sheet opened, so closing saves only a change. */
+  const commentAtOpen = useRef('');
 
   const exercises = useMemo(() => (day ? workoutExercisesFrom(day) : []), [day]);
   const totalSets = exercises.reduce((total, exercise) => total + exercise.sets.length, 0);
@@ -67,10 +68,7 @@ export function WorkoutDetailsScreen() {
     .flatMap((exercise) => exercise.sets)
     .filter((set) => feedbackBySet[set.id]?.completed).length;
 
-  /**
-   * Today's saved check-in, so progress survives restarts. Completion comes
-   * from the server; set comments are local-only, so they're kept.
-   */
+  /** Today's saved check-in (ticks and set comments), so progress survives restarts. */
   const loadToday = useCallback(async () => {
     if (!assignmentId) return;
     try {
@@ -80,13 +78,14 @@ export function WorkoutDetailsScreen() {
         to: todayKey(),
       });
       const completed = new Set(rows[0]?.completedItemIds ?? []);
+      const comments = rows[0]?.itemNotes ?? {};
       setFeedbackBySet((current) => {
         const next: Record<string, SetFeedback> = {};
         for (const [setId, feedback] of Object.entries(current)) {
-          next[setId] = { ...feedback, completed: completed.has(setId) };
+          next[setId] = { ...feedback, completed: completed.has(setId), comment: comments[setId] ?? '' };
         }
-        for (const setId of completed) {
-          next[setId] = { ...(next[setId] ?? emptyFeedback), completed: true };
+        for (const setId of new Set([...completed, ...Object.keys(comments)])) {
+          next[setId] = { completed: completed.has(setId), comment: comments[setId] ?? '' };
         }
         return next;
       });
@@ -139,6 +138,30 @@ export function WorkoutDetailsScreen() {
     setFeedbackBySet(next);
     setSaveMessage(null);
     syncCheckIn(next);
+  }
+
+  function openSet(exercise: WorkoutExercise, set: WorkoutSet) {
+    commentAtOpen.current = getSetFeedback(set.id).comment;
+    setSelectedSet({ exercise, set });
+  }
+
+  /** Closing the sheet sends the set's comment to the coach, if it changed. */
+  function closeSet() {
+    const open = selectedSet;
+    setSelectedSet(null);
+    if (!open || !workoutAssignment) return;
+    const comment = getSetFeedback(open.set.id).comment.trim();
+    if (comment === commentAtOpen.current.trim()) return;
+    trackingApi
+      .saveCheckIn({
+        assignmentId: workoutAssignment.id,
+        date: todayKey(),
+        completedItemIds: buildCompletedItemIds(feedbackBySet),
+        itemNotes: { [open.set.id]: comment || null },
+      })
+      .catch(() => {
+        setSaveMessage('Your comment couldn’t be sent. Open the set and close it again to retry.');
+      });
   }
 
   const handleSaveWorkoutLog = async () => {
@@ -237,7 +260,7 @@ export function WorkoutDetailsScreen() {
           label={`${completedSets} of ${totalSets} sets checked`}
         />
         <ThemedText type="small" themeColor="textSecondary">
-          Tap a set to leave a comment or a video reference for your coach.
+          Tap a set to leave your coach a comment about it.
         </ThemedText>
       </Card>
 
@@ -247,7 +270,7 @@ export function WorkoutDetailsScreen() {
             key={exercise.id}
             exercise={exercise}
             feedbackBySet={feedbackBySet}
-            onOpenSet={(openedExercise, set) => setSelectedSet({ exercise: openedExercise, set })}
+            onOpenSet={openSet}
             onToggleSet={toggleSet}
           />
         ))}
@@ -274,12 +297,14 @@ export function WorkoutDetailsScreen() {
         feedback={selectedSet ? getSetFeedback(selectedSet.set.id) : emptyFeedback}
         onChange={(feedback) => {
           if (!selectedSet) return;
+          const previous = getSetFeedback(selectedSet.set.id);
           const next = { ...feedbackBySet, [selectedSet.set.id]: feedback };
           setFeedbackBySet(next);
           setSaveMessage(null);
-          syncCheckIn(next);
+          // Ticks sync at once; the comment is sent once, when the sheet closes.
+          if (feedback.completed !== previous.completed) syncCheckIn(next);
         }}
-        onClose={() => setSelectedSet(null)}
+        onClose={closeSet}
       />
     </ScreenScaffold>
   );

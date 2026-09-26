@@ -15,6 +15,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useMemo } from 'react';
 
 import { ErrorFallback } from '@/components/error-fallback';
+import { NotificationsBridge } from '@/components/notifications-bridge';
 import { AuthProvider, useAuth } from '@/contexts/auth';
 
 SplashScreen.preventAutoHideAsync();
@@ -72,6 +73,7 @@ function RootLayoutNav() {
   return (
     <ThemeProvider value={navigationTheme}>
       <ThemedStatusBar />
+      <NotificationsBridge />
       <Stack screenOptions={{ headerShown: false }}>
         {isSignedIn ? <Stack.Screen name="(tabs)" /> : <Stack.Screen name="auth" />}
       </Stack>

@@ -16,6 +16,8 @@ type CheckInLike = {
   assignmentId: string;
   completedItemIds: string[];
   notes: string | null;
+  /** { [itemId]: comment } from the client; older rows may not carry it. */
+  itemNotes?: Record<string, string> | null;
   photoUrls: Record<string, string> | null;
 };
 
@@ -27,6 +29,8 @@ export type DayItem = {
   done: number;
   total: number;
   photoUrl: string | null;
+  /** What the client wrote about it: "Set 2: left knee felt off" for a set, the text alone for a meal. */
+  comments: string[];
 };
 
 export type DaySection = {
@@ -64,7 +68,12 @@ function cycleLabel(entry: ScheduleLike): string {
   return [position, entry.label].filter(Boolean).join(' · ') || 'Every day';
 }
 
-function itemsOf(entry: ScheduleLike, ticked: Set<string>, photoUrls: Record<string, string>): DayItem[] {
+function itemsOf(
+  entry: ScheduleLike,
+  ticked: Set<string>,
+  photoUrls: Record<string, string>,
+  itemNotes: Record<string, string>,
+): DayItem[] {
   const content = record(entry.content);
   if (entry.type === 'WORKOUT') {
     return list(content?.exercises).map((exercise) => {
@@ -80,6 +89,10 @@ function itemsOf(entry: ScheduleLike, ticked: Set<string>, photoUrls: Record<str
         done: setIds.filter((setId) => ticked.has(setId)).length,
         total: sets,
         photoUrl: null,
+        comments: setIds.flatMap((setId, index) => {
+          const note = itemNotes[setId]?.trim();
+          return note ? [`Set ${index + 1}: ${note}`] : [];
+        }),
       };
     });
   }
@@ -92,6 +105,7 @@ function itemsOf(entry: ScheduleLike, ticked: Set<string>, photoUrls: Record<str
       done: ticked.has(id) ? 1 : 0,
       total: 1,
       photoUrl: photoUrls[id] ?? null,
+      comments: itemNotes[id]?.trim() ? [itemNotes[id].trim()] : [],
     };
   });
 }
@@ -111,7 +125,7 @@ export function buildDaySections(entries: readonly ScheduleLike[], checkIns: rea
         planTitle: entry.title,
         cycleLabel: cycleLabel(entry),
         isRestDay: entry.isRestDay,
-        items: entry.isRestDay ? [] : itemsOf(entry, ticked, checkIn?.photoUrls ?? {}),
+        items: entry.isRestDay ? [] : itemsOf(entry, ticked, checkIn?.photoUrls ?? {}, checkIn?.itemNotes ?? {}),
         completed,
         total,
         percent: total > 0 ? Math.round((completed / total) * 100) : 0,

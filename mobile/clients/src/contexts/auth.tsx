@@ -7,7 +7,10 @@ import React, {
   useState,
 } from 'react';
 
-import { ApiError, authApi, fetchCurrentUser, type AuthPayload, type AuthUser } from '@/lib/api';
+import { signOutOfGoogle } from '@/components/auth/google-sign-in-button';
+import { accountApi, ApiError, authApi, fetchCurrentUser, type AuthPayload, type AuthUser } from '@/lib/api';
+import { unregisterPushNotifications } from '@/lib/push-notifications';
+import { cancelAllReminders } from '@/lib/reminders';
 import { clearAccessToken, loadAccessToken, saveAccessToken } from '@/lib/token-storage';
 
 export interface AuthContextType {
@@ -17,7 +20,10 @@ export interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name: string) => Promise<void>;
   signInWithGoogle: (idToken: string) => Promise<void>;
+  signInWithApple: (identityToken: string, name?: string) => Promise<void>;
   signOut: () => Promise<void>;
+  /** Deletes the account and all of its data on the server, then signs out. */
+  deleteAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -102,10 +108,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [acceptSession],
   );
 
-  const signOut = useCallback(async () => {
+  const signInWithApple = useCallback(
+    async (identityToken: string, name?: string) => {
+      await acceptSession(await authApi.signInWithApple(identityToken, name));
+    },
+    [acceptSession],
+  );
+
+  /** Everything this device holds for the session: pushes, reminders, the Google account, the token. */
+  const endSession = useCallback(async () => {
     setUser(null);
+    await cancelAllReminders().catch(() => undefined);
+    await signOutOfGoogle();
     await clearAccessToken();
   }, []);
+
+  const signOut = useCallback(async () => {
+    // First, while the token still works: the backend has to hear which device left.
+    await unregisterPushNotifications();
+    await endSession();
+  }, [endSession]);
+
+  const deleteAccount = useCallback(async () => {
+    // Throws on failure, leaving the session as it was so the person can retry.
+    await accountApi.delete();
+    // The server has already dropped this device's push token with the account.
+    await endSession();
+  }, [endSession]);
 
   const value = useMemo<AuthContextType>(
     () => ({
@@ -115,9 +144,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signIn,
       signUp,
       signInWithGoogle,
+      signInWithApple,
       signOut,
+      deleteAccount,
     }),
-    [user, isLoading, signIn, signUp, signInWithGoogle, signOut],
+    [user, isLoading, signIn, signUp, signInWithGoogle, signInWithApple, signOut, deleteAccount],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -2,6 +2,8 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
+import { DeleteAccountSection } from '@/components/profile/delete-account-section';
+import { RemindersSection } from '@/components/profile/reminders-section';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
 import { Avatar } from '@/components/ui/avatar';
@@ -441,6 +443,8 @@ export function ProfileScreen() {
         </Section>
       )}
 
+      <RemindersSection />
+
       <AppearanceSection />
 
       <Section title="Account">
@@ -474,6 +478,8 @@ export function ProfileScreen() {
           )}
         </Card>
       </Section>
+
+      <DeleteAccountSection consequence="Your profile, weigh-ins, photos and check-in history are deleted, and your coach loses access to them." />
     </ScreenScaffold>
   );
 }

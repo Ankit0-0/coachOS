@@ -69,8 +69,8 @@ export type WorkoutExercise = {
 
 export type SetFeedback = {
   completed: boolean;
+  /** Saved with the day's check-in (itemNotes) for the coach to read. */
   comment: string;
-  videoReference: string;
 };
 
 function text(value: unknown): string {

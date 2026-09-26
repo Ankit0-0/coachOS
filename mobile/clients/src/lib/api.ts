@@ -129,9 +129,36 @@ export const authApi = {
   signInWithGoogle(idToken: string): Promise<AuthPayload> {
     return apiRequest<AuthPayload>('/auth/google', {
       method: 'POST',
-      body: { idToken },
+      // The role only applies when this sign-in creates the account.
+      body: { idToken, role: 'CLIENT' as Role },
       auth: false,
     });
+  },
+
+  /** `name` is Apple's one-time gift on the first sign-in; the token never carries it. */
+  signInWithApple(identityToken: string, name?: string): Promise<AuthPayload> {
+    return apiRequest<AuthPayload>('/auth/apple', {
+      method: 'POST',
+      body: { identityToken, role: 'CLIENT' as Role, ...(name ? { name } : {}) },
+      auth: false,
+    });
+  },
+};
+
+export const accountApi = {
+  /** Deletes the signed-in account and all of its data, for good. */
+  delete(): Promise<{ message: string }> {
+    return apiRequest<{ message: string }>('/account', { method: 'DELETE' });
+  },
+};
+
+export const pushTokenApi = {
+  register(token: string, platform: 'IOS' | 'ANDROID'): Promise<{ message: string }> {
+    return apiRequest<{ message: string }>('/push-tokens', { method: 'POST', body: { token, platform } });
+  },
+
+  unregister(token: string): Promise<{ message: string }> {
+    return apiRequest<{ message: string }>('/push-tokens', { method: 'DELETE', body: { token } });
   },
 };
 
@@ -212,6 +239,8 @@ export interface CheckIn {
   date: string;
   completedItemIds: string[];
   notes: string | null;
+  /** { [itemId]: comment } — the client's note to their coach on one set or meal. */
+  itemNotes: Record<string, string> | null;
   /**
    * { [itemId]: signedUrl }, one per plan item that has a photo. Signed on
    * every read and valid for about an hour — never store or cache these.
@@ -368,6 +397,8 @@ export const trackingApi = {
      * to leave photos alone; a null value removes that one item's photo.
      */
     photoKeys?: Record<string, string | null> | null;
+    /** Merged per item like photoKeys; an empty or null comment removes that item's note. */
+    itemNotes?: Record<string, string | null>;
   }): Promise<CheckIn> {
     return apiRequest<{ checkIn: CheckIn }>('/tracking/checkin', {
       method: 'POST',

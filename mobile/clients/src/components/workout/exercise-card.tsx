@@ -40,7 +40,7 @@ export function ExerciseCard({ exercise, feedbackBySet, onOpenSet, onToggleSet }
         {exercise.sets.map((set) => {
           const feedback = feedbackBySet[set.id];
           const done = Boolean(feedback?.completed);
-          const hasNotes = Boolean(feedback?.comment || feedback?.videoReference);
+          const hasNotes = Boolean(feedback?.comment.trim());
 
           return (
             <View key={set.id} style={[styles.row, { backgroundColor: theme.surface, borderColor: theme.border }]}>

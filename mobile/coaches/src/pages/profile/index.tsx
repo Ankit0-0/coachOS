@@ -2,6 +2,8 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Switch, View } from 'react-native';
 
+import { DeleteAccountSection } from '@/components/profile/delete-account-section';
+import { RemindersSection } from '@/components/profile/reminders-section';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
 import { Avatar } from '@/components/ui/avatar';
@@ -431,6 +433,8 @@ export function ProfileScreen() {
         </Card>
       </Section>
 
+      <RemindersSection />
+
       <AppearanceSection />
 
       <Section title="Account">
@@ -464,6 +468,8 @@ export function ProfileScreen() {
           )}
         </Card>
       </Section>
+
+      <DeleteAccountSection consequence="Your profile, the plans you wrote and your clients’ plan history are deleted. Your clients keep their own accounts." />
     </ScreenScaffold>
   );
 }
