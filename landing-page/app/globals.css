@@ -81,47 +81,62 @@ body {
 }
 
 /*
-  The "tools coaching runs on" pile in the problem section. Every tile keeps
-  its own height — nothing is stretched to fill a row.
-  - Phone: a two-column grid by named area; the .tool-pile-col wrappers are
-    display: contents, so their tiles take part in that grid directly.
-  - md up: three hand-balanced columns, stacked like masonry.
+  The "tools coaching runs on" pile in the problem section: three
+  hand-balanced columns, stacked like masonry, so every tile keeps its own
+  height — nothing is stretched to fill a row.
+
+  Below md the same collage is drawn at a fixed 760px and scaled down with
+  zoom, like a thumbnail of the desktop version. zoom (unlike transform)
+  shrinks the layout box too, so the page flows around the smaller pile with
+  no gap. The steps pick the largest zoom whose 760px fits the screen minus
+  the 1.25rem page gutters.
 */
 .tool-pile {
-  display: grid;
-  gap: 0.75rem;
-  align-items: start;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-areas:
-    'sheet sheet'
-    'chat chat'
-    'cal gallery'
-    'pdf form'
-    'note .';
+  display: flex;
+  align-items: flex-start;
+  gap: 1.25rem;
 }
 
 .tool-pile-col {
-  display: contents;
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1.25rem;
 }
 
-@media (min-width: 768px) {
+/* The column carrying the spreadsheet, which needs the width. */
+.tool-pile-col-wide {
+  flex-grow: 1.3;
+}
+
+@media (max-width: 767.98px) {
   .tool-pile {
-    display: flex;
-    align-items: flex-start;
-    gap: 1.25rem;
+    width: 760px;
+    margin-inline: auto;
+    zoom: 0.36;
   }
 
-  .tool-pile-col {
-    display: flex;
-    flex: 1 1 0;
-    min-width: 0;
-    flex-direction: column;
-    gap: 1.25rem;
+  @media (min-width: 360px) {
+    .tool-pile { zoom: 0.42; }
   }
-
-  /* The middle column carries the spreadsheet, which needs the width. */
-  .tool-pile-col:nth-child(2) {
-    flex-grow: 1.3;
+  @media (min-width: 390px) {
+    .tool-pile { zoom: 0.46; }
+  }
+  @media (min-width: 414px) {
+    .tool-pile { zoom: 0.49; }
+  }
+  @media (min-width: 480px) {
+    .tool-pile { zoom: 0.57; }
+  }
+  @media (min-width: 560px) {
+    .tool-pile { zoom: 0.68; }
+  }
+  @media (min-width: 640px) {
+    .tool-pile { zoom: 0.78; }
+  }
+  @media (min-width: 700px) {
+    .tool-pile { zoom: 0.86; }
   }
 }
 
