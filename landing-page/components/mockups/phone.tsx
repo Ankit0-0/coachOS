@@ -44,7 +44,7 @@ function StatusBar() {
 
 /** The scrolling body of a screen; clips whatever runs past the tab bar. */
 export function ScreenBody({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <div className={`min-h-0 flex-1 overflow-hidden px-[1.1em] pt-[0.4em] ${className}`}>{children}</div>;
+  return <div className={`min-h-0 flex-1 overflow-hidden px-[1.25em] pt-[0.4em] ${className}`}>{children}</div>;
 }
 
 type Tab = { label: string; icon: ReactNode };
@@ -57,27 +57,27 @@ const coachTabs: Tab[] = [
 
 const clientTabs: Tab[] = [
   { label: 'Home', icon: <HomeIcon /> },
-  { label: 'Explore', icon: <CompassIcon /> },
-  { label: 'Profile', icon: <PersonIcon /> },
+  { label: 'Explore', icon: <PersonSearchIcon /> },
+  { label: 'Me', icon: <PersonIcon /> },
 ];
 
 /** The bottom tab bar of the coach or client app, with one tab active. */
 export function TabBar({ app, active }: { app: 'coach' | 'client'; active: string }) {
   const tabs = app === 'coach' ? coachTabs : clientTabs;
   return (
-    <div className="grid grid-cols-3 border-t border-app-line bg-app-ink px-[0.6em] pb-[1.1em] pt-[0.55em]">
+    <div className="grid grid-cols-3 border-t border-app-border bg-app-bg px-[0.6em] pb-[1.1em] pt-[0.5em]">
       {tabs.map((tab) => {
         const isActive = tab.label === active;
         return (
           <div key={tab.label} className="flex flex-col items-center gap-[0.2em]">
             <span
-              className={`flex h-[1.9em] w-[3.4em] items-center justify-center rounded-full ${
-                isActive ? 'bg-app-accent-soft text-app-accent' : 'text-app-muted'
+              className={`flex h-[2.1em] w-full items-center justify-center rounded-full ${
+                isActive ? 'bg-app-chip text-app-primary' : 'text-app-muted'
               }`}
             >
               {tab.icon}
             </span>
-            <span className={`text-[0.7em] ${isActive ? 'font-semibold text-app-text' : 'text-app-muted'}`}>{tab.label}</span>
+            <span className={`text-[0.7em] ${isActive ? 'font-semibold text-app-primary' : 'text-app-muted'}`}>{tab.label}</span>
           </div>
         );
       })}
@@ -86,16 +86,16 @@ export function TabBar({ app, active }: { app: 'coach' | 'client'; active: strin
 }
 
 /** A round avatar with initials, the app's fallback when there is no photo. */
-export function Initials({ name, tone = 'plain', size = 2.4 }: { name: string; tone?: 'plain' | 'accent' | 'warm'; size?: number }) {
+export function Initials({ name, tone = 'warm', size = 2.4 }: { name: string; tone?: 'sage' | 'warm'; size?: number }) {
   const initials = name
     .split(' ')
     .map((part) => part[0])
     .join('')
     .slice(0, 2);
+  // Clients get the warm chip, a coach the sage one, as in the apps.
   const tones = {
-    plain: 'bg-app-line text-app-muted',
-    accent: 'bg-app-accent-soft text-app-accent',
-    warm: 'bg-[#2a1f19] text-[#f0b48f]',
+    sage: 'bg-app-chip text-app-chip-text',
+    warm: 'bg-app-warm text-app-warm-text',
   } as const;
   return (
     <span
@@ -146,11 +146,13 @@ function HomeIcon() {
   );
 }
 
-function CompassIcon() {
+function PersonSearchIcon() {
   return (
-    <svg viewBox="0 0 24 24" className={iconClass} fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="9.5" />
-      <path d="M15.5 8.5l-2 5-5 2 2-5z" />
+    <svg viewBox="0 0 24 24" className={iconClass} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <circle cx="9" cy="7.5" r="3.5" />
+      <path d="M2.5 20c.5-3.6 3-5.5 6.5-5.5 1 0 1.9.2 2.7.5" />
+      <circle cx="17" cy="16" r="3" />
+      <path d="M19.2 18.2L21.5 20.5" />
     </svg>
   );
 }

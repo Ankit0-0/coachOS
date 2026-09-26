@@ -15,21 +15,35 @@ export default {
         charcoal: '#252B28',
         muted: '#66716B',
         /**
-         * The app itself, for the phone mockups: the dark theme the mobile
-         * apps ship (mobile/*\/src/constants/theme.ts). Mockups use only these,
-         * so they look like the real screens, not like the site.
+         * The app itself, for the phone mockups: the light theme the mobile
+         * apps ship (`light` in packages/theme/src/themes.ts), named by the
+         * same roles. Mockups use only these, so they look like the real
+         * screens even where a value happens to match the site's.
          */
         app: {
-          ink: '#05070a',
-          panel: '#0f141b',
-          sunken: '#151b23',
-          line: '#1c232d',
-          muted: '#8b93a4',
-          text: '#f4f1ea',
-          accent: '#7ec8ff',
-          'accent-soft': '#16222c',
-          success: '#7CD992',
-          diet: '#4ADE9B',
+          bg: '#F7F5EF',
+          surface: '#FFFFFF',
+          inset: '#F7F5EF',
+          border: 'rgba(24, 59, 50, 0.12)',
+          'border-strong': '#7A8580',
+          'border-input': '#838D87',
+          heading: '#183B32',
+          text: '#252B28',
+          secondary: '#4F5552',
+          muted: '#5E6963',
+          primary: '#183B32',
+          'on-primary': '#F7F5EF',
+          chip: '#DDE7DC',
+          'chip-text': '#183B32',
+          warm: '#F4E3D8',
+          'warm-text': '#A2502E',
+          neutral: '#EFEDE6',
+          'neutral-text': '#4F5552',
+          badge: '#A2502E',
+          'chart-bar': '#46625B',
+          'chart-empty': '#E8EBEA',
+          'chart-diet': '#C96F4A',
+          'chart-grid': 'rgba(24, 59, 50, 0.10)',
         },
       },
       fontFamily: {

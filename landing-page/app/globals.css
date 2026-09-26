@@ -180,7 +180,8 @@ body {
   height: 100%;
   overflow: hidden;
   border-radius: 11.5% / 5.4%;
-  background: #05070a;
+  /* The apps' light theme: `bg` and `textPrimary` in packages/theme. */
+  background: #f7f5ef;
 }
 
 .phone-ui {
@@ -189,5 +190,5 @@ body {
   height: 100%;
   font-size: 4cqw;
   line-height: 1.35;
-  color: #f4f1ea;
+  color: #252b28;
 }
