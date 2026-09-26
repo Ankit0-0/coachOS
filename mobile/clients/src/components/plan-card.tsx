@@ -18,7 +18,7 @@ export type HomePlanCard = {
   /** "Workout" or "Diet". */
   kind: string;
   title: string;
-  /** "Day 3 of 7 · Pull" — which day of the cycle today is. */
+  /** The coach's name for today, "Pull" or "Easy day"; empty when they gave none. */
   dayLabel: string;
   /** A scheduled rest day shows a neutral marker, never an empty bar. */
   isRestDay: boolean;
@@ -58,11 +58,9 @@ export function PlanCard({ plan }: PlanCardProps) {
       <Card style={styles.card}>
         <View style={styles.top}>
           <IconTile icon={plan.iconName} tone={isDiet ? 'terracotta' : 'green'} />
+          {/* The icon tile already says workout or diet; the pill only names the day. */}
           <View style={styles.kind}>
-            <Chip
-              label={plan.dayLabel ? `${plan.kind} · ${plan.dayLabel}` : plan.kind}
-              tone={isDiet ? 'terracotta' : 'green'}
-            />
+            {plan.dayLabel ? <Chip label={plan.dayLabel} tone={isDiet ? 'terracotta' : 'green'} singleLine /> : null}
           </View>
           <SymbolView name={CHEVRON} size={18} tintColor={theme.textMuted} />
         </View>
@@ -119,6 +117,7 @@ const styles = StyleSheet.create({
   },
   kind: {
     flex: 1,
+    minWidth: 0,
   },
   copy: {
     gap: Spacing.one,

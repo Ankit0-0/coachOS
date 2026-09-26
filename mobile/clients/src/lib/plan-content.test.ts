@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { cycleDayLabel, parseDietContent, parseWorkoutContent, workoutExercisesFrom } from '@/lib/plan-content';
+import {
+  cycleDayLabel,
+  cyclePositionLabel,
+  parseDietContent,
+  parseWorkoutContent,
+  workoutExercisesFrom,
+} from '@/lib/plan-content';
 
 describe('parseWorkoutContent', () => {
   it('reads a one-day cycle, the shape the backend sends for a legacy single-day plan', () => {
@@ -54,6 +60,16 @@ describe('workoutExercisesFrom', () => {
       { id: 'e1-set1', setNumber: 1, reps: '8', rest: '—' },
       { id: 'e1-set2', setNumber: 2, reps: '8', rest: '—' },
     ]);
+  });
+});
+
+describe('cyclePositionLabel', () => {
+  it('says where in the cycle today is', () => {
+    expect(cyclePositionLabel({ dayIndex: 5, cycleLengthDays: 7 })).toBe('Day 6 of 7');
+  });
+
+  it('is null for a one-day plan', () => {
+    expect(cyclePositionLabel({ dayIndex: 0, cycleLengthDays: 1 })).toBeNull();
   });
 });
 

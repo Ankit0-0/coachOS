@@ -48,7 +48,7 @@ export function ClientNotesScreen() {
   const { isRefreshing, refresh } = useRefresh(load);
 
   return (
-    <ScreenScaffold refreshing={isRefreshing} onRefresh={refresh}>
+    <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh}>
       <DetailHeader title="Notes" subtitle={params.name ? `${params.name} · last 12 months` : 'Last 12 months'} />
 
       {isLoading ? (

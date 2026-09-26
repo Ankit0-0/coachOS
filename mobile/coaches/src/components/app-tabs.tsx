@@ -11,7 +11,8 @@ export default function AppTabs() {
       indicatorColor={colors.indicatorColor}
       iconColor={colors.iconColor}
       labelStyle={colors.labelStyle}>
-      <NativeTabs.Trigger name="index">
+      {/* Each tab is a group with its own Stack, so pushed screens keep the bar. */}
+      <NativeTabs.Trigger name="(home)">
         <NativeTabs.Trigger.Label>Clients</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           sf={{ default: 'person.2', selected: 'person.2.fill' }}
@@ -19,7 +20,7 @@ export default function AppTabs() {
         />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="saved-plans">
+      <NativeTabs.Trigger name="(plans)">
         <NativeTabs.Trigger.Label>Plans</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           sf={{ default: 'doc.text', selected: 'doc.text.fill' }}

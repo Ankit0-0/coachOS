@@ -2,6 +2,7 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Pressable, StyleSheet, View } from 'react-native';
 
+import { DayDetailModal, type DayDetailLoader } from '@/components/history/DayDetailModal';
 import { MonthNavigator } from '@/components/history/MonthNavigator';
 import { MonthlyActivityCalendar, type DailyActivity } from '@/components/history/MonthlyActivityCalendar';
 import { WeightChart } from '@/components/history/WeightChart';
@@ -18,7 +19,7 @@ import { useScheduleRange } from '@/hooks/use-schedule';
 import { useTheme } from '@/hooks/use-theme';
 import { useTrackingAssignments } from '@/hooks/use-assignments';
 import { useRefresh } from '@/hooks/use-refresh';
-import { trackingApi, type CheckIn, type WeightEntry } from '@/lib/api';
+import { scheduleApi, trackingApi, type CheckIn, type WeightEntry } from '@/lib/api';
 import { dayOfMonth, monthRange, todayKey } from '@/lib/dates';
 import { confirmDestructive } from '@/lib/confirm';
 import { pickAndUploadImage } from '@/lib/image-upload';
@@ -66,6 +67,18 @@ export function HistoryScreen() {
   // Month and range changes can overlap: only the latest request of each kind may land.
   const latestActivityRequest = useRef(0);
   const latestWeightRequest = useRef(0);
+  /** The calendar day open in the detail modal. */
+  const [openDate, setOpenDate] = useState<string | null>(null);
+
+  // Just the one date: its schedule, then each of that day's plans' check-in.
+  const loadDay = useCallback<DayDetailLoader>(async (date) => {
+    const schedule = await scheduleApi.list({ from: date, to: date });
+    const assignmentIds = [...new Set(schedule.map((entry) => entry.assignmentId))];
+    const checkIns = await Promise.all(
+      assignmentIds.map((assignmentId) => trackingApi.listCheckIns({ assignmentId, from: date, to: date })),
+    );
+    return { schedule, checkIns: checkIns.flat() };
+  }, []);
 
   const loadActivity = useCallback(async () => {
     const request = ++latestActivityRequest.current;
@@ -182,6 +195,10 @@ export function HistoryScreen() {
     };
   });
 
+  const today = todayKey();
+  // Past days and today open; the future has nothing to show.
+  const lastPressableDay = month.to <= today ? month.daysInMonth : month.from > today ? 0 : dayOfMonth(today);
+
   // Rest days are not misses, so they are out of both sides of the ratio.
   const trainingDays = dailyActivity.filter((entry) => !entry.isRestDay);
   const completedDays = trainingDays.filter(
@@ -285,7 +302,7 @@ export function HistoryScreen() {
 
   if (isCheckingOnboarding) {
     return (
-      <ScreenScaffold>
+      <ScreenScaffold includeBottomTabInset>
         <ActivityIndicator color={theme.textSecondary} />
       </ScreenScaffold>
     );
@@ -296,7 +313,7 @@ export function HistoryScreen() {
   }
 
   return (
-    <ScreenScaffold refreshing={isRefreshing} onRefresh={refresh}>
+    <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh}>
       <View style={styles.header}>
         <ThemedText type="display">History</ThemedText>
         <ThemedText themeColor="textSecondary">Your weight trend and check-ins.</ThemedText>
@@ -421,10 +438,13 @@ export function HistoryScreen() {
               entries={dailyActivity}
               daysInMonth={month.daysInMonth}
               firstWeekday={month.firstWeekday}
+              onDayPress={(day) => setOpenDate(`${month.from.slice(0, 8)}${String(day).padStart(2, '0')}`)}
+              lastPressableDay={lastPressableDay}
             />
           </>
         )}
       </Card>
+      <DayDetailModal date={openDate} onClose={() => setOpenDate(null)} load={loadDay} />
     </ScreenScaffold>
   );
 }

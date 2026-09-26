@@ -22,13 +22,28 @@ const CHIP_COLORS: Record<ChipTone, { fill: ThemeColor; text: ThemeColor }> = {
 };
 
 /** Pill label (landing: `rounded-full px-3 py-1 text-xs font-semibold`). */
-export function Chip({ label, tone = 'neutral', icon }: { label: string; tone?: ChipTone; icon?: SymbolName }) {
+export function Chip({
+  label,
+  tone = 'neutral',
+  icon,
+  singleLine = false,
+}: {
+  label: string;
+  tone?: ChipTone;
+  icon?: SymbolName;
+  /** One line within the parent's width, ellipsised rather than wrapping. */
+  singleLine?: boolean;
+}) {
   const theme = useTheme();
   const { fill, text } = CHIP_COLORS[tone];
   return (
-    <View style={[styles.chip, { backgroundColor: theme[fill] }]}>
+    <View style={[styles.chip, singleLine && styles.chipSingleLine, { backgroundColor: theme[fill] }]}>
       {icon ? <SymbolView name={icon} size={12} tintColor={theme[text]} /> : null}
-      <ThemedText type="chip" themeColor={text}>
+      <ThemedText
+        type="chip"
+        themeColor={text}
+        numberOfLines={singleLine ? 1 : undefined}
+        style={singleLine ? styles.chipTextShrink : undefined}>
         {label}
       </ThemedText>
     </View>
@@ -147,6 +162,12 @@ const styles = StyleSheet.create({
     minHeight: 28,
     paddingHorizontal: Spacing.twoHalf,
     borderRadius: Radii.pill,
+  },
+  chipSingleLine: {
+    maxWidth: '100%',
+  },
+  chipTextShrink: {
+    flexShrink: 1,
   },
   count: {
     minWidth: 20,

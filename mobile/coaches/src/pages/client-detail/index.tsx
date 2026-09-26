@@ -6,6 +6,7 @@ import { ClientPhotos } from '@/components/client-detail/ClientPhotos';
 import { PlanPickerModal } from '@/components/client-detail/PlanPickerModal';
 import { MonthNavigator } from '@/components/client-detail/MonthNavigator';
 import { SubscriptionSection } from '@/components/client-detail/SubscriptionSection';
+import { DayDetailModal, type DayDetailLoader } from '@/components/client-detail/DayDetailModal';
 import { MonthlyActivityCalendar, type DailyActivity } from '@/components/client-detail/MonthlyActivityCalendar';
 import { WeightChart } from '@/components/client-detail/WeightChart';
 import { WeightRangeSelector } from '@/components/client-detail/WeightRangeSelector';
@@ -35,7 +36,7 @@ import {
 } from '@/lib/api';
 import { buildTelUrl, startCall } from '@/lib/call';
 import { confirmDestructive } from '@/lib/confirm';
-import { dayOfMonth, lastNDaysRange, longDateLabel, monthRange, shortDateLabel } from '@/lib/dates';
+import { dayOfMonth, formatDateKey, lastNDaysRange, longDateLabel, monthRange, shortDateLabel } from '@/lib/dates';
 import { formatPhone } from '@/lib/phone';
 import { planStats, planSummary } from '@/lib/plan-format';
 import { DEFAULT_WEIGHT_RANGE, weightRangeDates, type WeightRangeKey } from '@/lib/weight-range';
@@ -93,6 +94,22 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
   const now = new Date();
   const [viewedMonth, setViewedMonth] = useState({ year: now.getFullYear(), month: now.getMonth() });
   const month = monthRange(viewedMonth.year, viewedMonth.month);
+  const today = formatDateKey(now);
+  // Past days and today open; the future has nothing to show.
+  const lastPressableDay = month.to <= today ? month.daysInMonth : month.from > today ? 0 : dayOfMonth(today);
+  /** The calendar day open in the detail modal. */
+  const [openDate, setOpenDate] = useState<string | null>(null);
+  // Just the one date, not the month again.
+  const loadDay = useCallback<DayDetailLoader>(
+    async (date) => {
+      const [schedule, checkIns] = await Promise.all([
+        coachClientApi.listSchedule(clientId, { from: date, to: date }),
+        coachClientApi.listCheckIns(clientId, { from: date, to: date }),
+      ]);
+      return { schedule, checkIns };
+    },
+    [clientId],
+  );
   const isAtCurrentMonth =
     viewedMonth.year === now.getFullYear() && viewedMonth.month === now.getMonth();
 
@@ -454,8 +471,11 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
                 entries={dailyActivity}
                 daysInMonth={month.daysInMonth}
                 firstWeekday={month.firstWeekday}
+                onDayPress={(day) => setOpenDate(`${month.from.slice(0, 8)}${String(day).padStart(2, '0')}`)}
+                lastPressableDay={lastPressableDay}
               />
             </Card>
+            <DayDetailModal date={openDate} onClose={() => setOpenDate(null)} load={loadDay} />
           </Section>
 
           <ClientPhotos

@@ -37,7 +37,7 @@ export function WorkoutPlansScreen() {
   const { isRefreshing, refresh } = useRefresh(load);
 
   return (
-    <ScreenScaffold refreshing={isRefreshing} onRefresh={refresh}>
+    <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh}>
       <DetailHeader title="Workout plans" subtitle="Every workout plan you've built." />
       {isLoading ? (
         <ActivityIndicator color={theme.textSecondary} />

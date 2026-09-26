@@ -39,7 +39,7 @@ export function ClientsScreen() {
   const { isRefreshing, refresh } = useRefresh(load);
 
   return (
-    <ScreenScaffold refreshing={isRefreshing} onRefresh={refresh}>
+    <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh}>
       <DetailHeader
         title="Roster"
         subtitle={clients.length === 1 ? '1 client' : `${clients.length} clients`}
