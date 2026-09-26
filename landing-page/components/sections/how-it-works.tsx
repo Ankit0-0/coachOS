@@ -53,7 +53,7 @@ export function HowItWorksSection() {
           }
         />
 
-        <ol className="relative mt-12 grid gap-6 lg:grid-cols-3">
+        <ol className="relative mt-12 grid grid-cols-1 gap-6 lg:grid-cols-3">
           {steps.map((step, index) => (
             <li key={step.title}>
               <Reveal delay={index * 0.08} className="flex h-full flex-col rounded-3xl border border-forest/10 bg-white p-6 shadow-card sm:p-7">
@@ -98,7 +98,7 @@ function AssignVisual() {
       ].map(([kind, plan]) => (
         <div key={kind} className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 ring-1 ring-forest/10">
           <span className="rounded-md bg-sage px-1.5 py-0.5 text-[11px] font-semibold text-forest">{kind}</span>
-          <span className="truncate text-charcoal/85">{plan}</span>
+          <span className="min-w-0 truncate text-charcoal/85">{plan}</span>
           <span className="ml-auto text-xs font-semibold text-forest">Assigned</span>
         </div>
       ))}
