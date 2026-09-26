@@ -29,6 +29,7 @@ export async function serializeCheckIn(row: CheckIn) {
     date: dateKey(row.date),
     completedItemIds: row.completedItemIds,
     notes: row.notes,
+    itemNotes: readItemNotes(row.itemNotes),
     photoUrls: await getSignedReadUrlMap(row.photoKeys),
     createdAt: row.createdAt,
   };
@@ -104,6 +105,34 @@ async function mergePhotoKeys(
   return { value: Object.keys(merged).length > 0 ? merged : Prisma.DbNull, orphaned };
 }
 
+/** The stored { [itemId]: comment } map, validated: Prisma types Json columns as unknown. */
+function readItemNotes(value: unknown): Record<string, string> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const entries = Object.entries(value as Record<string, unknown>).filter(
+    (entry): entry is [string, string] => typeof entry[1] === "string" && entry[1].length > 0,
+  );
+  return entries.length > 0 ? Object.fromEntries(entries) : null;
+}
+
+/** Folds a per-item notes patch into what is stored; undefined leaves the column alone. */
+async function mergeItemNotes(
+  assignmentId: string,
+  date: Date,
+  patch: Record<string, string | null> | undefined,
+): Promise<Record<string, string> | typeof Prisma.DbNull | undefined> {
+  if (patch === undefined) return undefined;
+  const existing = await prisma.checkIn.findUnique({
+    where: { assignmentId_date: { assignmentId, date } },
+    select: { itemNotes: true },
+  });
+  const merged = { ...(readItemNotes(existing?.itemNotes) ?? {}) };
+  for (const [itemId, note] of Object.entries(patch)) {
+    if (note === null || note.trim() === "") delete merged[itemId];
+    else merged[itemId] = note.trim();
+  }
+  return Object.keys(merged).length > 0 ? merged : Prisma.DbNull;
+}
+
 export async function upsertCheckIn(
   input: {
     assignmentId: string;
@@ -111,6 +140,7 @@ export async function upsertCheckIn(
     completedItemIds: string[];
     notes?: string | undefined;
     photoKeys?: Record<string, string | null> | null | undefined;
+    itemNotes?: Record<string, string | null> | undefined;
   },
   userId: string,
 ) {
@@ -127,6 +157,7 @@ export async function upsertCheckIn(
 
   const date = parseDate(input.date);
   const { value: photoKeys, orphaned } = await mergePhotoKeys(input.assignmentId, date, input.photoKeys);
+  const itemNotes = await mergeItemNotes(input.assignmentId, date, input.itemNotes);
 
   const checkIn = await prisma.checkIn.upsert({
     where: { assignmentId_date: { assignmentId: input.assignmentId, date } },
@@ -134,6 +165,7 @@ export async function upsertCheckIn(
       completedItemIds: input.completedItemIds,
       ...(input.notes !== undefined ? { notes: input.notes } : {}),
       ...(photoKeys !== undefined ? { photoKeys } : {}),
+      ...(itemNotes !== undefined ? { itemNotes } : {}),
     },
     create: {
       assignmentId: input.assignmentId,
@@ -141,6 +173,7 @@ export async function upsertCheckIn(
       completedItemIds: input.completedItemIds,
       notes: input.notes ?? null,
       photoKeys: photoKeys ?? Prisma.DbNull,
+      itemNotes: itemNotes ?? Prisma.DbNull,
     },
   });
   await deleteOrphans(orphaned);

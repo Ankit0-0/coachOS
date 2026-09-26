@@ -19,6 +19,11 @@ export const checkInSchema = z.object({
    * that one photo; a null map clears every photo at once.
    */
   photoKeys: z.record(z.string().min(1), photoKeySchema.nullable()).nullable().optional(),
+  /**
+   * { [itemId]: comment } for the coach, merged one item at a time like
+   * photoKeys. A null or blank comment removes that item's note.
+   */
+  itemNotes: z.record(z.string().min(1).max(200), z.string().trim().max(500).nullable()).optional(),
 });
 
 export const weightSchema = z.object({

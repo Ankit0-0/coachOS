@@ -35,7 +35,10 @@ export async function sendPushMessages(messages: PushMessage[]): Promise<string[
 
   const unregistered: string[] = [];
   for (let start = 0; start < messages.length; start += CHUNK_SIZE) {
-    const chunk = messages.slice(start, start + CHUNK_SIZE).map((message) => ({ sound: "default", ...message }));
+    // "updates" is the Android channel both apps create for these (lib/push-notifications.ts).
+    const chunk = messages
+      .slice(start, start + CHUNK_SIZE)
+      .map((message) => ({ sound: "default", channelId: "updates", ...message }));
     try {
       const response = await fetch(EXPO_PUSH_URL, {
         method: "POST",

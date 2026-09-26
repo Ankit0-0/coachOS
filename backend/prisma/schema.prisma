@@ -299,6 +299,9 @@ model CheckIn {
   /// { [itemId]: s3Key } so each meal in a diet plan can carry its own photo.
   /// Null when the check-in has no photos at all.
   photoKeys        Json?
+  /// { [itemId]: comment } — the client's note to their coach on one set or
+  /// meal ("left knee felt off"). Merged per item like photoKeys.
+  itemNotes        Json?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
