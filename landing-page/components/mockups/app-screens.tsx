@@ -481,7 +481,7 @@ export function ClientWorkoutScreen({ className }: ScreenProps) {
           <p className="mb-[0.35em] mt-[0.3em] text-[0.8em] text-app-secondary">6 of 16 sets checked</p>
           <Progress percent={38} color="bg-app-chart-bar" />
           <p className="mt-[0.6em] text-[0.82em] leading-snug text-app-secondary">
-            Tap a set to leave a comment or a video reference for your coach.
+            Tap a set to leave your coach a comment about it.
           </p>
         </Card>
 
