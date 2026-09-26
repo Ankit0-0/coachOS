@@ -148,6 +148,8 @@ export async function updateSubscription(
       endDate,
       ...(input.status === undefined ? {} : { status: input.status }),
       ...(input.notes === undefined ? {} : { notes: input.notes }),
+      // A new end date is a new ending to be reminded about.
+      ...(endDate.getTime() === existing.endDate.getTime() ? {} : { endingReminderSentAt: null }),
     },
   });
   getLogger().info({ subscriptionId }, "updateSubscription: period updated");

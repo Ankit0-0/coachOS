@@ -36,6 +36,15 @@ export const env = {
     .split(",")
     .map((id) => id.trim())
     .filter(Boolean),
+  /**
+   * Bundle IDs whose Sign in with Apple identity tokens are accepted — the
+   * token's audience is the iOS app's bundle ID. Comma-separated: both apps.
+   * Unset means Apple sign-in answers 503.
+   */
+  appleBundleIds: (process.env.APPLE_BUNDLE_IDS ?? "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean),
   port: Number(process.env.PORT ?? 4000),
   nodeEnv: process.env.NODE_ENV ?? "development",
   /**
@@ -93,4 +102,33 @@ export const env = {
    * test suite, which makes far more than five requests from one address.
    */
   earlyAccessRateLimitMax: positiveInt(process.env.EARLY_ACCESS_RATE_LIMIT_MAX, 5),
+  /**
+   * Sign-in and sign-up attempts (password, Google, Apple) one IP may make per
+   * fifteen minutes. Generous enough for a family or office behind one address,
+   * tight enough to make password guessing slow.
+   */
+  authRateLimitMax: positiveInt(process.env.AUTH_RATE_LIMIT_MAX, 30),
+  /** Forgot / reset password requests per IP per fifteen minutes: each one sends an email. */
+  passwordResetRateLimitMax: positiveInt(process.env.PASSWORD_RESET_RATE_LIMIT_MAX, 10),
+  /**
+   * Every /v1 request from one IP per minute. A backstop against a runaway
+   * client or a scraper, far above what a person tapping through the apps sends.
+   */
+  apiRateLimitMax: positiveInt(process.env.API_RATE_LIMIT_MAX, 300),
+  /**
+   * Whether push notifications are actually sent to Expo. On by default; the
+   * test suite turns it off so no test ever reaches the network.
+   */
+  pushNotificationsEnabled: boolean(process.env.PUSH_NOTIFICATIONS_ENABLED, true),
+  /**
+   * Optional. Required only if "Enhanced push security" is switched on for the
+   * Expo account; otherwise Expo accepts pushes without it.
+   */
+  expoAccessToken: process.env.EXPO_ACCESS_TOKEN?.trim() || undefined,
+  /**
+   * Whether this process runs the daily reminder job (subscriptions about to
+   * end). On for the one web service; set false on any extra instance so a
+   * reminder is not sent twice.
+   */
+  remindersEnabled: boolean(process.env.REMINDERS_ENABLED, true),
 };

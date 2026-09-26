@@ -3,6 +3,8 @@ import type { CoachApprovalStatus, Plan, Prisma } from "@prisma/client";
 import { getLogger } from "../../config/logger.js";
 import { prisma } from "../../config/prisma.config.js";
 import { normalizePlanContent } from "../plan/content.js";
+import * as messages from "../notification/messages.js";
+import { notifyInBackground } from "../notification/service.js";
 
 function serializePlan(plan: Plan) {
   const content = normalizePlanContent(plan.type, plan.content);
@@ -104,6 +106,9 @@ export async function setCoachApproval(coachId: string, status: CoachApprovalSta
     select: { id: true, name: true, email: true, coachApprovalStatus: true },
   });
   getLogger().info({ coachId, status }, "setCoachApproval: approval status changed");
+  if (status !== "PENDING") {
+    notifyInBackground(async () => ({ userIds: [coachId], notification: messages.coachReviewed(status === "APPROVED") }));
+  }
 
   return {
     id: updated.id,

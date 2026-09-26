@@ -1,5 +1,6 @@
 import { Router } from "express";
 
+import { accountRouter, meRouter } from "./features/account/routes.js";
 import { adminCoachRouter, adminPlanRouter } from "./features/admin/routes.js";
 import { authRouter } from "./features/auth/routes.js";
 import {
@@ -13,13 +14,15 @@ import { clientInviteRouter, coachInviteRouter } from "./features/invite/routes.
 import { clientSubscriptionRouter, coachSubscriptionRouter } from "./features/subscription/routes.js";
 import { clientScheduleRouter, coachAssignmentRouter, coachPlanRouter } from "./features/plan/routes.js";
 import { clientProfileRouter, coachProfileRouter } from "./features/profile/routes.js";
+import { pushTokenRouter } from "./features/notification/routes.js";
 import { trackingRouter } from "./features/tracking/routes.js";
 import { uploadRouter } from "./features/upload/routes.js";
-import { requireAuth } from "./middleware/auth.js";
 
 const router: ReturnType<typeof Router> = Router();
 
 router.use("/auth", authRouter);
+router.use("/account", accountRouter);
+router.use("/push-tokens", pushTokenRouter);
 // Public: the landing page posts here with no token. Rate limited in its router.
 router.use("/early-access", earlyAccessRouter);
 router.use("/admin/early-access", adminEarlyAccessRouter);
@@ -46,8 +49,6 @@ router.get("/health", (_request, response) => {
   response.json({ message: "Health check successful.", status: "ok" });
 });
 
-router.get("/me", requireAuth, (request, response) => {
-  response.json({ message: "User profile retrieved successfully.", user: request.user });
-});
+router.use("/me", meRouter);
 
 export { router };

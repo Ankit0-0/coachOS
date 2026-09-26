@@ -13,6 +13,8 @@ import {
 } from "../subscription/service.js";
 import { getSignedReadUrl } from "../upload/service.js";
 import { normalizeEmail } from "../../utils/email.js";
+import * as messages from "../notification/messages.js";
+import { nameOf, notifyInBackground } from "../notification/service.js";
 
 type PersonSummary = { id: string; name: string; email: string };
 
@@ -89,6 +91,11 @@ export async function createInvite(coachId: string, clientEmailInput: string, pe
     include: { client: { select: { id: true, name: true, email: true } } },
   });
   getLogger().info({ coachId, clientEmail, inviteId: invite.id, autoMatchedClientId: clientId }, "createInvite: invite created");
+  // Someone without an account yet has no device to tell; they see the
+  // invite when they sign up with this address.
+  if (clientId) {
+    notifyInBackground(async () => ({ userIds: [clientId], notification: messages.inviteReceived(await nameOf(coachId)) }));
+  }
   return serializeInvite(invite);
 }
 
@@ -277,6 +284,10 @@ export async function acceptInvite(inviteId: string, userId: string, email: stri
     });
   });
   getLogger().info({ inviteId, userId, coachId: invite.coachId }, "acceptInvite: relationship formed");
+  notifyInBackground(async () => ({
+    userIds: [invite.coachId],
+    notification: messages.inviteAnswered(await nameOf(userId), true, userId),
+  }));
   return serializeInvite(updated);
 }
 
@@ -288,5 +299,9 @@ export async function declineInvite(inviteId: string, userId: string, email: str
     include: { coach: { select: { id: true, name: true, email: true } } },
   });
   getLogger().info({ inviteId, userId }, "declineInvite: invite declined");
+  notifyInBackground(async () => ({
+    userIds: [updated.coachId],
+    notification: messages.inviteAnswered(await nameOf(userId), false, null),
+  }));
   return serializeInvite(updated);
 }

@@ -7,6 +7,7 @@ import { env } from "./config/env.js";
 import { attachRequestLogger, createHttpLogger } from "./config/http-logger.js";
 import { logger } from "./config/logger.js";
 import { registerSentryErrorHandler } from "./config/sentry.js";
+import { createApiRateLimit } from "./middleware/rate-limit.js";
 import { router } from "./router.js";
 import { sendError } from "./utils/http-error.js";
 
@@ -52,7 +53,9 @@ app.get("/heartbeat", (_request: Request, response: Response) => {
   response.status(200).json({ message: "Heartbeat successful.", status: "beating" });
 });
 
-app.use("/v1", router);
+// A per-IP backstop on every API request; sign-in and password reset have
+// tighter limits of their own in the auth router.
+app.use("/v1", createApiRateLimit(), router);
 
 // After the routes, before the handler below: reports a 5xx or a raw throw,
 // then passes the error on to be logged and answered as before.
