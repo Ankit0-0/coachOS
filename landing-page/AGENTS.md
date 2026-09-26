@@ -22,7 +22,8 @@ keys — so it's lost until a column is added there.
 
 - `tailwind.config.ts` holds two palettes. The site's (`forest`,
   `cream`, `sage`, `terracotta`, `charcoal`, `muted`) is for the page.
-  `app.*` is the mobile apps' dark theme and is only for the phone
+  `app.*` is the mobile apps' light theme (`light` in
+  `packages/theme/src/themes.ts`) and is only for the phone
   mockups, so they look like the real screens. Don't mix them, and
   don't change a value to suit one section. `terracotta` (3.2:1 on
   cream) is for fills and large type; body-size text uses
