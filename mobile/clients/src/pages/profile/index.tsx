@@ -1,4 +1,4 @@
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
@@ -14,14 +14,25 @@ import { Radii, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth';
 import { useRefresh } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
-import { clientProfileApi, trackingApi, type ClientProfile } from '@/lib/api';
+import { clientProfileApi, trackingApi, type ClientProfile, type DietPreference, type WeightEntry } from '@/lib/api';
+import { shortDateLabel } from '@/lib/dates';
 import { pickAndUploadImage } from '@/lib/image-upload';
 import { formatPhone, INVALID_PHONE_MESSAGE, parsePhone, phoneFieldHint, phoneForEditing } from '@/lib/phone';
 import { MAX_WEIGHT_KG } from '@/lib/weight';
-import { AppearanceSection, TextField } from '@coachos/theme';
+import { allWeightsRange, summarizeWeights } from '@/lib/weight-summary';
+import { AppearanceSection, EDIT_ICON, SegmentedControl, TextField } from '@coachos/theme';
 
 /** The profile's starting weight has a floor the API also enforces; weigh-ins only need to be above 0. */
 const MIN_PROFILE_WEIGHT_KG = 20;
+
+const DIET_OPTIONS: readonly { value: DietPreference; label: string }[] = [
+  { value: 'VEGETARIAN', label: 'Vegetarian' },
+  { value: 'NON_VEGETARIAN', label: 'Non-vegetarian' },
+];
+
+function dietLabel(value: DietPreference | null): string | null {
+  return DIET_OPTIONS.find((option) => option.value === value)?.label ?? null;
+}
 
 type Draft = {
   name: string;
@@ -29,6 +40,7 @@ type Draft = {
   heightCm: string;
   weightKg: string;
   goals: string;
+  dietPreference: DietPreference | null;
 };
 
 function errorMessage(error: unknown): string {
@@ -48,6 +60,7 @@ function draftFrom(profile: ClientProfile): Draft {
     heightCm: profile.heightCm === null ? '' : String(profile.heightCm),
     weightKg: profile.weightKg === null ? '' : String(profile.weightKg),
     goals: profile.goals ?? '',
+    dietPreference: profile.dietPreference,
   };
 }
 
@@ -65,6 +78,8 @@ export function ProfileScreen() {
   const { signOut } = useAuth();
   const [profile, setProfile] = useState<ClientProfile | null>(null);
   const [planCount, setPlanCount] = useState(0);
+  // Null when they couldn't load: unknown, which is not the same as none.
+  const [weights, setWeights] = useState<WeightEntry[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -79,12 +94,14 @@ export function ProfileScreen() {
 
   const load = useCallback(async () => {
     try {
-      const [nextProfile, assignments] = await Promise.all([
+      const [nextProfile, assignments, weightRows] = await Promise.all([
         clientProfileApi.get(),
         trackingApi.listAssignments().catch(() => []),
+        trackingApi.listWeights(allWeightsRange()).catch(() => null),
       ]);
       setProfile(nextProfile);
       setPlanCount(assignments.length);
+      setWeights(weightRows);
       setLoadError(null);
     } catch (error) {
       setLoadError(errorMessage(error));
@@ -94,6 +111,7 @@ export function ProfileScreen() {
   }, []);
 
   const { isRefreshing, refresh } = useRefresh(load);
+  const weightSummary = weights ? summarizeWeights(weights) : null;
 
   useFocusEffect(
     useCallback(() => {
@@ -179,6 +197,7 @@ export function ProfileScreen() {
         heightCm,
         weightKg,
         goals: draft.goals.trim(),
+        dietPreference: draft.dietPreference,
       });
       setProfile(updated);
       setIsEditing(false);
@@ -265,15 +284,33 @@ export function ProfileScreen() {
         </View>
         <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
         <View style={styles.stat}>
-          <ThemedText type="numeric">{profile.weightKg ?? '—'}</ThemedText>
-          <ThemedText type="meta">Weight (kg)</ThemedText>
-        </View>
-        <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
-        <View style={styles.stat}>
           <ThemedText type="numeric">{planCount}</ThemedText>
           <ThemedText type="meta">Active plans</ThemedText>
         </View>
       </Card>
+
+      {weights === null ? null : weightSummary ? (
+        <Card style={styles.statStrip}>
+          <View style={styles.stat}>
+            <ThemedText type="meta">Latest weight</ThemedText>
+            <ThemedText type="numeric">{weightSummary.latest.weightKg} kg</ThemedText>
+            <ThemedText type="meta">{shortDateLabel(weightSummary.latest.date)}</ThemedText>
+          </View>
+          <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
+          <View style={styles.stat}>
+            <ThemedText type="meta">7-day average</ThemedText>
+            <ThemedText type="smallBold">{weightSummary.sevenDayAverageKg} kg</ThemedText>
+          </View>
+        </Card>
+      ) : (
+        <Card style={styles.weightPrompt}>
+          <ThemedText type="smallBold">No weigh-ins yet</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            Log your weight and your latest and 7-day average show up here.
+          </ThemedText>
+          <Button label="Log your weight" variant="secondary" onPress={() => router.push('/history')} />
+        </Card>
+      )}
 
       {isEditing && draft ? (
         <Section title="Edit details">
@@ -322,7 +359,7 @@ export function ProfileScreen() {
 
             <View style={styles.field}>
               <ThemedText type="label" themeColor="textSecondary">
-                Weight (kg)
+                Starting weight (kg)
               </ThemedText>
               <TextField
                 value={draft.weightKg}
@@ -332,8 +369,22 @@ export function ProfileScreen() {
                 editable={!isSaving}
               />
               <ThemedText type="meta">
-                Your starting figure. Day-to-day weigh-ins live under Progress.
+                Your starting figure. Day-to-day weigh-ins live under History.
               </ThemedText>
+            </View>
+
+            <View style={styles.field}>
+              <ThemedText type="label" themeColor="textSecondary">
+                Diet
+              </ThemedText>
+              <SegmentedControl
+                options={DIET_OPTIONS}
+                value={draft.dietPreference}
+                onChange={(value) => setDraft({ ...draft, dietPreference: value })}
+                accessibilityLabel="Diet preference"
+                disabled={isSaving}
+              />
+              <ThemedText type="meta">Helps your coach plan your meals.</ThemedText>
             </View>
 
             <View style={styles.field}>
@@ -368,13 +419,19 @@ export function ProfileScreen() {
           </Card>
         </Section>
       ) : (
-        <Section title="Details" actionLabel="Edit" onActionPress={startEditing}>
+        <Section
+          title="Details"
+          actionLabel="Edit"
+          onActionPress={startEditing}
+          actionColor="accentClientText"
+          actionIcon={EDIT_ICON}>
           <Card padded={false} style={styles.detailCard}>
             <FieldRow label="Name" value={profile.name} />
             <FieldRow label="Email" value={profile.email} />
             <FieldRow label="Phone" value={formatPhone(profile.phone)} />
             <FieldRow label="Height" value={profile.heightCm === null ? null : `${profile.heightCm} cm`} />
-            <FieldRow label="Weight" value={profile.weightKg === null ? null : `${profile.weightKg} kg`} />
+            <FieldRow label="Starting weight" value={profile.weightKg === null ? null : `${profile.weightKg} kg`} />
+            <FieldRow label="Diet" value={dietLabel(profile.dietPreference)} />
             <FieldRow label="Goals" value={profile.goals} stacked divider={false} />
           </Card>
           {/* A nudge, never a requirement: nothing in the app needs a number. */}
@@ -465,6 +522,9 @@ const styles = StyleSheet.create({
   statDivider: {
     width: StyleSheet.hairlineWidth,
     alignSelf: 'stretch',
+  },
+  weightPrompt: {
+    gap: Spacing.two,
   },
   detailCard: {
     paddingHorizontal: Spacing.three,

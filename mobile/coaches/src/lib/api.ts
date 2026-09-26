@@ -495,8 +495,11 @@ export interface ClientProfile {
   /** A freshly signed URL for the client's own avatar, or null. */
   avatarUrl: string | null;
   heightCm: number | null;
+  /** Self-reported starting weight; the tracked history is WeightEntry. */
   weightKg: number | null;
   goals: string | null;
+  /** Null until the client answers. */
+  dietPreference: 'VEGETARIAN' | 'NON_VEGETARIAN' | null;
   /** Digits only with the country code. Empty or null when the client hasn't added one. */
   phone: string | null;
   onboardedAt: string | null;

@@ -30,6 +30,8 @@ export const updateClientProfileSchema = z
      */
     weightKg: z.number().min(20).max(MAX_WEIGHT_KG).nullable().optional(),
     goals: z.string().max(1000).optional(),
+    /** Null clears it back to unanswered. */
+    dietPreference: z.enum(["VEGETARIAN", "NON_VEGETARIAN"]).nullable().optional(),
     phone: z.string().max(40).optional(),
     avatarKey: avatarKeySchema.optional(),
   })

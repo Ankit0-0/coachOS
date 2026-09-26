@@ -55,6 +55,23 @@ describe("client profile endpoints", () => {
     expect(res.body.profile.name).toBe("Updated Name");
   });
 
+  it("keeps diet preference unanswered until set, then saves, keeps and clears it", async () => {
+    const auth = { Authorization: `Bearer ${client.token}` };
+    expect((await api.get("/v1/client/profile").set(auth)).body.profile.dietPreference).toBeNull();
+
+    const saved = await api.patch("/v1/client/profile").set(auth).send({ dietPreference: "VEGETARIAN" });
+    expect(saved.status).toBe(200);
+    expect(saved.body.profile.dietPreference).toBe("VEGETARIAN");
+
+    await api.patch("/v1/client/profile").set(auth).send({ goals: "Unrelated edit" });
+    expect((await api.get("/v1/client/profile").set(auth)).body.profile.dietPreference).toBe("VEGETARIAN");
+
+    expect((await api.patch("/v1/client/profile").set(auth).send({ dietPreference: "VEGAN" })).status).toBe(400);
+
+    const cleared = await api.patch("/v1/client/profile").set(auth).send({ dietPreference: null });
+    expect(cleared.body.profile.dietPreference).toBeNull();
+  });
+
   it("stores, clears and length-limits the phone like the coach profile does", async () => {
     const auth = { Authorization: `Bearer ${client.token}` };
 

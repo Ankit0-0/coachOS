@@ -155,6 +155,20 @@ describe("coach-scoped client read endpoints", () => {
       expect(res.body.profile.heightCm).toBeNull();
       expect(res.body.profile.weightKg).toBeNull();
       expect(res.body.profile.goals).toBeNull();
+      expect(res.body.profile.dietPreference).toBeNull();
+    });
+
+    it("shows the coach the client's diet preference", async () => {
+      await api
+        .patch("/v1/client/profile")
+        .set("Authorization", `Bearer ${client.token}`)
+        .send({ dietPreference: "NON_VEGETARIAN" });
+
+      const res = await api
+        .get(`/v1/coach/clients/${client.id}/profile`)
+        .set("Authorization", `Bearer ${coachA.token}`);
+
+      expect(res.body.profile.dietPreference).toBe("NON_VEGETARIAN");
     });
 
     it("returns 403 to a coach with no accepted invite for that client", async () => {

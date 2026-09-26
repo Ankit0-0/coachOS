@@ -35,14 +35,17 @@ import {
 } from '@/lib/api';
 import { buildTelUrl, startCall } from '@/lib/call';
 import { confirmDestructive } from '@/lib/confirm';
-import { dayOfMonth, lastNDaysRange, longDateLabel, monthRange } from '@/lib/dates';
+import { dayOfMonth, lastNDaysRange, longDateLabel, monthRange, shortDateLabel } from '@/lib/dates';
 import { formatPhone } from '@/lib/phone';
 import { planStats, planSummary } from '@/lib/plan-format';
 import { DEFAULT_WEIGHT_RANGE, weightRangeDates, type WeightRangeKey } from '@/lib/weight-range';
+import { allWeightsRange, summarizeWeights } from '@/lib/weight-summary';
 import { buildWhatsAppUrl, openWhatsApp } from '@/lib/whatsapp';
 
-/** For "Latest weight" and the physique photos — the chart loads its own range. */
+/** For the physique photos — the chart and the weight summary load their own ranges. */
 const WEIGHT_LOOKBACK_DAYS = 30;
+
+const DIET_LABELS = { VEGETARIAN: 'Vegetarian', NON_VEGETARIAN: 'Non-vegetarian' } as const;
 const MAX_RECENT_NOTES = 3;
 const MAX_PHOTOS_PER_GROUP = 6;
 
@@ -68,6 +71,8 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
   const [assignments, setAssignments] = useState<PlanAssignment[]>([]);
   const [profile, setProfile] = useState<ClientProfile | null>(null);
   const [weights, setWeights] = useState<WeightEntry[]>([]);
+  /** Every weigh-in, for latest and 7-day average; null if it didn't load. */
+  const [allWeights, setAllWeights] = useState<WeightEntry[] | null>(null);
   // Every check-in in the month, across all assignments — not just the active
   // ones, so switching a client's plan doesn't erase their history here.
   const [checkIns, setCheckIns] = useState<CheckIn[]>([]);
@@ -101,16 +106,18 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
   const loadAll = useCallback(async () => {
     const weightRange = lastNDaysRange(WEIGHT_LOOKBACK_DAYS);
     try {
-      const [assignmentRows, profileRow, weightRows, checkInRows, scheduleRows] = await Promise.all([
+      const [assignmentRows, profileRow, weightRows, checkInRows, scheduleRows, allWeightRows] = await Promise.all([
         assignmentApi.listForClient(clientId),
         coachClientApi.getProfile(clientId),
         coachClientApi.listWeights(clientId, weightRange),
         coachClientApi.listCheckIns(clientId, { from: month.from, to: month.to }),
         coachClientApi.listSchedule(clientId, { from: month.from, to: month.to }),
+        coachClientApi.listWeights(clientId, allWeightsRange()).catch(() => null),
       ]);
       setAssignments(assignmentRows);
       setProfile(profileRow);
       setWeights(weightRows);
+      setAllWeights(allWeightRows);
       setCheckIns(checkInRows);
       setSchedule(scheduleRows);
     } catch {
@@ -162,8 +169,8 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
   const latestWorkout = activeWorkout ?? latestOf('WORKOUT');
   const latestDiet = activeDiet ?? latestOf('DIET');
 
-  const latestWeightEntry = weights.length > 0 ? weights[weights.length - 1] : undefined;
-  const displayWeight = latestWeightEntry?.weightKg ?? profile?.weightKg ?? null;
+  // Logged weigh-ins only; the self-reported profile weight is shown apart as the starting weight.
+  const weightSummary = allWeights ? summarizeWeights(allWeights) : null;
 
   // A check-in belongs to the plan that was assigned at the time, which may no
   // longer be the active one — so score each against its own plan.
@@ -359,7 +366,20 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
             <Card padded={false} style={styles.fieldCard}>
               <FieldRow label="Phone" value={formatPhone(profile?.phone)} />
               <FieldRow label="Height" value={profile?.heightCm != null ? `${profile.heightCm} cm` : null} />
-              <FieldRow label="Latest weight" value={displayWeight != null ? `${displayWeight} kg` : null} />
+              <FieldRow label="Diet" value={profile?.dietPreference ? DIET_LABELS[profile.dietPreference] : null} />
+              <FieldRow
+                label="Latest weight"
+                value={
+                  weightSummary
+                    ? `${weightSummary.latest.weightKg} kg (${shortDateLabel(weightSummary.latest.date)})`
+                    : null
+                }
+              />
+              <FieldRow
+                label="7-day average"
+                value={weightSummary ? `${weightSummary.sevenDayAverageKg} kg` : null}
+              />
+              <FieldRow label="Starting weight" value={profile?.weightKg != null ? `${profile.weightKg} kg` : null} />
               <FieldRow label="Goals" value={profile?.goals} stacked divider={false} />
             </Card>
           </Section>

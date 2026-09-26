@@ -2,6 +2,7 @@ export * from './tokens';
 export * from './themes';
 export * from './provider';
 export * from './platform';
+export * from './weight-axis';
 export * from './components/text';
 export * from './components/surfaces';
 export * from './components/chips';
