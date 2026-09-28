@@ -129,9 +129,36 @@ export const authApi = {
   signInWithGoogle(idToken: string): Promise<AuthPayload> {
     return apiRequest<AuthPayload>('/auth/google', {
       method: 'POST',
+      // The role only applies when this sign-in creates the account.
       body: { idToken, role: 'COACH' as Role },
       auth: false,
     });
+  },
+
+  /** `name` is Apple's one-time gift on the first sign-in; the token never carries it. */
+  signInWithApple(identityToken: string, name?: string): Promise<AuthPayload> {
+    return apiRequest<AuthPayload>('/auth/apple', {
+      method: 'POST',
+      body: { identityToken, role: 'COACH' as Role, ...(name ? { name } : {}) },
+      auth: false,
+    });
+  },
+};
+
+export const accountApi = {
+  /** Deletes the signed-in account and all of its data, for good. */
+  delete(): Promise<{ message: string }> {
+    return apiRequest<{ message: string }>('/account', { method: 'DELETE' });
+  },
+};
+
+export const pushTokenApi = {
+  register(token: string, platform: 'IOS' | 'ANDROID'): Promise<{ message: string }> {
+    return apiRequest<{ message: string }>('/push-tokens', { method: 'POST', body: { token, platform } });
+  },
+
+  unregister(token: string): Promise<{ message: string }> {
+    return apiRequest<{ message: string }>('/push-tokens', { method: 'DELETE', body: { token } });
   },
 };
 
@@ -471,6 +498,8 @@ export interface CheckIn {
   date: string;
   completedItemIds: string[];
   notes: string | null;
+  /** { [itemId]: comment } — what the client wrote to you about one set or meal. */
+  itemNotes: Record<string, string> | null;
   /**
    * { [itemId]: signedUrl } for the client's meal photos. Read-only here —
    * coaches never upload against a client's own records.

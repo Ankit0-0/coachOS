@@ -12,6 +12,8 @@ import {
   type SubscriptionPeriod,
 } from "../subscription/service.js";
 import { getSignedReadUrl } from "../upload/service.js";
+import * as messages from "../notification/messages.js";
+import { nameOf, notifyInBackground } from "../notification/service.js";
 
 /**
  * Where the calling client stands with a coach, so the app can show the right
@@ -244,6 +246,7 @@ export async function createCoachRequest(clientId: string, coachId: string, mess
     include: { coach: { select: { id: true, name: true } } },
   });
   getLogger().info({ clientId, coachId, requestId: request.id }, "createCoachRequest: request created");
+  notifyInBackground(async () => ({ userIds: [coachId], notification: messages.coachRequestReceived(await nameOf(clientId)) }));
   return serializeRequest(request);
 }
 
@@ -344,6 +347,7 @@ export async function acceptCoachRequest(coachId: string, requestId: string, per
   });
 
   getLogger().info({ coachId, clientId, requestId }, "acceptCoachRequest: relationship formed");
+  notifyInBackground(async () => ({ userIds: [clientId], notification: messages.coachRequestAnswered(await nameOf(coachId), true) }));
   return serializeRequest(updated);
 }
 
@@ -355,5 +359,9 @@ export async function declineCoachRequest(coachId: string, requestId: string) {
     data: { status: "DECLINED", respondedAt: new Date() },
     include: { client: { select: { id: true, name: true, email: true } } },
   });
+  notifyInBackground(async () => ({
+    userIds: [updated.clientId],
+    notification: messages.coachRequestAnswered(await nameOf(coachId), false),
+  }));
   return serializeRequest(updated);
 }

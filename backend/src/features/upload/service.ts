@@ -1,4 +1,11 @@
-import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import {
+  DeleteObjectCommand,
+  DeleteObjectsCommand,
+  GetObjectCommand,
+  ListObjectsV2Command,
+  PutObjectCommand,
+  S3Client,
+} from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { createId } from "@paralleldrive/cuid2";
 
@@ -196,4 +203,38 @@ export async function deleteObject(key: string): Promise<void> {
   const config = readConfig();
   if (!config) throw new Error("S3_NOT_CONFIGURED");
   await s3Client(config).send(new DeleteObjectCommand({ Bucket: config.bucket, Key: key }));
+}
+
+/**
+ * Removes every object under a user's prefix — saved photos, avatars, and
+ * uploads that were presigned but never attached to a record. Used when an
+ * account is deleted. Returns how many objects were removed; a bucket that is
+ * not configured has nothing of theirs in it, so that is 0, not an error.
+ */
+export async function deleteUserObjects(userId: string): Promise<number> {
+  if (!isS3Configured()) return 0;
+  const config = readConfig();
+  if (!config) return 0;
+  const client = s3Client(config);
+  const prefix = `users/${userId}/`;
+
+  let removed = 0;
+  let continuationToken: string | undefined;
+  do {
+    const page = await client.send(
+      new ListObjectsV2Command({
+        Bucket: config.bucket,
+        Prefix: prefix,
+        ...(continuationToken ? { ContinuationToken: continuationToken } : {}),
+      }),
+    );
+    const keys = (page.Contents ?? []).flatMap((object) => (object.Key ? [{ Key: object.Key }] : []));
+    if (keys.length > 0) {
+      // At most 1000 per page, which is also DeleteObjects' limit.
+      await client.send(new DeleteObjectsCommand({ Bucket: config.bucket, Delete: { Objects: keys, Quiet: true } }));
+      removed += keys.length;
+    }
+    continuationToken = page.IsTruncated ? page.NextContinuationToken : undefined;
+  } while (continuationToken);
+  return removed;
 }

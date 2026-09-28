@@ -79,6 +79,22 @@ model User {
   clientSubscriptions Subscription[] @relation("ClientSubscriptions")
 
   passwordResetTokens PasswordResetToken[]
+  pushTokens          PushToken[]
+}
+
+/// An Expo push token for one install of one app. A device that signs in as
+/// someone else moves its token to them; sign-out and a DeviceNotRegistered
+/// receipt remove it.
+model PushToken {
+  id        String         @id @default(cuid())
+  userId    String
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String         @unique
+  platform  DevicePlatform
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@index([userId])
 }
 
 model PasswordResetToken {
@@ -142,6 +158,8 @@ model Subscription {
   endDate   DateTime           @db.Date
   status    SubscriptionStatus @default(ACTIVE)
   notes     String?
+  /// When the "ends in a few days" push went out, so the daily job sends it once.
+  endingReminderSentAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -281,6 +299,9 @@ model CheckIn {
   /// { [itemId]: s3Key } so each meal in a diet plan can carry its own photo.
   /// Null when the check-in has no photos at all.
   photoKeys        Json?
+  /// { [itemId]: comment } — the client's note to their coach on one set or
+  /// meal ("left knee felt off"). Merged per item like photoKeys.
+  itemNotes        Json?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 

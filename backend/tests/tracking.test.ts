@@ -105,6 +105,35 @@ describe("tracking: check-ins and weight entries", () => {
       expect(res.body.checkIns[0].notes).toBe("came back and finished the rest");
     });
 
+    it("keeps each set's comment for the coach, merging one at a time and dropping a blank one", async () => {
+      // Before the -30 day window the range tests below count.
+      const date = day(-45);
+      expect((await saveCheckIn({ date, completedItemIds: [], itemNotes: { "push-up-set1": "Left knee felt off" } })).status).toBe(200);
+      // Saving another set's comment, or just the ticks, keeps the first one.
+      await saveCheckIn({ date, completedItemIds: ["push-up-set1"], itemNotes: { "push-up-set2": "  Easier today  " } });
+      await saveCheckIn({ date, completedItemIds: ["push-up-set1", "push-up-set2"] });
+
+      let res = await listCheckIns(date, date);
+      expect(res.body.checkIns[0].itemNotes).toEqual({ "push-up-set1": "Left knee felt off", "push-up-set2": "Easier today" });
+
+      // The coach reads the same notes.
+      const coachView = await api
+        .get(`/v1/coach/clients/${client.id}/checkins`)
+        .query({ assignmentId, from: date, to: date })
+        .set("Authorization", `Bearer ${coach.token}`);
+      expect(coachView.status).toBe(200);
+      expect(coachView.body.checkIns[0].itemNotes).toMatchObject({ "push-up-set1": "Left knee felt off" });
+
+      await saveCheckIn({ date, completedItemIds: [], itemNotes: { "push-up-set1": "", "push-up-set2": null } });
+      res = await listCheckIns(date, date);
+      expect(res.body.checkIns[0].itemNotes).toBeNull();
+    });
+
+    it("rejects a comment over 500 characters", async () => {
+      const res = await saveCheckIn({ date: day(-46), completedItemIds: [], itemNotes: { "push-up-set1": "x".repeat(501) } });
+      expect(res.status).toBe(400);
+    });
+
     it("keeps a different date as its own entry", async () => {
       await saveCheckIn({ date: alsoInRange, completedItemIds: ["plank"] });
 

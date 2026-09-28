@@ -6,6 +6,8 @@ import { assertCoachApproved } from "../../utils/coach-approval.js";
 import { findAcceptedInvite } from "../../utils/coach-access.js";
 import { parseDateKey } from "../../utils/calendar.js";
 import { normalizePlanContent } from "./content.js";
+import * as messages from "../notification/messages.js";
+import { nameOf, notifyInBackground } from "../notification/service.js";
 
 const PLAN_LIMIT_PER_TYPE = 10;
 
@@ -260,6 +262,10 @@ export async function createAssignment(
     { coachId, clientId: input.clientId, planId: plan.id, assignmentId: assignment.id },
     "createAssignment: plan assigned, any prior active assignment of the same type was completed",
   );
+  notifyInBackground(async () => ({
+    userIds: [input.clientId],
+    notification: messages.planAssigned(await nameOf(coachId), plan.type, plan.title),
+  }));
   return serializeAssignment(assignment);
 }
 

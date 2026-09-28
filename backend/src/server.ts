@@ -9,6 +9,7 @@ import { env } from "./config/env.js";
 import { logger } from "./config/logger.js";
 import { PrismaService } from "./config/prisma.config.js";
 import { flushSentry } from "./config/sentry.js";
+import { startReminderJobs } from "./jobs/subscription-reminders.js";
 
 dotenv.config();
 
@@ -22,6 +23,7 @@ class Server {
   private readonly prisma: PrismaService;
   private httpServer: HttpServer | undefined;
   private isShuttingDown = false;
+  private stopJobs: (() => void) | undefined;
 
   public constructor(private readonly port: number | string) {
     this.prisma = PrismaService.getInstance();
@@ -32,6 +34,8 @@ class Server {
     this.httpServer = app.listen(this.port, () => {
       logger.info({ port: this.port }, "Server started");
     });
+    if (env.remindersEnabled) this.stopJobs = startReminderJobs();
+    warnAboutProductionConfig();
   }
 
   /**
@@ -51,6 +55,7 @@ class Server {
     }, SHUTDOWN_TIMEOUT_MS);
     forceExit.unref();
 
+    this.stopJobs?.();
     try {
       const httpServer = this.httpServer;
       if (httpServer) {
@@ -72,6 +77,24 @@ class Server {
       process.exit(1);
     }
   }
+}
+
+/**
+ * Settings the server boots without but production can't really run without.
+ * Logged at error on every start so they are hard to miss in Render's logs.
+ */
+function warnAboutProductionConfig(): void {
+  if (env.nodeEnv !== "production") return;
+  if (!env.resendApiKey) {
+    logger.error("RESEND_API_KEY is not set: password reset emails cannot be sent");
+  } else if (env.resendFromEmail.includes("@resend.dev")) {
+    logger.error(
+      "RESEND_FROM_EMAIL uses Resend's shared resend.dev sender, which only delivers to the Resend account owner: verify a domain and set RESEND_FROM_EMAIL to an address on it",
+    );
+  }
+  if (env.googleClientAudiences.length === 0) logger.error("GOOGLE_CLIENT_ID is not set: Google sign-in answers 503");
+  if (env.appleBundleIds.length === 0) logger.error("APPLE_BUNDLE_IDS is not set: Sign in with Apple answers 503");
+  if (!env.sentryDsn) logger.warn("SENTRY_DSN is not set: server errors are not reported");
 }
 
 const server = new Server(env.port);

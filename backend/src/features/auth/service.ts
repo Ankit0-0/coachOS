@@ -1,8 +1,7 @@
-import { OAuth2Client } from "google-auth-library";
 import type { Role, User } from "@prisma/client";
 
 import { env } from "../../config/env.js";
-import { GOOGLE_PROVIDER } from "../../constants/auth.js";
+import { APPLE_PROVIDER, GOOGLE_PROVIDER } from "../../constants/auth.js";
 import { getLogger } from "../../config/logger.js";
 import { prisma } from "../../config/prisma.config.js";
 import { normalizeEmail } from "../../utils/email.js";
@@ -10,12 +9,12 @@ import { sendPasswordResetEmail } from "../../utils/mailer.js";
 import { hashPassword, verifyPassword } from "../../utils/password.js";
 import { generateResetCode, hashResetCode } from "../../utils/reset-code.js";
 import { createAccessToken } from "../../utils/jwt.js";
+import { verifyAppleIdentityToken } from "../../utils/apple-identity.js";
+import { verifyGoogleIdToken } from "../../utils/google-identity.js";
 
 const RESET_CODE_TTL_MINUTES = 15;
 /** Failed guesses allowed against one token before it's burned. */
 const RESET_MAX_ATTEMPTS = 5;
-
-const googleClient = new OAuth2Client(env.googleClientId);
 
 type PublicUser = Pick<User, "id" | "email" | "name" | "role">;
 
@@ -85,46 +84,119 @@ export async function login(input: { email: string; password: string }) {
   return result(user);
 }
 
-export async function loginWithGoogle(input: { idToken: string; role?: Role }) {
-  if (!env.googleClientId) {
-    getLogger().error("loginWithGoogle: rejected — GOOGLE_CLIENT_ID is not configured on the server");
-    throw new Error("GOOGLE_NOT_CONFIGURED");
-  }
-  const ticket = await googleClient.verifyIdToken({
-    idToken: input.idToken,
-    audience: env.googleClientAudiences,
-  });
-  const payload = ticket.getPayload();
-  if (!payload?.sub || !payload.email || payload.email_verified !== true) {
-    getLogger().warn(
-      { hasSub: !!payload?.sub, hasEmail: !!payload?.email, emailVerified: payload?.email_verified },
-      "loginWithGoogle: rejected — Google token payload missing sub/email or email unverified",
-    );
-    throw new Error("INVALID_GOOGLE_TOKEN");
-  }
-
-  const email = normalizeEmail(payload.email);
+/**
+ * Signs in through an identity provider, creating the user on first sign-in.
+ * A returning user is found by the provider's own id; a first-time one is
+ * linked to an existing account with the same (provider-verified) email, or
+ * gets a new account with the role the app asked for.
+ */
+async function signInWithProvider(input: {
+  provider: string;
+  providerAccountId: string;
+  email: string | undefined;
+  name: string | undefined;
+  role: RegisterableRole | undefined;
+}) {
   const existingAccount = await prisma.account.findUnique({
-    where: { provider_providerAccountId: { provider: GOOGLE_PROVIDER, providerAccountId: payload.sub } },
+    where: { provider_providerAccountId: { provider: input.provider, providerAccountId: input.providerAccountId } },
     include: { user: true },
   });
   if (existingAccount) return result(existingAccount.user);
 
+  if (!input.email) {
+    // Apple sends the email only on the very first sign-in; without it and
+    // without a linked account there is no one to sign in as.
+    getLogger().warn({ provider: input.provider }, "signInWithProvider: rejected — first sign-in without an email");
+    throw new Error("INVALID_PROVIDER_TOKEN");
+  }
+
+  const email = normalizeEmail(input.email);
+  const role = input.role ?? "CLIENT";
   const existingUser = await prisma.user.findUnique({ where: { email } });
   const user = existingUser
     ? existingUser
     : await prisma.user.create({
         data: {
           email,
-          name: payload.name?.trim() || email.split("@")[0] || email,
-          role: input.role ?? "CLIENT",
+          name: input.name?.trim() || email.split("@")[0] || email,
+          role,
+          // The same gate as a password sign-up: a coach waits for an admin.
+          // Without it a coach who signed up this way would have no status,
+          // never appear in the admin's pending list, and never be approved.
+          ...(role === "COACH" ? { coachApprovalStatus: "PENDING" as const } : {}),
         },
       });
+  if (!existingUser) {
+    getLogger().info({ userId: user.id, email, role: user.role, provider: input.provider }, "signInWithProvider: new user created");
+  }
 
   await prisma.account.create({
-    data: { provider: GOOGLE_PROVIDER, providerAccountId: payload.sub, userId: user.id },
+    data: { provider: input.provider, providerAccountId: input.providerAccountId, userId: user.id },
   });
   return result(user);
+}
+
+export async function loginWithGoogle(input: { idToken: string; role?: RegisterableRole }) {
+  if (env.googleClientAudiences.length === 0) {
+    getLogger().error("loginWithGoogle: rejected — GOOGLE_CLIENT_ID is not configured on the server");
+    throw new Error("GOOGLE_NOT_CONFIGURED");
+  }
+  let identity: Awaited<ReturnType<typeof verifyGoogleIdToken>>;
+  try {
+    identity = await verifyGoogleIdToken(input.idToken);
+  } catch (error) {
+    getLogger().warn({ reason: error instanceof Error ? error.message : String(error) }, "loginWithGoogle: rejected — token failed verification");
+    throw new Error("INVALID_GOOGLE_TOKEN");
+  }
+  if (!identity || !identity.emailVerified) {
+    getLogger().warn(
+      { hasIdentity: !!identity, emailVerified: identity?.emailVerified },
+      "loginWithGoogle: rejected — Google token missing sub/email or email unverified",
+    );
+    throw new Error("INVALID_GOOGLE_TOKEN");
+  }
+  try {
+    return await signInWithProvider({
+      provider: GOOGLE_PROVIDER,
+      providerAccountId: identity.sub,
+      email: identity.email,
+      name: identity.name,
+      role: input.role,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "INVALID_PROVIDER_TOKEN") throw new Error("INVALID_GOOGLE_TOKEN");
+    throw error;
+  }
+}
+
+export async function loginWithApple(input: { identityToken: string; name?: string; role?: RegisterableRole }) {
+  if (env.appleBundleIds.length === 0) {
+    getLogger().error("loginWithApple: rejected — APPLE_BUNDLE_IDS is not configured on the server");
+    throw new Error("APPLE_NOT_CONFIGURED");
+  }
+  let identity: Awaited<ReturnType<typeof verifyAppleIdentityToken>>;
+  try {
+    identity = await verifyAppleIdentityToken(input.identityToken);
+  } catch (error) {
+    getLogger().warn({ reason: error instanceof Error ? error.message : String(error) }, "loginWithApple: rejected — token failed verification");
+    throw new Error("INVALID_APPLE_TOKEN");
+  }
+  if (identity.email && !identity.emailVerified) {
+    getLogger().warn("loginWithApple: rejected — Apple reported the email as unverified");
+    throw new Error("INVALID_APPLE_TOKEN");
+  }
+  try {
+    return await signInWithProvider({
+      provider: APPLE_PROVIDER,
+      providerAccountId: identity.sub,
+      email: identity.email,
+      name: input.name,
+      role: input.role,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "INVALID_PROVIDER_TOKEN") throw new Error("INVALID_APPLE_TOKEN");
+    throw error;
+  }
 }
 
 /**

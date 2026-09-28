@@ -76,45 +76,20 @@ export function SetFeedbackPanel({
 
           <View style={styles.field}>
             <ThemedText type="label" themeColor="textSecondary">
-              Comment for coach
+              Comment for your coach
             </ThemedText>
             <TextField
               multiline
               value={feedback.comment}
               onChangeText={(comment) => onChange({ ...feedback, comment })}
               placeholder="Pain, form, effort, or anything your coach should review."
-              accessibilityLabel="Comment for coach"
+              accessibilityLabel="Comment for your coach"
+              maxLength={500}
             />
+            <ThemedText type="meta">Your coach sees this with today’s log.</ThemedText>
           </View>
 
-          <View style={styles.field}>
-            <ThemedText type="label" themeColor="textSecondary">
-              Video reference
-            </ThemedText>
-
-            <View style={styles.videoActions}>
-              <View style={styles.videoButton}>
-                <Button
-                  label="Record video"
-                  variant="secondary"
-                  fullWidth
-                  onPress={() => onChange({ ...feedback, videoReference: 'Recorded video captured locally' })}
-                />
-              </View>
-              <View style={styles.videoButton}>
-                <Button
-                  label="Upload video"
-                  variant="secondary"
-                  fullWidth
-                  onPress={() => onChange({ ...feedback, videoReference: 'Video uploaded locally' })}
-                />
-              </View>
-            </View>
-
-            {feedback.videoReference ? <Chip label={feedback.videoReference} tone="success" /> : null}
-          </View>
-
-          <Button label="Save note" onPress={onClose} />
+          <Button label="Done" onPress={onClose} />
         </View>
       </View>
     </Modal>
@@ -164,12 +139,5 @@ const styles = StyleSheet.create({
   },
   field: {
     gap: Spacing.two,
-  },
-  videoActions: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-  },
-  videoButton: {
-    flex: 1,
   },
 });

@@ -2,7 +2,9 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { AppleSignInButton } from '@/components/auth/apple-sign-in-button';
 import { GoogleSignInButton } from '@/components/auth/google-sign-in-button';
+import { LegalLinks } from '@/components/legal-links';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Chip } from '@/components/ui/pill';
@@ -147,7 +149,10 @@ export default function SignUpScreen() {
             <View style={[styles.divider, { backgroundColor: theme.border }]} />
           </View>
 
+          <AppleSignInButton />
           <GoogleSignInButton />
+
+          <LegalLinks prefix="By creating an account, you agree to our" />
 
           <View style={styles.prompt}>
             <ThemedText type="small" themeColor="textSecondary">

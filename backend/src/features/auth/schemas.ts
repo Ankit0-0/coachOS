@@ -19,6 +19,13 @@ export const googleSchema = z.object({
   role: role.optional(),
 });
 
+export const appleSchema = z.object({
+  identityToken: z.string().min(1),
+  /** Apple gives the app the person's name on the first sign-in only, never in the token. */
+  name: z.string().trim().min(1).max(100).optional(),
+  role: role.optional(),
+});
+
 export const forgotPasswordSchema = z.object({
   email: z.string().email(),
 });

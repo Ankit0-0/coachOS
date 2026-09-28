@@ -3,20 +3,22 @@
 import { useEarlyAccess } from '@/components/early-access/early-access-provider';
 import { Wordmark } from '@/components/navbar';
 import { Container } from '@/components/ui';
+import { SUPPORT_EMAIL } from '@/lib/site';
 
+// From the home page these scroll; from the legal pages they go home first.
 const productLinks = [
-  { href: '#how-it-works', label: 'How it works' },
-  { href: '#for-coaches', label: 'For coaches' },
-  { href: '#for-clients', label: 'For clients' },
-  { href: '#faq', label: 'FAQ' },
+  { href: '/#how-it-works', label: 'How it works' },
+  { href: '/#for-coaches', label: 'For coaches' },
+  { href: '/#for-clients', label: 'For clients' },
+  { href: '/#faq', label: 'FAQ' },
 ];
 
-/*
-  Placeholders: there is no contact address, privacy policy or terms page
-  yet. They stay unlinked text until the real pages exist, rather than
-  pointing somewhere that says nothing.
-*/
-const companyPlaceholders = ['Contact', 'Privacy policy', 'Terms of use'];
+const companyLinks = [
+  { href: `mailto:${SUPPORT_EMAIL}`, label: 'Contact' },
+  { href: '/privacy/', label: 'Privacy policy' },
+  { href: '/terms/', label: 'Terms of use' },
+  { href: '/delete-account/', label: 'Delete your account' },
+];
 
 export function Footer() {
   const earlyAccess = useEarlyAccess();
@@ -53,10 +55,12 @@ export function Footer() {
 
         <div>
           <h2 className="text-sm font-semibold text-cream">Company</h2>
-          <ul className="mt-4 space-y-3 text-sm text-cream/60">
-            {companyPlaceholders.map((label) => (
-              <li key={label}>
-                {label} <span className="text-cream/40">(coming soon)</span>
+          <ul className="mt-4 space-y-3 text-sm">
+            {companyLinks.map((link) => (
+              <li key={link.href}>
+                <a href={link.href} className="text-cream/75 transition hover:text-cream">
+                  {link.label}
+                </a>
               </li>
             ))}
           </ul>

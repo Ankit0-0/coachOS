@@ -23,6 +23,7 @@ export type ApiErrorContext =
   | 'forgotPassword'
   | 'resetPassword'
   | 'googleSignIn'
+  | 'appleSignIn'
   /** Any request made while signed in. */
   | 'session';
 
@@ -32,6 +33,7 @@ const CONTEXT_BY_ENDPOINT: Record<string, ApiErrorContext> = {
   'POST /auth/forgot-password': 'forgotPassword',
   'POST /auth/reset-password': 'resetPassword',
   'POST /auth/google': 'googleSignIn',
+  'POST /auth/apple': 'appleSignIn',
 };
 
 export function contextForRequest(method: string, path: string): ApiErrorContext {
@@ -65,6 +67,10 @@ export function messageForStatus(status: number, context: ApiErrorContext): stri
     case 'googleSignIn':
       if (status === 401) return 'Google sign-in didn’t go through. Please try again.';
       if (status === 503) return 'Google sign-in isn’t available right now. Use your email and password instead.';
+      break;
+    case 'appleSignIn':
+      if (status === 401) return 'Apple sign-in didn’t go through. Please try again.';
+      if (status === 503) return 'Apple sign-in isn’t available right now. Use your email and password instead.';
       break;
     case 'session':
       if (status === 401) return 'Your session has expired. Please sign in again.';
