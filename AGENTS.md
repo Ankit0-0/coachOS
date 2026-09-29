@@ -15,6 +15,9 @@ Do NOT write long descriptions, restate the task, walk through files one
 by one, list every test added, or explain reasoning already visible in
 the diff and its comments.
 
+not more then 300 words
+
+
 ## Workflow
 
 - Work on a branch; never commit directly to `main`.

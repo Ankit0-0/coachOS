@@ -80,6 +80,10 @@ model User {
 
   passwordResetTokens PasswordResetToken[]
   pushTokens          PushToken[]
+
+  /// A coach's own library additions. Global (admin) entries have no owner.
+  exercises Exercise[]
+  dietItems DietItem[]
 }
 
 /// An Expo push token for one install of one app. A device that signs in as
@@ -340,4 +344,106 @@ model EarlyAccessSignup {
   email     String         @unique
   platform  DevicePlatform
   createdAt DateTime       @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Exercise and diet-item library
+//
+// An input aid for the plan editors, not something plans point at: plan
+// content stores the name as a plain string, so editing or deleting a library
+// entry never touches a saved plan.
+// ---------------------------------------------------------------------------
+
+enum MuscleGroup {
+  CHEST
+  UPPER_BACK
+  LATS
+  TRAPS
+  SHOULDERS
+  BICEPS
+  TRICEPS
+  FOREARMS
+  QUADS
+  HAMSTRINGS
+  GLUTES
+  CALVES
+  CORE
+  OBLIQUES
+  FULL_BODY
+  CARDIO
+}
+
+enum TrainingDay {
+  PUSH
+  PULL
+  LEGS
+  CHEST
+  BACK
+  SHOULDERS
+  ARMS
+  CORE
+  CARDIO
+  FULL_BODY
+}
+
+enum Equipment {
+  BARBELL
+  DUMBBELL
+  MACHINE
+  CABLE
+  BODYWEIGHT
+  KETTLEBELL
+  BANDS
+  OTHER
+}
+
+enum MealType {
+  BREAKFAST
+  LUNCH
+  SNACK
+  DINNER
+  PRE_WORKOUT
+  POST_WORKOUT
+}
+
+model Exercise {
+  id               String        @id @default(cuid())
+  name             String
+  primaryMuscles   MuscleGroup[]
+  secondaryMuscles MuscleGroup[]
+  trainingDay      TrainingDay?
+  equipment        Equipment?
+  instructions     String?
+  /// S3 object key; see WeightEntry.photoKey.
+  imageKey         String?
+  /// A plain http(s) link. Not embedded or parsed.
+  videoUrl         String?
+  /// Null is a global entry an admin manages; set is one coach's own. Cascade,
+  /// not SetNull: a deleted coach's private entries must not become global.
+  createdById      String?
+  createdBy        User?         @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  /// Postgres treats nulls as distinct here, so this only stops a coach
+  /// repeating their own name; global names are kept unique by the service.
+  @@unique([name, createdById])
+  @@index([createdById])
+}
+
+model DietItem {
+  id          String    @id @default(cuid())
+  name        String
+  mealType    MealType?
+  calories    Int?
+  proteinG    Int?
+  notes       String?
+  imageKey    String?
+  createdById String?
+  createdBy   User?     @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([name, createdById])
+  @@index([createdById])
 }

@@ -13,8 +13,11 @@ export const ALLOWED_CONTENT_TYPES = {
 
 export type AllowedContentType = keyof typeof ALLOWED_CONTENT_TYPES;
 
-/** Where the image is going, which decides the folder inside the user's prefix. */
-export const UPLOAD_PURPOSES = ["weight", "diet", "avatar"] as const;
+/**
+ * Where the image is going, which decides the folder inside the user's prefix.
+ * "exercise" and "diet-item" are library images an admin uploads.
+ */
+export const UPLOAD_PURPOSES = ["weight", "diet", "avatar", "exercise", "diet-item"] as const;
 
 export type UploadPurpose = (typeof UPLOAD_PURPOSES)[number];
 

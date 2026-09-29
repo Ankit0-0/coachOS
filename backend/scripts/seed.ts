@@ -1,7 +1,8 @@
-import type { PlanType } from "@prisma/client";
+import { Equipment, MuscleGroup, type PlanType } from "@prisma/client";
 
 import { prisma } from "../src/config/prisma.config.js";
 import { hashPassword } from "../src/utils/password.js";
+import { DIET_ITEMS, EXERCISES } from "./library-data.js";
 
 const PASSWORD = "password123";
 
@@ -338,9 +339,44 @@ function workoutItemIds(content: WorkoutContent, exercisesDone: number, dayIndex
   );
 }
 
+/**
+ * The global exercise and diet-item library. Only names that aren't there yet
+ * are created: an existing entry is left exactly as it is, since an admin may
+ * have edited it or added its image since the last run. Names are compared
+ * case-insensitively, the same way the admin routes keep them unique.
+ */
+async function ensureLibrary() {
+  const uncovered = [
+    ...Object.values(MuscleGroup).filter((muscle) => !EXERCISES.some((row) => row.primaryMuscles.includes(muscle))),
+    ...Object.values(Equipment).filter((equipment) => !EXERCISES.some((row) => row.equipment === equipment)),
+  ];
+  if (uncovered.length > 0) throw new Error(`library-data.ts has no exercise for: ${uncovered.join(", ")}`);
+
+  const existingExercises = await prisma.exercise.findMany({ where: { createdById: null }, select: { name: true } });
+  const exerciseNames = new Set(existingExercises.map((row) => row.name.toLowerCase()));
+  const newExercises = EXERCISES.filter((row) => !exerciseNames.has(row.name.toLowerCase()));
+  if (newExercises.length > 0) {
+    await prisma.exercise.createMany({ data: newExercises.map((row) => ({ ...row, createdById: null })) });
+  }
+
+  const existingDietItems = await prisma.dietItem.findMany({ where: { createdById: null }, select: { name: true } });
+  const dietItemNames = new Set(existingDietItems.map((row) => row.name.toLowerCase()));
+  const newDietItems = DIET_ITEMS.filter((row) => !dietItemNames.has(row.name.toLowerCase()));
+  if (newDietItems.length > 0) {
+    await prisma.dietItem.createMany({ data: newDietItems.map((row) => ({ ...row, createdById: null })) });
+  }
+
+  console.log(
+    `Library: ${newExercises.length} of ${EXERCISES.length} exercises and ` +
+      `${newDietItems.length} of ${DIET_ITEMS.length} diet items were new.`,
+  );
+}
+
 // ---------------------------------------------------------------------------
 
 async function main() {
+  await ensureLibrary();
+
   // --- Coaches -------------------------------------------------------------
   const marcus = await ensureUser("coach@coachos.dev", "Marcus Bell", "COACH");
   await ensureCoachProfile(marcus.id, {
