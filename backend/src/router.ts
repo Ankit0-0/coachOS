@@ -11,6 +11,12 @@ import {
 import { coachClientRouter } from "./features/client/routes.js";
 import { adminEarlyAccessRouter, earlyAccessRouter } from "./features/early-access/routes.js";
 import { clientInviteRouter, coachInviteRouter } from "./features/invite/routes.js";
+import {
+  adminDietItemRouter,
+  adminExerciseRouter,
+  coachDietItemRouter,
+  coachExerciseRouter,
+} from "./features/library/routes.js";
 import { clientSubscriptionRouter, coachSubscriptionRouter } from "./features/subscription/routes.js";
 import { clientScheduleRouter, coachAssignmentRouter, coachPlanRouter } from "./features/plan/routes.js";
 import { clientProfileRouter, coachProfileRouter } from "./features/profile/routes.js";
@@ -28,12 +34,16 @@ router.use("/early-access", earlyAccessRouter);
 router.use("/admin/early-access", adminEarlyAccessRouter);
 router.use("/admin/coaches", adminCoachRouter);
 router.use("/admin/plans", adminPlanRouter);
+router.use("/admin/exercises", adminExerciseRouter);
+router.use("/admin/diet-items", adminDietItemRouter);
 router.use("/tracking", trackingRouter);
 router.use("/uploads", uploadRouter);
 router.use("/coach/invites", coachInviteRouter);
 router.use("/client/invites", clientInviteRouter);
 router.use("/coach/plans", coachPlanRouter);
 router.use("/coach/assignments", coachAssignmentRouter);
+router.use("/coach/exercises", coachExerciseRouter);
+router.use("/coach/diet-items", coachDietItemRouter);
 // Two routers share this prefix; Express tries them in order.
 router.use("/coach/clients", coachClientRouter);
 router.use("/coach/clients", coachSubscriptionRouter);

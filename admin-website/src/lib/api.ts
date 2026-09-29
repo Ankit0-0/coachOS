@@ -269,3 +269,193 @@ export const adminPlanApi = {
     return request<void>(`/admin/plans/${encodeURIComponent(id)}`, { method: 'DELETE' });
   },
 };
+
+// ---------------------------------------------------------------------------
+// Exercise and diet-item library (global entries only)
+// ---------------------------------------------------------------------------
+
+export type MuscleGroup =
+  | 'CHEST'
+  | 'UPPER_BACK'
+  | 'LATS'
+  | 'TRAPS'
+  | 'SHOULDERS'
+  | 'BICEPS'
+  | 'TRICEPS'
+  | 'FOREARMS'
+  | 'QUADS'
+  | 'HAMSTRINGS'
+  | 'GLUTES'
+  | 'CALVES'
+  | 'CORE'
+  | 'OBLIQUES'
+  | 'FULL_BODY'
+  | 'CARDIO';
+
+export type TrainingDay =
+  | 'PUSH'
+  | 'PULL'
+  | 'LEGS'
+  | 'CHEST'
+  | 'BACK'
+  | 'SHOULDERS'
+  | 'ARMS'
+  | 'CORE'
+  | 'CARDIO'
+  | 'FULL_BODY';
+
+export type Equipment = 'BARBELL' | 'DUMBBELL' | 'MACHINE' | 'CABLE' | 'BODYWEIGHT' | 'KETTLEBELL' | 'BANDS' | 'OTHER';
+
+export type MealType = 'BREAKFAST' | 'LUNCH' | 'SNACK' | 'DINNER' | 'PRE_WORKOUT' | 'POST_WORKOUT';
+
+export interface LibraryExercise {
+  id: string;
+  name: string;
+  primaryMuscles: MuscleGroup[];
+  secondaryMuscles: MuscleGroup[];
+  trainingDay: TrainingDay | null;
+  equipment: Equipment | null;
+  instructions: string | null;
+  videoUrl: string | null;
+  /** Signed and short-lived; null when there is no image or the bucket can't sign one. */
+  imageUrl: string | null;
+  /** Whether an image is stored at all, even where it can't be shown. */
+  hasImage: boolean;
+  isGlobal: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LibraryDietItem {
+  id: string;
+  name: string;
+  mealType: MealType | null;
+  calories: number | null;
+  proteinG: number | null;
+  notes: string | null;
+  imageUrl: string | null;
+  hasImage: boolean;
+  isGlobal: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Page {
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface ExerciseInput {
+  name: string;
+  primaryMuscles: MuscleGroup[];
+  secondaryMuscles: MuscleGroup[];
+  trainingDay: TrainingDay | null;
+  equipment: Equipment | null;
+  instructions: string | null;
+  videoUrl: string | null;
+  /** Omitted leaves the image alone; null removes it; a key from `uploadImage` replaces it. */
+  imageKey?: string | null;
+}
+
+export interface DietItemInput {
+  name: string;
+  mealType: MealType | null;
+  calories: number | null;
+  proteinG: number | null;
+  notes: string | null;
+  imageKey?: string | null;
+}
+
+/** Blank filters are left out of the query rather than sent empty. */
+function queryString(params: Record<string, string | number | undefined>): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== '') search.set(key, String(value));
+  }
+  const text = search.toString();
+  return text ? `?${text}` : '';
+}
+
+export const adminExerciseApi = {
+  list(filters: { q?: string; muscleGroup?: MuscleGroup | ''; trainingDay?: TrainingDay | ''; page: number }) {
+    return request<{ exercises: LibraryExercise[] } & Page>(`/admin/exercises${queryString(filters)}`);
+  },
+
+  create(input: ExerciseInput) {
+    return request<{ exercise: LibraryExercise }>('/admin/exercises', { method: 'POST', body: input }).then(
+      (data) => data.exercise,
+    );
+  },
+
+  update(id: string, input: ExerciseInput) {
+    return request<{ exercise: LibraryExercise }>(`/admin/exercises/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: input,
+    }).then((data) => data.exercise);
+  },
+
+  remove(id: string) {
+    return request<void>(`/admin/exercises/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  },
+};
+
+export const adminDietItemApi = {
+  list(filters: { q?: string; mealType?: MealType | ''; page: number }) {
+    return request<{ dietItems: LibraryDietItem[] } & Page>(`/admin/diet-items${queryString(filters)}`);
+  },
+
+  create(input: DietItemInput) {
+    return request<{ dietItem: LibraryDietItem }>('/admin/diet-items', { method: 'POST', body: input }).then(
+      (data) => data.dietItem,
+    );
+  },
+
+  update(id: string, input: DietItemInput) {
+    return request<{ dietItem: LibraryDietItem }>(`/admin/diet-items/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: input,
+    }).then((data) => data.dietItem);
+  },
+
+  remove(id: string) {
+    return request<void>(`/admin/diet-items/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Image uploads — the same presign → PUT → store-the-key flow the apps use
+// ---------------------------------------------------------------------------
+
+/** Must match the backend allowlist in features/upload/schemas.ts. */
+export const UPLOAD_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
+export type UploadContentType = (typeof UPLOAD_CONTENT_TYPES)[number];
+export type UploadPurpose = 'exercise' | 'diet-item';
+
+/** The apps cap uploads at this too; a presigned PUT can't enforce a size itself. */
+export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+
+export function isUploadContentType(type: string): type is UploadContentType {
+  return (UPLOAD_CONTENT_TYPES as readonly string[]).includes(type);
+}
+
+/** Uploads straight to S3 and returns the key to save on the entry. */
+export async function uploadImage(file: File, purpose: UploadPurpose): Promise<string> {
+  if (!isUploadContentType(file.type)) {
+    throw new ApiError(400, 'Choose a JPEG, PNG or WebP image.');
+  }
+  const { uploadUrl, key } = await request<{ uploadUrl: string; key: string }>('/uploads/presign', {
+    method: 'POST',
+    body: { contentType: file.type, purpose },
+  });
+
+  let response: Response;
+  try {
+    // Content-Type is part of what was signed, so it has to match exactly.
+    response = await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file });
+  } catch {
+    throw new ApiError(0, 'Could not reach image storage.');
+  }
+  if (!response.ok) throw new ApiError(response.status, 'The image upload was rejected.');
+  return key;
+}
