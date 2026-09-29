@@ -188,6 +188,20 @@ describe("exercise and diet-item library", () => {
       expect(res.status).toBe(409);
     });
 
+    it("has the database reject a duplicate global name the service check missed", async () => {
+      const exercise = await prisma.exercise.create({ data: { name: `${TAG} Raced lift` } });
+      globalExerciseIds.push(exercise.id);
+      await expect(prisma.exercise.create({ data: { name: `${TAG} Raced lift` } })).rejects.toMatchObject({
+        code: "P2002",
+      });
+
+      const dietItem = await prisma.dietItem.create({ data: { name: `${TAG} Raced oats` } });
+      globalDietItemIds.push(dietItem.id);
+      await expect(prisma.dietItem.create({ data: { name: `${TAG} Raced oats` } })).rejects.toMatchObject({
+        code: "P2002",
+      });
+    });
+
     it("rejects an image key that is not the admin's own upload", async () => {
       const res = await createGlobalExercise({
         name: `${TAG} Stolen image`,

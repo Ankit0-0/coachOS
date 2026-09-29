@@ -425,8 +425,9 @@ model Exercise {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
-  /// Postgres treats nulls as distinct here, so this only stops a coach
-  /// repeating their own name; global names are kept unique by the service.
+  /// Nulls are distinct, so this only covers a coach's own names. Global names
+  /// use the raw-SQL partial index "Exercise_name_global_key" (migration
+  /// 20260929050140); keep it if a future migration tries to drop it.
   @@unique([name, createdById])
   @@index([createdById])
 }
@@ -444,6 +445,7 @@ model DietItem {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  /// Global names: raw-SQL partial index "DietItem_name_global_key"; see Exercise.
   @@unique([name, createdById])
   @@index([createdById])
 }

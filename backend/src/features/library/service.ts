@@ -157,7 +157,10 @@ function isUniqueViolation(error: unknown): boolean {
   return typeof error === "object" && error !== null && (error as { code?: unknown }).code === "P2002";
 }
 
-/** Two requests racing past the name check land on the unique index instead. */
+/**
+ * Two requests racing past the name check land on a unique index instead:
+ * [name, createdById] for a coach's rows, the partial *_name_global_key for global ones.
+ */
 async function createOrConflict<T>(create: () => Promise<T>): Promise<T> {
   try {
     return await create();

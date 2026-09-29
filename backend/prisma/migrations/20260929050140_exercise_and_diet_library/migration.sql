@@ -56,6 +56,11 @@ CREATE INDEX "DietItem_createdById_idx" ON "DietItem"("createdById");
 -- CreateIndex
 CREATE UNIQUE INDEX "DietItem_name_createdById_key" ON "DietItem"("name", "createdById");
 
+-- Global names unique; nulls are distinct in the index above, and Prisma can't express a partial index.
+CREATE UNIQUE INDEX "Exercise_name_global_key" ON "Exercise"("name") WHERE "createdById" IS NULL;
+
+CREATE UNIQUE INDEX "DietItem_name_global_key" ON "DietItem"("name") WHERE "createdById" IS NULL;
+
 -- AddForeignKey
 ALTER TABLE "Exercise" ADD CONSTRAINT "Exercise_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 

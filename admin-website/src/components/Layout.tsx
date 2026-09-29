@@ -19,6 +19,12 @@ export function Layout() {
               <NavLink to="/plans" style={navLinkStyle}>
                 Plans
               </NavLink>
+              <NavLink to="/exercises" style={navLinkStyle}>
+                Exercises
+              </NavLink>
+              <NavLink to="/diet-items" style={navLinkStyle}>
+                Diet items
+              </NavLink>
               <NavLink to="/early-access" style={navLinkStyle}>
                 Early access
               </NavLink>
