@@ -12,6 +12,7 @@ export {
   Fonts,
   HitTarget,
   MaxContentWidth,
+  PhoneColumnWidth,
   Radii,
   ScreenPadding,
   Spacing,

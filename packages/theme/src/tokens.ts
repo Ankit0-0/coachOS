@@ -127,5 +127,13 @@ export const Type = {
 export const CardShadow = '0 1px 2px rgba(24, 59, 50, 0.06), 0 8px 24px -12px rgba(24, 59, 50, 0.18)';
 
 export const MaxContentWidth = 800;
+/** Web: the app's column on a screen wider than a phone. */
+export const PhoneColumnWidth = 480;
+/** Web: from here the coach app gets a sidebar and two-column screens. */
+export const DesktopBreakpoint = 960;
+/** Web: the coach app's navigation sidebar. */
+export const SidebarWidth = 240;
+/** Web: cap for two-column screens, so rows stay readable on a very wide monitor. */
+export const WideContentWidth = 1120;
 // Web: the app-tabs.web bar floats over content (8 + 52 + 8 padding and button, 1 border).
 export const BottomTabInset = Platform.select({ ios: 50, android: 80, web: 69 }) ?? 0;

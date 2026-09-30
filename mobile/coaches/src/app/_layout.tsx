@@ -3,15 +3,18 @@ import { Sentry, useNavigationBreadcrumbs } from '@/lib/sentry';
 
 import {
   FontAssets,
+  PhoneColumn,
   ThemeProvider as AppearanceProvider,
   ThemedStatusBar,
   navigationColors,
   useAppearance,
+  useDesktopLayout,
   useTheme,
 } from '@coachos/theme';
 import { useFonts } from 'expo-font';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider, usePathname, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useMemo } from 'react';
 
 import { ErrorFallback } from '@/components/error-fallback';
@@ -19,6 +22,9 @@ import { NotificationsBridge } from '@/components/notifications-bridge';
 import { AuthProvider, useAuth } from '@/contexts/auth';
 
 SplashScreen.preventAutoHideAsync();
+
+// Web: Google's sign-in popup lands on `/`; hand its result back before the auth redirect moves it.
+WebBrowser.maybeCompleteAuthSession();
 
 function isAuthRoute(pathname: string): boolean {
   return pathname === '/auth' || pathname.startsWith('/auth/');
@@ -30,6 +36,7 @@ function RootLayoutNav() {
   const theme = useTheme();
   const router = useRouter();
   const pathname = usePathname();
+  const isDesktop = useDesktopLayout();
   useNavigationBreadcrumbs();
 
   // Every text style names one of these families directly, so rendering before
@@ -74,9 +81,12 @@ function RootLayoutNav() {
     <ThemeProvider value={navigationTheme}>
       <ThemedStatusBar />
       <NotificationsBridge />
-      <Stack screenOptions={{ headerShown: false }}>
-        {isSignedIn ? <Stack.Screen name="(tabs)" /> : <Stack.Screen name="auth" />}
-      </Stack>
+      {/* Signed in on a desktop browser, the sidebar layout in app-tabs.web takes the full width. */}
+      <PhoneColumn enabled={!(isDesktop && isSignedIn)}>
+        <Stack screenOptions={{ headerShown: false }}>
+          {isSignedIn ? <Stack.Screen name="(tabs)" /> : <Stack.Screen name="auth" />}
+        </Stack>
+      </PhoneColumn>
     </ThemeProvider>
   );
 }

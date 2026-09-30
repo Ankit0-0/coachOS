@@ -3,6 +3,7 @@ import { Sentry, useNavigationBreadcrumbs } from '@/lib/sentry';
 
 import {
   FontAssets,
+  PhoneColumn,
   ThemeProvider as AppearanceProvider,
   ThemedStatusBar,
   navigationColors,
@@ -12,6 +13,7 @@ import {
 import { useFonts } from 'expo-font';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider, usePathname, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useMemo } from 'react';
 
 import { ErrorFallback } from '@/components/error-fallback';
@@ -19,6 +21,9 @@ import { NotificationsBridge } from '@/components/notifications-bridge';
 import { AuthProvider, useAuth } from '@/contexts/auth';
 
 SplashScreen.preventAutoHideAsync();
+
+// Web: Google's sign-in popup lands on `/`; hand its result back before the auth redirect moves it.
+WebBrowser.maybeCompleteAuthSession();
 
 function isAuthRoute(pathname: string): boolean {
   return pathname === '/auth' || pathname.startsWith('/auth/');
@@ -74,9 +79,11 @@ function RootLayoutNav() {
     <ThemeProvider value={navigationTheme}>
       <ThemedStatusBar />
       <NotificationsBridge />
-      <Stack screenOptions={{ headerShown: false }}>
-        {isSignedIn ? <Stack.Screen name="(tabs)" /> : <Stack.Screen name="auth" />}
-      </Stack>
+      <PhoneColumn>
+        <Stack screenOptions={{ headerShown: false }}>
+          {isSignedIn ? <Stack.Screen name="(tabs)" /> : <Stack.Screen name="auth" />}
+        </Stack>
+      </PhoneColumn>
     </ThemeProvider>
   );
 }

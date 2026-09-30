@@ -1,5 +1,4 @@
-import { useAuthRequest } from 'expo-auth-session/providers/google';
-import * as WebBrowser from 'expo-web-browser';
+import { useIdTokenAuthRequest } from 'expo-auth-session/providers/google';
 import { useEffect, useState } from 'react';
 
 import { GoogleButtonFace } from '@/components/auth/google-button-face';
@@ -7,11 +6,9 @@ import { useAuth } from '@/contexts/auth';
 
 /*
   Web build only: Google's OAuth popup through expo-auth-session. iOS and
-  Android use native Google Sign-In (google-sign-in-button.tsx).
+  Android use native Google Sign-In (google-sign-in-button.tsx). The popup
+  hands its result back from the root layout (maybeCompleteAuthSession).
 */
-
-// Lets the popup window hand its result back to this page and close.
-WebBrowser.maybeCompleteAuthSession();
 
 const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID?.trim() ?? '';
 
@@ -42,7 +39,8 @@ export function GoogleSignInButton() {
 function GoogleWebButton() {
   const { signInWithGoogle } = useAuth();
   const [busy, setBusy] = useState(false);
-  const [request, response, promptAsync] = useAuthRequest({ webClientId: WEB_CLIENT_ID, selectAccount: true });
+  // useAuthRequest would ask for response_type=token, which carries no id_token.
+  const [request, response, promptAsync] = useIdTokenAuthRequest({ webClientId: WEB_CLIENT_ID, selectAccount: true });
 
   useEffect(() => {
     if (!response) return;

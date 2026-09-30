@@ -4,11 +4,15 @@ on:
   pull_request:
     paths:
       - 'mobile/**'
+      # Both apps build from the shared theme package.
+      - 'packages/theme/**'
       - '.github/workflows/mobile-ci.yml'
   push:
     branches: [main]
     paths:
       - 'mobile/**'
+      # Both apps build from the shared theme package.
+      - 'packages/theme/**'
       - '.github/workflows/mobile-ci.yml'
 
 jobs:
@@ -64,3 +68,9 @@ jobs:
       - run: pnpm typecheck
       # Pure helpers in src/lib; no native modules, so plain Node.
       - run: pnpm test
+
+      # What the Render static site runs: fails on a native-only import with no .web variant.
+      - name: Build web
+        env:
+          CI: '1'
+        run: pnpm build:web

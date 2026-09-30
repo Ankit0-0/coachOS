@@ -13,8 +13,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
-import { MaxContentWidth, Radii, Spacing } from '@/constants/theme';
-import { useAppearance, useTheme } from '@/hooks/use-theme';
+import { MaxContentWidth, PhoneColumnWidth, Radii, Spacing } from '@/constants/theme';
+import { useAppearance, useDesktopLayout, useTheme } from '@/hooks/use-theme';
 
 type ModalProps = {
   visible: boolean;
@@ -30,30 +30,33 @@ const MAX_HEIGHT_RATIO = 0.8;
 /**
  * A bottom sheet over a blurred page.
  *
- * The blur is iOS and web only. On Android, expo-blur doesn't blur unless it
+ * The blur is iOS only. On Android, expo-blur doesn't blur unless it
  * is given an experimental blur method *and* a BlurTargetView wrapping the
  * content behind it — and a Modal renders in its own native window there, so
  * it can't target the page underneath at all. Android gets the theme's scrim
  * instead, which is also the cheap path on the devices where blur would stutter.
+ * Web gets the scrim too: its CSS blur washes the page out behind a white sheet.
  */
 export function Modal({ visible, onClose, title, children }: ModalProps) {
   const theme = useTheme();
   const { scheme } = useAppearance();
   const { height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  // A sheet pinned to the bottom of a monitor is a long way from the pointer.
+  const isDesktop = useDesktopLayout();
 
   return (
     <NativeModal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
-      <View style={styles.root}>
+      <View style={[styles.root, isDesktop && styles.rootCentered]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Close"
           onPress={onClose}
           style={StyleSheet.absoluteFill}>
-          {Platform.OS === 'android' ? (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.scrim }]} />
-          ) : (
+          {Platform.OS === 'ios' ? (
             <BlurView tint={scheme === 'dark' ? 'dark' : 'light'} intensity={40} style={StyleSheet.absoluteFill} />
+          ) : (
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.scrim }]} />
           )}
         </Pressable>
 
@@ -61,6 +64,7 @@ export function Modal({ visible, onClose, title, children }: ModalProps) {
           accessibilityViewIsModal
           style={[
             styles.sheet,
+            isDesktop && styles.dialog,
             {
               backgroundColor: theme.surface,
               borderColor: theme.border,
@@ -101,14 +105,23 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     alignItems: 'center',
   },
+  rootCentered: {
+    justifyContent: 'center',
+    padding: Spacing.four,
+  },
   sheet: {
     width: '100%',
-    maxWidth: MaxContentWidth,
+    // Web: no wider than the app column.
+    maxWidth: Platform.OS === 'web' ? PhoneColumnWidth : MaxContentWidth,
     borderTopLeftRadius: Radii.lg,
     borderTopRightRadius: Radii.lg,
     borderWidth: 1,
     borderBottomWidth: 0,
     overflow: 'hidden',
+  },
+  dialog: {
+    borderRadius: Radii.lg,
+    borderBottomWidth: 1,
   },
   header: {
     flexDirection: 'row',

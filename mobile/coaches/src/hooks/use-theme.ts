@@ -1,1 +1,1 @@
-export { useAppearance, useTheme } from '@coachos/theme';
+export { useAppearance, useDesktopLayout, useTheme } from '@coachos/theme';
