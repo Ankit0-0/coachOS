@@ -7,6 +7,7 @@ import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
 import { useRefresh, type RefreshHandle } from '@/hooks/use-refresh';
+import { useDesktopLayout } from '@/hooks/use-theme';
 
 export function HomeScreen() {
   const requests = useRef<RefreshHandle>(null);
@@ -16,9 +17,13 @@ export function HomeScreen() {
     () => requests.current?.reload(),
     () => roster.current?.reload(),
   );
+  const isDesktop = useDesktopLayout();
+
+  // Accepting a request reloads the roster so the new client shows at once.
+  const requestsSection = <RequestsSection ref={requests} onAccepted={() => void roster.current?.reload()} />;
 
   return (
-    <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh}>
+    <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh} wide>
       <View style={styles.header}>
         <ThemedText type="display">Clients</ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
@@ -26,10 +31,10 @@ export function HomeScreen() {
         </ThemedText>
       </View>
 
-      {/* Accepting a request reloads the roster so the new client shows at once. */}
-      <RequestsSection ref={requests} onAccepted={() => void roster.current?.reload()} />
+      {/* Desktop: requests sit beside the roster, above the invite form. */}
+      {isDesktop ? null : requestsSection}
 
-      <ClientsSection ref={roster} />
+      <ClientsSection ref={roster} aside={isDesktop ? requestsSection : null} />
     </ScreenScaffold>
   );
 }

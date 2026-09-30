@@ -23,7 +23,7 @@ import { Chip } from '@/components/ui/pill';
 import { Section } from '@/components/ui/section';
 import { Radii, Spacing } from '@/constants/theme';
 import { useRefresh, type RefreshHandle } from '@/hooks/use-refresh';
-import { useTheme } from '@/hooks/use-theme';
+import { useDesktopLayout, useTheme } from '@/hooks/use-theme';
 import {
   assignmentApi,
   coachClientApi,
@@ -69,6 +69,7 @@ function countScheduled(checkIn: CheckIn | undefined, ids: string[]): number {
 
 export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreenProps) {
   const theme = useTheme();
+  const isDesktop = useDesktopLayout();
   const [assignments, setAssignments] = useState<PlanAssignment[]>([]);
   const [profile, setProfile] = useState<ClientProfile | null>(null);
   const [weights, setWeights] = useState<WeightEntry[]>([]);
@@ -342,8 +343,172 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
     );
   };
 
+  const profileSection = (
+    <Section title="Profile and goals">
+      <Card padded={false} style={styles.fieldCard}>
+        <FieldRow label="Phone" value={formatPhone(profile?.phone)} />
+        <FieldRow label="Height" value={profile?.heightCm != null ? `${profile.heightCm} cm` : null} />
+        <FieldRow label="Diet" value={profile?.dietPreference ? DIET_LABELS[profile.dietPreference] : null} />
+        <FieldRow
+          label="Latest weight"
+          value={
+            weightSummary
+              ? `${weightSummary.latest.weightKg} kg (${shortDateLabel(weightSummary.latest.date)})`
+              : null
+          }
+        />
+        <FieldRow
+          label="7-day average"
+          value={weightSummary ? `${weightSummary.sevenDayAverageKg} kg` : null}
+        />
+        <FieldRow label="Starting weight" value={profile?.weightKg != null ? `${profile.weightKg} kg` : null} />
+        <FieldRow label="Goals" value={profile?.goals} stacked divider={false} />
+      </Card>
+    </Section>
+  );
+
+  const plansSection = (
+    <Section title="Current plans">
+      {planError ? (
+        <ThemedText type="small" themeColor="danger">
+          {planError}
+        </ThemedText>
+      ) : null}
+      <Card style={styles.plansCard}>
+        <InsetPanel>
+          {renderPlanCard('Workout', 'WORKOUT', latestWorkout)}
+          {renderPlanCard('Diet', 'DIET', latestDiet)}
+        </InsetPanel>
+      </Card>
+
+      <PlanPickerModal
+        type={pickerType}
+        clientId={clientId}
+        currentPlanId={(pickerType === 'DIET' ? activeDiet : activeWorkout)?.planId ?? null}
+        onClose={() => setPickerType(null)}
+        onAssigned={loadAll}
+      />
+
+    </Section>
+  );
+
+  const progressSection = (
+    <Section title="Progress">
+      <Card>
+        <View style={styles.cardHeader}>
+          <ThemedText type="heading">Weight trend</ThemedText>
+          {latestChartEntry ? (
+            <View style={styles.latestWeight}>
+              <ThemedText type="numeric">{latestChartEntry.weightKg}</ThemedText>
+              <ThemedText type="meta">kg</ThemedText>
+            </View>
+          ) : (
+            <ThemedText type="meta">No data yet</ThemedText>
+          )}
+        </View>
+        <View style={styles.chartBody}>
+          <WeightRangeSelector value={chartRange} onChange={setChartRange} />
+          <WeightChart entries={chartWeights} from={chartDates.from} to={chartDates.to} />
+        </View>
+      </Card>
+
+      <Card style={styles.monthCard}>
+        <MonthNavigator
+          label={month.monthYearLabel}
+          onPrevious={() => stepMonth(-1)}
+          onNext={() => stepMonth(1)}
+          isAtCurrentMonth={isAtCurrentMonth}
+        />
+        <ThemedText type="meta">
+          {completedDays} of {trainingDays.length} training days logged
+        </ThemedText>
+        <View style={styles.legendRow}>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: theme.chartWorkout }]} />
+            <ThemedText type="meta" themeColor="textSecondary">
+              Workout
+            </ThemedText>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: theme.chartDiet }]} />
+            <ThemedText type="meta" themeColor="textSecondary">
+              Diet
+            </ThemedText>
+          </View>
+        </View>
+        <MonthlyActivityCalendar
+          entries={dailyActivity}
+          daysInMonth={month.daysInMonth}
+          firstWeekday={month.firstWeekday}
+          onDayPress={(day) => setOpenDate(`${month.from.slice(0, 8)}${String(day).padStart(2, '0')}`)}
+          lastPressableDay={lastPressableDay}
+        />
+      </Card>
+      <DayDetailModal date={openDate} onClose={() => setOpenDate(null)} load={loadDay} />
+    </Section>
+  );
+
+  const photosSection = (
+    <ClientPhotos
+      weights={weights}
+      checkIns={checkIns}
+      planByAssignmentId={planByAssignmentId}
+      weightLookbackDays={WEIGHT_LOOKBACK_DAYS}
+      monthLabel={month.monthYearLabel}
+      limit={MAX_PHOTOS_PER_GROUP}
+      onViewAll={openPhotos}
+    />
+  );
+
+  const notesSection = (
+    <Section title="Recent notes">
+      {recentNotes.length === 0 ? (
+        <Card>
+          <ThemedText type="small" themeColor="textSecondary">
+            Nothing yet. Notes your client leaves on a check-in show up here.
+          </ThemedText>
+        </Card>
+      ) : (
+        <Card padded={false} style={styles.fieldCard}>
+          {recentNotes.map((checkIn, index) => (
+            <View
+              key={checkIn.id}
+              style={[
+                styles.noteRow,
+                index < recentNotes.length - 1 && {
+                  borderBottomWidth: 1,
+                  borderBottomColor: theme.border,
+                },
+              ]}>
+              <ThemedText type="meta">{longDateLabel(checkIn.date)}</ThemedText>
+              <ThemedText type="small">{checkIn.notes}</ThemedText>
+            </View>
+          ))}
+        </Card>
+      )}
+      {allNotes.length > MAX_RECENT_NOTES ? (
+        <Pressable accessibilityRole="button" onPress={openNotes} hitSlop={12} style={styles.viewAll}>
+          <ThemedText type="linkPrimary">View all {allNotes.length}</ThemedText>
+        </Pressable>
+      ) : null}
+    </Section>
+  );
+
+  const subscriptionCard = <SubscriptionSection ref={subscriptionSection} clientId={clientId} />;
+
+  const paymentSection = (
+    <Section title="Payment">
+      <Card style={styles.textCard}>
+        <ThemedText type="heading">Billing isn&apos;t connected yet</ThemedText>
+        <ThemedText type="small" themeColor="textSecondary">
+          Invoices and receipts will appear here. Subscription periods are tracked above.
+        </ThemedText>
+      </Card>
+    </Section>
+  );
+
   return (
-    <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh}>
+    <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh} wide>
       <DetailHeader
         title={name}
         subtitle={email}
@@ -379,157 +544,32 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
             </View>
           </View>
 
-          <Section title="Profile and goals">
-            <Card padded={false} style={styles.fieldCard}>
-              <FieldRow label="Phone" value={formatPhone(profile?.phone)} />
-              <FieldRow label="Height" value={profile?.heightCm != null ? `${profile.heightCm} cm` : null} />
-              <FieldRow label="Diet" value={profile?.dietPreference ? DIET_LABELS[profile.dietPreference] : null} />
-              <FieldRow
-                label="Latest weight"
-                value={
-                  weightSummary
-                    ? `${weightSummary.latest.weightKg} kg (${shortDateLabel(weightSummary.latest.date)})`
-                    : null
-                }
-              />
-              <FieldRow
-                label="7-day average"
-                value={weightSummary ? `${weightSummary.sevenDayAverageKg} kg` : null}
-              />
-              <FieldRow label="Starting weight" value={profile?.weightKg != null ? `${profile.weightKg} kg` : null} />
-              <FieldRow label="Goals" value={profile?.goals} stacked divider={false} />
-            </Card>
-          </Section>
-
-          <Section title="Current plans">
-            {planError ? (
-              <ThemedText type="small" themeColor="danger">
-                {planError}
-              </ThemedText>
-            ) : null}
-            <Card style={styles.plansCard}>
-              <InsetPanel>
-                {renderPlanCard('Workout', 'WORKOUT', latestWorkout)}
-                {renderPlanCard('Diet', 'DIET', latestDiet)}
-              </InsetPanel>
-            </Card>
-
-            <PlanPickerModal
-              type={pickerType}
-              clientId={clientId}
-              currentPlanId={(pickerType === 'DIET' ? activeDiet : activeWorkout)?.planId ?? null}
-              onClose={() => setPickerType(null)}
-              onAssigned={loadAll}
-            />
-
-          </Section>
-
-          <Section title="Progress">
-            <Card>
-              <View style={styles.cardHeader}>
-                <ThemedText type="heading">Weight trend</ThemedText>
-                {latestChartEntry ? (
-                  <View style={styles.latestWeight}>
-                    <ThemedText type="numeric">{latestChartEntry.weightKg}</ThemedText>
-                    <ThemedText type="meta">kg</ThemedText>
-                  </View>
-                ) : (
-                  <ThemedText type="meta">No data yet</ThemedText>
-                )}
+          {isDesktop ? (
+            // Who they are and what they are on, beside how they are doing.
+            <View style={styles.columns}>
+              <View style={styles.column}>
+                {profileSection}
+                {plansSection}
+                {notesSection}
+                {subscriptionCard}
+                {paymentSection}
               </View>
-              <View style={styles.chartBody}>
-                <WeightRangeSelector value={chartRange} onChange={setChartRange} />
-                <WeightChart entries={chartWeights} from={chartDates.from} to={chartDates.to} />
+              <View style={styles.column}>
+                {progressSection}
+                {photosSection}
               </View>
-            </Card>
-
-            <Card style={styles.monthCard}>
-              <MonthNavigator
-                label={month.monthYearLabel}
-                onPrevious={() => stepMonth(-1)}
-                onNext={() => stepMonth(1)}
-                isAtCurrentMonth={isAtCurrentMonth}
-              />
-              <ThemedText type="meta">
-                {completedDays} of {trainingDays.length} training days logged
-              </ThemedText>
-              <View style={styles.legendRow}>
-                <View style={styles.legendItem}>
-                  <View style={[styles.legendDot, { backgroundColor: theme.chartWorkout }]} />
-                  <ThemedText type="meta" themeColor="textSecondary">
-                    Workout
-                  </ThemedText>
-                </View>
-                <View style={styles.legendItem}>
-                  <View style={[styles.legendDot, { backgroundColor: theme.chartDiet }]} />
-                  <ThemedText type="meta" themeColor="textSecondary">
-                    Diet
-                  </ThemedText>
-                </View>
-              </View>
-              <MonthlyActivityCalendar
-                entries={dailyActivity}
-                daysInMonth={month.daysInMonth}
-                firstWeekday={month.firstWeekday}
-                onDayPress={(day) => setOpenDate(`${month.from.slice(0, 8)}${String(day).padStart(2, '0')}`)}
-                lastPressableDay={lastPressableDay}
-              />
-            </Card>
-            <DayDetailModal date={openDate} onClose={() => setOpenDate(null)} load={loadDay} />
-          </Section>
-
-          <ClientPhotos
-            weights={weights}
-            checkIns={checkIns}
-            planByAssignmentId={planByAssignmentId}
-            weightLookbackDays={WEIGHT_LOOKBACK_DAYS}
-            monthLabel={month.monthYearLabel}
-            limit={MAX_PHOTOS_PER_GROUP}
-            onViewAll={openPhotos}
-          />
-
-          <Section title="Recent notes">
-            {recentNotes.length === 0 ? (
-              <Card>
-                <ThemedText type="small" themeColor="textSecondary">
-                  Nothing yet. Notes your client leaves on a check-in show up here.
-                </ThemedText>
-              </Card>
-            ) : (
-              <Card padded={false} style={styles.fieldCard}>
-                {recentNotes.map((checkIn, index) => (
-                  <View
-                    key={checkIn.id}
-                    style={[
-                      styles.noteRow,
-                      index < recentNotes.length - 1 && {
-                        borderBottomWidth: 1,
-                        borderBottomColor: theme.border,
-                      },
-                    ]}>
-                    <ThemedText type="meta">{longDateLabel(checkIn.date)}</ThemedText>
-                    <ThemedText type="small">{checkIn.notes}</ThemedText>
-                  </View>
-                ))}
-              </Card>
-            )}
-            {allNotes.length > MAX_RECENT_NOTES ? (
-              <Pressable accessibilityRole="button" onPress={openNotes} hitSlop={12} style={styles.viewAll}>
-                <ThemedText type="linkPrimary">View all {allNotes.length}</ThemedText>
-              </Pressable>
-            ) : null}
-          </Section>
-
-          <SubscriptionSection ref={subscriptionSection} clientId={clientId} />
-
-          <Section title="Payment">
-            <Card style={styles.textCard}>
-              <ThemedText type="heading">Billing isn&apos;t connected yet</ThemedText>
-              <ThemedText type="small" themeColor="textSecondary">
-                Invoices and receipts will appear here. Subscription periods are tracked above.
-              </ThemedText>
-            </Card>
-          </Section>
+            </View>
+          ) : (
+            <>
+              {profileSection}
+              {plansSection}
+              {progressSection}
+              {photosSection}
+              {notesSection}
+              {subscriptionCard}
+              {paymentSection}
+            </>
+          )}
         </>
       )}
     </ScreenScaffold>
@@ -537,6 +577,16 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
 }
 
 const styles = StyleSheet.create({
+  columns: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.threeHalf,
+  },
+  // The screen's own gap between sections.
+  column: {
+    flex: 1,
+    gap: Spacing.threeHalf,
+  },
   viewAll: {
     alignSelf: 'flex-start',
   },

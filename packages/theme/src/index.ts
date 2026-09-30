@@ -10,3 +10,4 @@ export * from './components/controls';
 export * from './components/feedback';
 export * from './components/screen';
 export * from './components/appearance';
+export * from './components/layout';

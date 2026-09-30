@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Radii, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth';
-import { useTheme } from '@/hooks/use-theme';
+import { useDesktopLayout, useTheme } from '@/hooks/use-theme';
 import {
   ApiError,
   planApi,
@@ -108,8 +108,12 @@ function dayList(indexes: number[]): string {
   return `${noun} ${numbers.slice(0, -1).join(', ')} and ${numbers[numbers.length - 1]}`;
 }
 
+/** The day list beside the day being edited, on a desktop browser. */
+const DAY_SIDEBAR_WIDTH = 300;
+
 export function CreatePlanScreen() {
   const theme = useTheme();
+  const isDesktop = useDesktopLayout();
   const router = useRouter();
   const { user } = useAuth();
   const params = useLocalSearchParams<{ planId?: string }>();
@@ -506,7 +510,7 @@ export function CreatePlanScreen() {
   const itemCount = type === 'WORKOUT' ? day.exercises.filter((row) => row.name.trim()).length : day.meals.filter((row) => row.label.trim()).length;
 
   return (
-    <ScreenScaffold includeBottomTabInset>
+    <ScreenScaffold includeBottomTabInset wide>
       <DetailHeader title={header.title} subtitle={header.subtitle} />
 
       {/* The type is fixed once a plan exists — its stored content has to keep
@@ -552,320 +556,328 @@ export function CreatePlanScreen() {
         </Card>
       ) : null}
 
-      <Card style={styles.panel}>
-        <ThemedText type="label" themeColor="textSecondary">
-          Title
-        </ThemedText>
-        <TextField
-          placeholder={placeholderFor('e.g. Lower body strength')}
-          value={title}
-          onChangeText={setTitle}
-          editable={!isReadOnly}
-        />
-
-        <ThemedText type="label" themeColor="textSecondary">
-          Description (optional)
-        </ThemedText>
-        <TextField
-          placeholder={placeholderFor('Short description')}
-          value={description}
-          onChangeText={setDescription}
-          editable={!isReadOnly}
-        />
-      </Card>
-
-      <Card style={styles.panel}>
-        {type === 'WORKOUT' ? (
-          <>
-            <ThemedText type="label" themeColor="textSecondary">
-              Difficulty
-            </ThemedText>
-            <TextField
-              placeholder={placeholderFor('e.g. Intermediate')}
-              value={difficulty}
-              onChangeText={setDifficulty}
-              editable={!isReadOnly}
-            />
-          </>
-        ) : null}
-
-        <ThemedText type="label" themeColor="textSecondary">
-          Focus
-        </ThemedText>
-        <TextField
-          placeholder={placeholderFor('What this plan targets')}
-          value={focus}
-          onChangeText={setFocus}
-          editable={!isReadOnly}
-        />
-
-        <ThemedText type="label" themeColor="textSecondary">
-          Summary
-        </ThemedText>
-        <TextField
-          placeholder={placeholderFor('One-line summary')}
-          value={summary}
-          onChangeText={setSummary}
-          editable={!isReadOnly}
-        />
-      </Card>
-
-      <Card style={styles.panel}>
-        <CycleLengthPicker length={days.length} onChange={handleLengthChange} disabled={isReadOnly} />
-
-        {pendingLength !== null ? (
-          <Card variant="inset" style={styles.confirmBlock}>
-            <ThemedText type="smallBold">
-              Shorten to {pendingLength} {pendingLength === 1 ? 'day' : 'days'}?
-            </ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              {dayList(days.map((_, index) => index).slice(pendingLength))} will be discarded.
-            </ThemedText>
-            <View style={styles.confirmActions}>
-              <View style={styles.confirmAction}>
-                <Button label="Cancel" variant="secondary" onPress={() => setPendingLength(null)} fullWidth />
-              </View>
-              <View style={styles.confirmAction}>
-                <Button label="Shorten" variant="danger" onPress={() => resizeTo(pendingLength)} fullWidth />
-              </View>
-            </View>
-          </Card>
-        ) : null}
-
-        <DayStrip
-          days={days.map((candidate) => ({
-            key: candidate.key,
-            label: candidate.label,
-            isRestDay: type === 'WORKOUT' && candidate.isRestDay,
-            isFilled: dayHasContent(candidate, type),
-          }))}
-          selectedIndex={selectedDay}
-          onSelect={(index) => {
-            setSelectedDay(index);
-            setNotice(null);
-          }}
-        />
-      </Card>
-
-      <Card style={styles.panel}>
-        <View style={styles.dayHeader}>
-          <ThemedText type="smallBold">
-            Day {selectedDay + 1}
-            {days.length > 1 ? ` of ${days.length}` : ''}
+      <View style={isDesktop ? styles.pair : styles.stack}>
+        <Card style={[styles.panel, isDesktop && styles.fill]}>
+          <ThemedText type="label" themeColor="textSecondary">
+            Title
           </ThemedText>
-          {isReadOnly || days.length === 1 ? null : (
-            <Pressable onPress={duplicateDay} accessibilityRole="button">
-              <ThemedText type="small" themeColor="primary">
-                Duplicate day
-              </ThemedText>
-            </Pressable>
-          )}
-        </View>
-
-        <ThemedText type="label" themeColor="textSecondary">
-          Day label
-        </ThemedText>
-        <TextField
-          placeholder={placeholderFor(type === 'WORKOUT' ? 'e.g. Pull' : 'e.g. High carb')}
-          value={day.label}
-          onChangeText={(value) => updateDay({ label: value })}
-          editable={!isReadOnly}
-        />
-
-        {type === 'WORKOUT' ? (
-          <Pressable
-            accessibilityRole="switch"
-            accessibilityState={{ checked: day.isRestDay, disabled: isReadOnly }}
-            disabled={isReadOnly}
-            onPress={toggleRestDay}
-            style={[
-              styles.restToggle,
-              { borderColor: day.isRestDay ? theme.primary : theme.border },
-              day.isRestDay && { backgroundColor: theme.chipBg },
-            ]}>
-            <ThemedText type="smallBold" themeColor={day.isRestDay ? 'primary' : 'textPrimary'}>
-              Rest day
-            </ThemedText>
-            <ThemedText type="meta" themeColor="textSecondary">
-              {day.isRestDay ? 'Nothing to log — it counts as rest, not a miss' : 'Tap to make this a rest day'}
-            </ThemedText>
-          </Pressable>
-        ) : null}
-
-        {type === 'WORKOUT' && day.isRestDay ? null : (
-          <>
-            <ThemedText type="label" themeColor="textSecondary">
-              {type === 'WORKOUT' ? 'Duration' : 'Calories'}
-            </ThemedText>
-            <TextField
-              placeholder={placeholderFor(type === 'WORKOUT' ? 'e.g. 45 min' : 'e.g. 2,000 kcal')}
-              value={type === 'WORKOUT' ? day.duration : day.calories}
-              onChangeText={(value) =>
-                updateDay(type === 'WORKOUT' ? { duration: value } : { calories: value })
-              }
-              editable={!isReadOnly}
-            />
-          </>
-        )}
-      </Card>
-
-      {type === 'WORKOUT' && day.isRestDay ? null : (
-        <Card style={styles.panel}>
-          <View style={styles.dayHeader}>
-            <ThemedText type="smallBold">{type === 'WORKOUT' ? 'Exercises' : 'Meals'}</ThemedText>
-            <ThemedText type="meta" themeColor="textSecondary">
-              {itemCount} on day {selectedDay + 1}
-            </ThemedText>
-          </View>
-
-          {type === 'WORKOUT'
-            ? day.exercises.map((row) => (
-                <View key={row.rowId} style={styles.exerciseBlock}>
-                  <TextField
-                    placeholder={placeholderFor('Exercise name')}
-                    value={row.name}
-                    onChangeText={(value) => updateExercise(row.rowId, { name: value })}
-                    editable={!isReadOnly}
-                  />
-                  <TextField
-                    placeholder={placeholderFor('Note (optional)')}
-                    value={row.note}
-                    onChangeText={(value) => updateExercise(row.rowId, { note: value })}
-                    editable={!isReadOnly}
-                  />
-
-                  <View style={styles.tripleRow}>
-                    <View style={styles.tripleField}>
-                      <ThemedText type="meta">Sets</ThemedText>
-                      <TextField
-                        placeholder={placeholderFor('3')}
-                        keyboardType="number-pad"
-                        value={row.sets}
-                        onChangeText={(value) => updateExercise(row.rowId, { sets: value })}
-                        editable={!isReadOnly}
-                      />
-                    </View>
-                    <View style={styles.tripleField}>
-                      <ThemedText type="meta">Reps</ThemedText>
-                      <TextField
-                        placeholder={placeholderFor('8-10')}
-                        value={row.reps}
-                        onChangeText={(value) => updateExercise(row.rowId, { reps: value })}
-                        editable={!isReadOnly}
-                      />
-                    </View>
-                    <View style={styles.tripleField}>
-                      <ThemedText type="meta">Rest</ThemedText>
-                      <TextField
-                        placeholder={placeholderFor('90s')}
-                        value={row.rest}
-                        onChangeText={(value) => updateExercise(row.rowId, { rest: value })}
-                        editable={!isReadOnly}
-                      />
-                    </View>
-                  </View>
-
-                  {isReadOnly ? null : (
-                    <Pressable onPress={() => removeExercise(row.rowId)} style={styles.removeButton}>
-                      <ThemedText type="small" themeColor="danger">
-                        Remove exercise
-                      </ThemedText>
-                    </Pressable>
-                  )}
-                </View>
-              ))
-            : day.meals.map((row) => (
-                <View key={row.rowId} style={styles.rowEditor}>
-                  <TextField
-                    style={styles.rowInput}
-                    placeholder={placeholderFor('e.g. Breakfast: eggs, toast, fruit')}
-                    value={row.label}
-                    onChangeText={(value) => updateMeal(row.rowId, value)}
-                    editable={!isReadOnly}
-                  />
-                  {isReadOnly ? null : (
-                    <Pressable onPress={() => removeMeal(row.rowId)} style={styles.removeButton}>
-                      <ThemedText type="small" themeColor="danger">
-                        Remove
-                      </ThemedText>
-                    </Pressable>
-                  )}
-                </View>
-              ))}
-
-          {isReadOnly ? null : (
-            <Pressable
-              style={[styles.addButton, { borderColor: theme.border }]}
-              onPress={type === 'WORKOUT' ? addExercise : addMeal}>
-              <ThemedText type="smallBold" themeColor="primary">
-                + Add {type === 'WORKOUT' ? 'exercise' : 'meal'}
-              </ThemedText>
-            </Pressable>
-          )}
-        </Card>
-      )}
-
-      {notice ? (
-        <ThemedText type="small" themeColor="textSecondary">
-          {notice}
-        </ThemedText>
-      ) : null}
-
-      {formError ? (
-        <View style={[styles.errorBanner, { backgroundColor: theme.dangerSoft }]}>
-          <ThemedText type="small" themeColor="danger">
-            {formError}
-          </ThemedText>
-        </View>
-      ) : null}
-
-      {isReadOnly ? (
-        <Button label="Back" variant="secondary" onPress={() => router.back()} fullWidth />
-      ) : (
-        <>
-          <Button
-            label={mode === 'edit' ? 'Save changes' : 'Create plan'}
-            onPress={handleSave}
-            loading={isSaving}
-            fullWidth
+          <TextField
+            placeholder={placeholderFor('e.g. Lower body strength')}
+            value={title}
+            onChangeText={setTitle}
+            editable={!isReadOnly}
           />
 
-          {mode === 'edit' ? (
-            // Confirmed inline rather than with Alert, which is a no-op on
-            // React Native Web — an Alert-gated delete does nothing at all in
-            // a browser, with no error to explain why.
-            isConfirmingDelete ? (
-              <Card style={styles.confirmBlock}>
-                <ThemedText type="smallBold">Delete this plan?</ThemedText>
-                <ThemedText type="small" themeColor="textSecondary">
-                  This can&apos;t be undone. Clients who already finished it keep their history.
-                </ThemedText>
-                <View style={styles.confirmActions}>
-                  <View style={styles.confirmAction}>
-                    <Button
-                      label="Cancel"
-                      variant="secondary"
-                      onPress={() => setIsConfirmingDelete(false)}
-                      disabled={isDeleting}
-                      fullWidth
-                    />
-                  </View>
-                  <View style={styles.confirmAction}>
-                    <Button label="Delete plan" variant="danger" onPress={handleDelete} loading={isDeleting} fullWidth />
-                  </View>
+          <ThemedText type="label" themeColor="textSecondary">
+            Description (optional)
+          </ThemedText>
+          <TextField
+            placeholder={placeholderFor('Short description')}
+            value={description}
+            onChangeText={setDescription}
+            editable={!isReadOnly}
+          />
+        </Card>
+
+        <Card style={[styles.panel, isDesktop && styles.fill]}>
+          {type === 'WORKOUT' ? (
+            <>
+              <ThemedText type="label" themeColor="textSecondary">
+                Difficulty
+              </ThemedText>
+              <TextField
+                placeholder={placeholderFor('e.g. Intermediate')}
+                value={difficulty}
+                onChangeText={setDifficulty}
+                editable={!isReadOnly}
+              />
+            </>
+          ) : null}
+
+          <ThemedText type="label" themeColor="textSecondary">
+            Focus
+          </ThemedText>
+          <TextField
+            placeholder={placeholderFor('What this plan targets')}
+            value={focus}
+            onChangeText={setFocus}
+            editable={!isReadOnly}
+          />
+
+          <ThemedText type="label" themeColor="textSecondary">
+            Summary
+          </ThemedText>
+          <TextField
+            placeholder={placeholderFor('One-line summary')}
+            value={summary}
+            onChangeText={setSummary}
+            editable={!isReadOnly}
+          />
+        </Card>
+      </View>
+
+      {/* Desktop: the cycle's days down a sidebar, the selected day beside it. */}
+      <View style={isDesktop ? styles.columns : styles.stack}>
+        <Card style={[styles.panel, isDesktop && styles.daySidebar]}>
+          <CycleLengthPicker length={days.length} onChange={handleLengthChange} disabled={isReadOnly} />
+
+          {pendingLength !== null ? (
+            <Card variant="inset" style={styles.confirmBlock}>
+              <ThemedText type="smallBold">
+                Shorten to {pendingLength} {pendingLength === 1 ? 'day' : 'days'}?
+              </ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                {dayList(days.map((_, index) => index).slice(pendingLength))} will be discarded.
+              </ThemedText>
+              <View style={styles.confirmActions}>
+                <View style={styles.confirmAction}>
+                  <Button label="Cancel" variant="secondary" onPress={() => setPendingLength(null)} fullWidth />
                 </View>
-              </Card>
-            ) : (
+                <View style={styles.confirmAction}>
+                  <Button label="Shorten" variant="danger" onPress={() => resizeTo(pendingLength)} fullWidth />
+                </View>
+              </View>
+            </Card>
+          ) : null}
+
+          <DayStrip
+            days={days.map((candidate) => ({
+              key: candidate.key,
+              label: candidate.label,
+              isRestDay: type === 'WORKOUT' && candidate.isRestDay,
+              isFilled: dayHasContent(candidate, type),
+            }))}
+            selectedIndex={selectedDay}
+            onSelect={(index) => {
+              setSelectedDay(index);
+              setNotice(null);
+            }}
+            vertical={isDesktop}
+          />
+        </Card>
+
+        <View style={[styles.stack, isDesktop && styles.fill]}>
+          <Card style={styles.panel}>
+            <View style={styles.dayHeader}>
+              <ThemedText type="smallBold">
+                Day {selectedDay + 1}
+                {days.length > 1 ? ` of ${days.length}` : ''}
+              </ThemedText>
+              {isReadOnly || days.length === 1 ? null : (
+                <Pressable onPress={duplicateDay} accessibilityRole="button">
+                  <ThemedText type="small" themeColor="primary">
+                    Duplicate day
+                  </ThemedText>
+                </Pressable>
+              )}
+            </View>
+
+            <ThemedText type="label" themeColor="textSecondary">
+              Day label
+            </ThemedText>
+            <TextField
+              placeholder={placeholderFor(type === 'WORKOUT' ? 'e.g. Pull' : 'e.g. High carb')}
+              value={day.label}
+              onChangeText={(value) => updateDay({ label: value })}
+              editable={!isReadOnly}
+            />
+
+            {type === 'WORKOUT' ? (
+              <Pressable
+                accessibilityRole="switch"
+                accessibilityState={{ checked: day.isRestDay, disabled: isReadOnly }}
+                disabled={isReadOnly}
+                onPress={toggleRestDay}
+                style={[
+                  styles.restToggle,
+                  { borderColor: day.isRestDay ? theme.primary : theme.border },
+                  day.isRestDay && { backgroundColor: theme.chipBg },
+                ]}>
+                <ThemedText type="smallBold" themeColor={day.isRestDay ? 'primary' : 'textPrimary'}>
+                  Rest day
+                </ThemedText>
+                <ThemedText type="meta" themeColor="textSecondary">
+                  {day.isRestDay ? 'Nothing to log — it counts as rest, not a miss' : 'Tap to make this a rest day'}
+                </ThemedText>
+              </Pressable>
+            ) : null}
+
+            {type === 'WORKOUT' && day.isRestDay ? null : (
+              <>
+                <ThemedText type="label" themeColor="textSecondary">
+                  {type === 'WORKOUT' ? 'Duration' : 'Calories'}
+                </ThemedText>
+                <TextField
+                  placeholder={placeholderFor(type === 'WORKOUT' ? 'e.g. 45 min' : 'e.g. 2,000 kcal')}
+                  value={type === 'WORKOUT' ? day.duration : day.calories}
+                  onChangeText={(value) =>
+                    updateDay(type === 'WORKOUT' ? { duration: value } : { calories: value })
+                  }
+                  editable={!isReadOnly}
+                />
+              </>
+            )}
+          </Card>
+
+          {type === 'WORKOUT' && day.isRestDay ? null : (
+            <Card style={styles.panel}>
+              <View style={styles.dayHeader}>
+                <ThemedText type="smallBold">{type === 'WORKOUT' ? 'Exercises' : 'Meals'}</ThemedText>
+                <ThemedText type="meta" themeColor="textSecondary">
+                  {itemCount} on day {selectedDay + 1}
+                </ThemedText>
+              </View>
+
+              {type === 'WORKOUT'
+                ? day.exercises.map((row) => (
+                    <View key={row.rowId} style={styles.exerciseBlock}>
+                      <TextField
+                        placeholder={placeholderFor('Exercise name')}
+                        value={row.name}
+                        onChangeText={(value) => updateExercise(row.rowId, { name: value })}
+                        editable={!isReadOnly}
+                      />
+                      <TextField
+                        placeholder={placeholderFor('Note (optional)')}
+                        value={row.note}
+                        onChangeText={(value) => updateExercise(row.rowId, { note: value })}
+                        editable={!isReadOnly}
+                      />
+
+                      <View style={styles.tripleRow}>
+                        <View style={styles.tripleField}>
+                          <ThemedText type="meta">Sets</ThemedText>
+                          <TextField
+                            placeholder={placeholderFor('3')}
+                            keyboardType="number-pad"
+                            value={row.sets}
+                            onChangeText={(value) => updateExercise(row.rowId, { sets: value })}
+                            editable={!isReadOnly}
+                          />
+                        </View>
+                        <View style={styles.tripleField}>
+                          <ThemedText type="meta">Reps</ThemedText>
+                          <TextField
+                            placeholder={placeholderFor('8-10')}
+                            value={row.reps}
+                            onChangeText={(value) => updateExercise(row.rowId, { reps: value })}
+                            editable={!isReadOnly}
+                          />
+                        </View>
+                        <View style={styles.tripleField}>
+                          <ThemedText type="meta">Rest</ThemedText>
+                          <TextField
+                            placeholder={placeholderFor('90s')}
+                            value={row.rest}
+                            onChangeText={(value) => updateExercise(row.rowId, { rest: value })}
+                            editable={!isReadOnly}
+                          />
+                        </View>
+                      </View>
+
+                      {isReadOnly ? null : (
+                        <Pressable onPress={() => removeExercise(row.rowId)} style={styles.removeButton}>
+                          <ThemedText type="small" themeColor="danger">
+                            Remove exercise
+                          </ThemedText>
+                        </Pressable>
+                      )}
+                    </View>
+                  ))
+                : day.meals.map((row) => (
+                    <View key={row.rowId} style={styles.rowEditor}>
+                      <TextField
+                        style={styles.rowInput}
+                        placeholder={placeholderFor('e.g. Breakfast: eggs, toast, fruit')}
+                        value={row.label}
+                        onChangeText={(value) => updateMeal(row.rowId, value)}
+                        editable={!isReadOnly}
+                      />
+                      {isReadOnly ? null : (
+                        <Pressable onPress={() => removeMeal(row.rowId)} style={styles.removeButton}>
+                          <ThemedText type="small" themeColor="danger">
+                            Remove
+                          </ThemedText>
+                        </Pressable>
+                      )}
+                    </View>
+                  ))}
+
+              {isReadOnly ? null : (
+                <Pressable
+                  style={[styles.addButton, { borderColor: theme.border }]}
+                  onPress={type === 'WORKOUT' ? addExercise : addMeal}>
+                  <ThemedText type="smallBold" themeColor="primary">
+                    + Add {type === 'WORKOUT' ? 'exercise' : 'meal'}
+                  </ThemedText>
+                </Pressable>
+              )}
+            </Card>
+          )}
+
+          {notice ? (
+            <ThemedText type="small" themeColor="textSecondary">
+              {notice}
+            </ThemedText>
+          ) : null}
+
+          {formError ? (
+            <View style={[styles.errorBanner, { backgroundColor: theme.dangerSoft }]}>
+              <ThemedText type="small" themeColor="danger">
+                {formError}
+              </ThemedText>
+            </View>
+          ) : null}
+
+          {isReadOnly ? (
+            <Button label="Back" variant="secondary" onPress={() => router.back()} fullWidth />
+          ) : (
+            <>
               <Button
-                label="Delete plan"
-                variant="danger"
-                onPress={() => setIsConfirmingDelete(true)}
+                label={mode === 'edit' ? 'Save changes' : 'Create plan'}
+                onPress={handleSave}
+                loading={isSaving}
                 fullWidth
               />
-            )
-          ) : null}
-        </>
-      )}
+
+              {mode === 'edit' ? (
+                // Confirmed inline rather than with Alert, which is a no-op on
+                // React Native Web — an Alert-gated delete does nothing at all in
+                // a browser, with no error to explain why.
+                isConfirmingDelete ? (
+                  <Card style={styles.confirmBlock}>
+                    <ThemedText type="smallBold">Delete this plan?</ThemedText>
+                    <ThemedText type="small" themeColor="textSecondary">
+                      This can&apos;t be undone. Clients who already finished it keep their history.
+                    </ThemedText>
+                    <View style={styles.confirmActions}>
+                      <View style={styles.confirmAction}>
+                        <Button
+                          label="Cancel"
+                          variant="secondary"
+                          onPress={() => setIsConfirmingDelete(false)}
+                          disabled={isDeleting}
+                          fullWidth
+                        />
+                      </View>
+                      <View style={styles.confirmAction}>
+                        <Button label="Delete plan" variant="danger" onPress={handleDelete} loading={isDeleting} fullWidth />
+                      </View>
+                    </View>
+                  </Card>
+                ) : (
+                  <Button
+                    label="Delete plan"
+                    variant="danger"
+                    onPress={() => setIsConfirmingDelete(true)}
+                    fullWidth
+                  />
+                )
+              ) : null}
+            </>
+          )}
+        </View>
+      </View>
     </ScreenScaffold>
   );
 }
@@ -890,6 +902,25 @@ function uniqueId(existing: string | undefined, dayIndex: number, slug: string, 
 }
 
 const styles = StyleSheet.create({
+  // Same gap as the screen's own, so wrapping cards in it changes nothing on a phone.
+  stack: {
+    gap: Spacing.threeHalf,
+  },
+  pair: {
+    flexDirection: 'row',
+    gap: Spacing.threeHalf,
+  },
+  columns: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.threeHalf,
+  },
+  fill: {
+    flex: 1,
+  },
+  daySidebar: {
+    width: DAY_SIDEBAR_WIDTH,
+  },
   typeRow: {
     flexDirection: 'row',
     gap: Spacing.two,

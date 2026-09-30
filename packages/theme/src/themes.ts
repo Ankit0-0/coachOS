@@ -7,6 +7,8 @@ import { CardShadow, Palette } from './tokens';
 export type Theme = {
   /** Page background. */
   bg: string;
+  /** Web only: either side of the centred app column on a wide screen. */
+  backdrop: string;
   /** Cards on the page. */
   surface: string;
   /** Tray inside a card that holds rows (landing: the cream panel). */
@@ -79,6 +81,7 @@ export type ThemeColor = {
 
 export const light: Theme = {
   bg: Palette.cream,
+  backdrop: '#ECE9E0',
   surface: Palette.white,
   surfaceInset: Palette.cream,
   // landing `border-forest/10`
@@ -141,6 +144,7 @@ export const light: Theme = {
 
 export const dark: Theme = {
   bg: Palette.ink,
+  backdrop: '#0D0F0E',
   surface: Palette.inkRaised,
   surfaceInset: Palette.inkInset,
   border: Palette.inkLine,

@@ -12,7 +12,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets, type EdgeInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '../provider';
-import { BottomTabInset, MaxContentWidth, ScreenPadding, Spacing } from '../tokens';
+import { BottomTabInset, MaxContentWidth, PhoneColumnWidth, ScreenPadding, Spacing, WideContentWidth } from '../tokens';
 
 /**
  * Android targets SDK 36 and runs edge-to-edge, where `adjustResize` never
@@ -73,6 +73,8 @@ type ScreenProps = PropsWithChildren<{
   avoidKeyboard?: boolean;
   /** Stays put above the scrolling content. */
   pinnedHeader?: ReactNode;
+  /** Web: a two-column screen that uses the full content width on desktop. */
+  wide?: boolean;
 }>;
 
 /** Page background, safe area, gutter and scroll for every screen. */
@@ -84,6 +86,7 @@ export function Screen({
   onRefresh,
   avoidKeyboard = false,
   pinnedHeader,
+  wide = false,
 }: ScreenProps) {
   const theme = useTheme();
   // Tab screens sit above the native tab bar, which clears the navigation bar
@@ -92,7 +95,7 @@ export function Screen({
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
-      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      <SafeAreaView style={[styles.safeArea, wide && styles.wideSafeArea]} edges={['top', 'left', 'right']}>
         {pinnedHeader ? <View style={styles.pinnedHeader}>{pinnedHeader}</View> : null}
         <KeyboardAvoidingView
           style={styles.fill}
@@ -140,7 +143,11 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     width: '100%',
-    maxWidth: MaxContentWidth,
+    // Web keeps a normal screen phone-width, even beside the coach app's sidebar.
+    maxWidth: Platform.OS === 'web' ? PhoneColumnWidth : MaxContentWidth,
+  },
+  wideSafeArea: {
+    maxWidth: Platform.OS === 'web' ? WideContentWidth : MaxContentWidth,
   },
   content: {
     flexGrow: 1,
