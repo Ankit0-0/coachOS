@@ -6,9 +6,10 @@ Tailwind and framer-motion. It has no users, no auth and no database.
 ## What it may talk to
 
 The backend, and only through the one public endpoint
-`POST /v1/early-access` (`NEXT_PUBLIC_API_URL`). Nothing here reads
-coach or client data, and nothing here holds a credential — every
-`NEXT_PUBLIC_` value ships to the browser.
+`POST /v1/early-access` (`NEXT_PUBLIC_API_URL`). The web apps are only
+linked to, never called. Nothing here reads coach or client data, and
+nothing here holds a credential — every `NEXT_PUBLIC_` value ships to
+the browser.
 
 There are no Next.js API routes. Anything that needs to write to
 Postgres belongs in `backend/`, behind a route there, so that one
@@ -34,6 +35,10 @@ keys — so it's lost until a column is added there.
   through `useEarlyAccess()` — `open()` for a neutral button,
   `openFor('COACH' | 'CLIENT')` for an audience-specific one. None of
   them scroll to an anchor, and a new call to action does the same.
+- The hero's "Open the web app" is the only other call to action: it
+  opens the app chooser, a sibling modal on the same `ModalShell`. It
+  renders only when `NEXT_PUBLIC_COACH_APP_URL` and
+  `NEXT_PUBLIC_CLIENT_APP_URL` are both real URLs (`lib/web-apps.ts`).
 - Product visuals are coded mockups (`components/mockups/`), not
   screenshots: they scale to any width and carry no real data. Keep them
   faithful to the apps' real screens and wording, and keep the people

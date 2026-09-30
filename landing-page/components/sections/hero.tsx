@@ -1,4 +1,4 @@
-import { AudienceButtons, Container, Mark } from '@/components/ui';
+import { Container, HeroActions, Mark } from '@/components/ui';
 import { ClientTodayScreen, CoachClientsScreen } from '@/components/mockups/app-screens';
 
 export function Hero() {
@@ -25,8 +25,7 @@ export function Hero() {
             clients know what to do next.
           </p>
 
-          <AudienceButtons className="mt-9" />
-          <p className="mt-4 text-sm text-muted">Both join early access. Not in app stores yet.</p>
+          <HeroActions className="mt-9" />
 
           <p className="mt-10 flex items-center gap-3 border-t border-forest/10 pt-6 text-sm font-medium text-charcoal/80">
             <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" className="shrink-0 text-forest" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
