@@ -1,8 +1,10 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useCallback, useRef, useState, type ReactNode } from 'react';
 
+import { AppChooserModal } from '@/components/app-chooser-modal';
 import { useEarlyAccess } from '@/components/early-access/early-access-provider';
+import { WEB_APPS } from '@/lib/web-apps';
 
 /** The page's one content width, so every section's edges line up. */
 export function Container({ children, className = '' }: { children: ReactNode; className?: string }) {
@@ -90,29 +92,46 @@ const secondaryButton =
   'inline-flex min-h-12 items-center justify-center gap-2 rounded-full border-2 border-forest/20 bg-white/60 px-6 py-3 text-base font-semibold text-forest transition hover:border-forest/50 hover:bg-white';
 
 /**
- * The two ways in, side by side: one per audience, both opening the
- * early-access form with that audience already chosen.
+ * The hero's two ways in: early access with no audience chosen, and the web
+ * apps. Until both web-app URLs are set, only early access shows.
  */
-export function AudienceButtons({
-  coachLabel = "I'm a coach",
-  clientLabel = "I'm looking for a coach",
-  className = '',
-}: {
-  coachLabel?: string;
-  clientLabel?: string;
-  className?: string;
-}) {
+export function HeroActions({ className = '' }: { className?: string }) {
   const earlyAccess = useEarlyAccess();
+  const [isChooserOpen, setIsChooserOpen] = useState(false);
+  const webAppButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  const closeChooser = useCallback(() => {
+    setIsChooserOpen(false);
+    // Back to the button that opened it, as the early-access modal does.
+    webAppButtonRef.current?.focus();
+  }, []);
+
   return (
-    <div className={`flex flex-col gap-3 sm:flex-row sm:flex-wrap ${className}`}>
-      <button type="button" onClick={() => earlyAccess.openFor('COACH')} className={primaryButton}>
-        {coachLabel}
-        <Arrow />
-      </button>
-      <button type="button" onClick={() => earlyAccess.openFor('CLIENT')} className={secondaryButton}>
-        {clientLabel}
-        <Arrow />
-      </button>
+    <div className={className}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+        <button type="button" onClick={earlyAccess.open} className={primaryButton}>
+          Join early access
+          <Arrow />
+        </button>
+        {WEB_APPS ? (
+          <button
+            ref={webAppButtonRef}
+            type="button"
+            aria-haspopup="dialog"
+            onClick={() => setIsChooserOpen(true)}
+            className={secondaryButton}
+          >
+            Open the web app
+            <Arrow />
+          </button>
+        ) : null}
+      </div>
+      <p className="mt-4 text-sm text-muted">
+        {WEB_APPS
+          ? 'Not in the app stores yet — use the web app or join early access.'
+          : "Not in the app stores yet — join early access and we'll email you."}
+      </p>
+      {WEB_APPS ? <AppChooserModal isOpen={isChooserOpen} apps={WEB_APPS} onClose={closeChooser} /> : null}
     </div>
   );
 }
