@@ -2,6 +2,7 @@ import { BlurView } from 'expo-blur';
 import { SymbolView } from 'expo-symbols';
 import { type ReactNode } from 'react';
 import {
+  KeyboardAvoidingView,
   Modal as NativeModal,
   Platform,
   Pressable,
@@ -13,6 +14,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
+import { KEYBOARD_AVOIDING_BEHAVIOR } from '@/components/ui/keyboard-form';
 import { MaxContentWidth, PhoneColumnWidth, Radii, Spacing } from '@/constants/theme';
 import { useAppearance, useDesktopLayout, useTheme } from '@/hooks/use-theme';
 
@@ -21,6 +23,10 @@ type ModalProps = {
   /** Called for the backdrop, the close button and Android's back button alike. */
   onClose: () => void;
   title: string;
+  /** Stays put under the title while the content scrolls, e.g. a search box. */
+  header?: ReactNode;
+  /** Once it is on screen: the moment to focus a field (web's focus trap undoes `autoFocus`). */
+  onShow?: () => void;
   children: ReactNode;
 };
 
@@ -37,7 +43,7 @@ const MAX_HEIGHT_RATIO = 0.8;
  * instead, which is also the cheap path on the devices where blur would stutter.
  * Web gets the scrim too: its CSS blur washes the page out behind a white sheet.
  */
-export function Modal({ visible, onClose, title, children }: ModalProps) {
+export function Modal({ visible, onClose, title, header, onShow, children }: ModalProps) {
   const theme = useTheme();
   const { scheme } = useAppearance();
   const { height } = useWindowDimensions();
@@ -46,8 +52,17 @@ export function Modal({ visible, onClose, title, children }: ModalProps) {
   const isDesktop = useDesktopLayout();
 
   return (
-    <NativeModal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
-      <View style={[styles.root, isDesktop && styles.rootCentered]}>
+    <NativeModal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+      onShow={onShow}
+      statusBarTranslucent>
+      {/* A sheet with a text field rises above the keyboard rather than under it. */}
+      <KeyboardAvoidingView
+        behavior={KEYBOARD_AVOIDING_BEHAVIOR}
+        style={[styles.root, isDesktop ? styles.rootCentered : { paddingTop: insets.top }]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Close"
@@ -90,11 +105,16 @@ export function Modal({ visible, onClose, title, children }: ModalProps) {
             </Pressable>
           </View>
 
-          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          {header ? <View style={styles.pinned}>{header}</View> : null}
+
+          <ScrollView
+            contentContainerStyle={styles.content}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}>
             {children}
           </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </NativeModal>
   );
 }
@@ -118,6 +138,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderBottomWidth: 0,
     overflow: 'hidden',
+    // Gives way to the keyboard instead of running off the top.
+    flexShrink: 1,
   },
   dialog: {
     borderRadius: Radii.lg,
@@ -134,6 +156,11 @@ const styles = StyleSheet.create({
   },
   title: {
     flex: 1,
+  },
+  pinned: {
+    gap: Spacing.twoHalf,
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.three,
   },
   close: {
     width: 32,

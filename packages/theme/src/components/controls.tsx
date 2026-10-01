@@ -1,5 +1,5 @@
 import { SymbolView } from 'expo-symbols';
-import { useState, type ComponentProps, type ReactNode } from 'react';
+import { useState, type ComponentProps, type ReactNode, type Ref } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -223,6 +223,8 @@ type TextFieldProps = Omit<TextInputProps, 'style'> & {
   invalid?: boolean;
   /** Trailing element inside the field, e.g. a unit or a toggle. */
   trailing?: ReactNode;
+  /** The input itself, e.g. to focus it. */
+  ref?: Ref<TextInput>;
 };
 
 /** Bordered single-line input; the border darkens on focus. */

@@ -4,6 +4,9 @@ import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { CycleLengthPicker } from '@/components/create-plan/CycleLengthPicker';
 import { DayStrip } from '@/components/create-plan/DayStrip';
+import { DietItemPicker } from '@/components/create-plan/DietItemPicker';
+import { ExercisePicker } from '@/components/create-plan/ExercisePicker';
+import { PickerField } from '@/components/create-plan/LibraryPicker';
 import { DetailHeader } from '@/components/detail-header';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
@@ -138,6 +141,8 @@ export function CreatePlanScreen() {
   const [pendingLength, setPendingLength] = useState<number | null>(null);
   /** How many clients are on this plan right now; undefined until a plan is loaded. */
   const [activeAssignments, setActiveAssignments] = useState<number | undefined>(undefined);
+  /** The row whose name the library picker is open for. */
+  const [picking, setPicking] = useState<{ kind: 'exercise' | 'meal'; rowId: string } | null>(null);
 
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -278,13 +283,22 @@ export function CreatePlanScreen() {
     updateDay({
       exercises: day.exercises.map((row) => (row.rowId === rowId ? { ...row, ...changes } : row)),
     });
-  const addExercise = () => updateDay({ exercises: [...day.exercises, emptyExercise()] });
+  // A new row goes straight to the picker: naming it is the next step anyway.
+  const addExercise = () => {
+    const row = emptyExercise();
+    updateDay({ exercises: [...day.exercises, row] });
+    setPicking({ kind: 'exercise', rowId: row.rowId });
+  };
   const removeExercise = (rowId: string) =>
     updateDay({ exercises: day.exercises.filter((row) => row.rowId !== rowId) });
 
   const updateMeal = (rowId: string, label: string) =>
     updateDay({ meals: day.meals.map((row) => (row.rowId === rowId ? { ...row, label } : row)) });
-  const addMeal = () => updateDay({ meals: [...day.meals, emptyMeal()] });
+  const addMeal = () => {
+    const row = emptyMeal();
+    updateDay({ meals: [...day.meals, row] });
+    setPicking({ kind: 'meal', rowId: row.rowId });
+  };
   const removeMeal = (rowId: string) => updateDay({ meals: day.meals.filter((row) => row.rowId !== rowId) });
 
   const toggleRestDay = () => {
@@ -509,6 +523,13 @@ export function CreatePlanScreen() {
 
   const itemCount = type === 'WORKOUT' ? day.exercises.filter((row) => row.name.trim()).length : day.meals.filter((row) => row.label.trim()).length;
 
+  const pickingText =
+    picking?.kind === 'exercise'
+      ? (day.exercises.find((row) => row.rowId === picking.rowId)?.name ?? '')
+      : picking?.kind === 'meal'
+        ? (day.meals.find((row) => row.rowId === picking.rowId)?.label ?? '')
+        : '';
+
   return (
     <ScreenScaffold includeBottomTabInset wide>
       <DetailHeader title={header.title} subtitle={header.subtitle} />
@@ -731,12 +752,16 @@ export function CreatePlanScreen() {
               {type === 'WORKOUT'
                 ? day.exercises.map((row) => (
                     <View key={row.rowId} style={styles.exerciseBlock}>
-                      <TextField
-                        placeholder={placeholderFor('Exercise name')}
-                        value={row.name}
-                        onChangeText={(value) => updateExercise(row.rowId, { name: value })}
-                        editable={!isReadOnly}
-                      />
+                      {isReadOnly ? (
+                        <TextField placeholder={placeholderFor('Exercise name')} value={row.name} editable={false} />
+                      ) : (
+                        <PickerField
+                          value={row.name}
+                          placeholder="Exercise name"
+                          accessibilityLabel="Exercise name"
+                          onPress={() => setPicking({ kind: 'exercise', rowId: row.rowId })}
+                        />
+                      )}
                       <TextField
                         placeholder={placeholderFor('Note (optional)')}
                         value={row.note}
@@ -786,13 +811,23 @@ export function CreatePlanScreen() {
                   ))
                 : day.meals.map((row) => (
                     <View key={row.rowId} style={styles.rowEditor}>
-                      <TextField
-                        style={styles.rowInput}
-                        placeholder={placeholderFor('e.g. Breakfast: eggs, toast, fruit')}
-                        value={row.label}
-                        onChangeText={(value) => updateMeal(row.rowId, value)}
-                        editable={!isReadOnly}
-                      />
+                      {isReadOnly ? (
+                        <TextField
+                          style={styles.rowInput}
+                          placeholder={placeholderFor('e.g. Breakfast: eggs, toast, fruit')}
+                          value={row.label}
+                          editable={false}
+                        />
+                      ) : (
+                        <View style={styles.rowInput}>
+                          <PickerField
+                            value={row.label}
+                            placeholder="e.g. Breakfast: eggs, toast, fruit"
+                            accessibilityLabel="Meal"
+                            onPress={() => setPicking({ kind: 'meal', rowId: row.rowId })}
+                          />
+                        </View>
+                      )}
                       {isReadOnly ? null : (
                         <Pressable onPress={() => removeMeal(row.rowId)} style={styles.removeButton}>
                           <ThemedText type="small" themeColor="danger">
@@ -878,6 +913,23 @@ export function CreatePlanScreen() {
           )}
         </View>
       </View>
+
+      <ExercisePicker
+        visible={picking?.kind === 'exercise'}
+        initialText={pickingText}
+        onSelect={(name) => {
+          if (picking) updateExercise(picking.rowId, { name });
+        }}
+        onClose={() => setPicking(null)}
+      />
+      <DietItemPicker
+        visible={picking?.kind === 'meal'}
+        initialText={pickingText}
+        onSelect={(label) => {
+          if (picking) updateMeal(picking.rowId, label);
+        }}
+        onClose={() => setPicking(null)}
+      />
     </ScreenScaffold>
   );
 }

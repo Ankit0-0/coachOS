@@ -489,6 +489,123 @@ export const assignmentApi = {
 };
 
 // ---------------------------------------------------------------------------
+// Exercise and diet-item library
+// ---------------------------------------------------------------------------
+
+/**
+ * An input aid for the plan editor. Plans store the chosen name as a plain
+ * string, never a library id, so nothing here can change a saved plan.
+ */
+
+export type MuscleGroup =
+  | 'CHEST'
+  | 'UPPER_BACK'
+  | 'LATS'
+  | 'TRAPS'
+  | 'SHOULDERS'
+  | 'BICEPS'
+  | 'TRICEPS'
+  | 'FOREARMS'
+  | 'QUADS'
+  | 'HAMSTRINGS'
+  | 'GLUTES'
+  | 'CALVES'
+  | 'CORE'
+  | 'OBLIQUES'
+  | 'FULL_BODY'
+  | 'CARDIO';
+
+export type TrainingDay =
+  | 'PUSH'
+  | 'PULL'
+  | 'LEGS'
+  | 'CHEST'
+  | 'BACK'
+  | 'SHOULDERS'
+  | 'ARMS'
+  | 'CORE'
+  | 'CARDIO'
+  | 'FULL_BODY';
+
+export type MealType = 'BREAKFAST' | 'LUNCH' | 'SNACK' | 'DINNER' | 'PRE_WORKOUT' | 'POST_WORKOUT';
+
+export interface LibraryExercise {
+  id: string;
+  name: string;
+  primaryMuscles: MuscleGroup[];
+  secondaryMuscles: MuscleGroup[];
+  trainingDay: TrainingDay | null;
+  /** Signed and short-lived; null when there is no image. */
+  imageUrl: string | null;
+  /** False for the coach's own entries. */
+  isGlobal: boolean;
+}
+
+export interface LibraryDietItem {
+  id: string;
+  name: string;
+  mealType: MealType | null;
+  calories: number | null;
+  proteinG: number | null;
+  imageUrl: string | null;
+  isGlobal: boolean;
+}
+
+/** A name from the coach's latest plans, with its library entry when there is one. */
+export interface RecentLibraryName<T> {
+  name: string;
+  entry: T | null;
+}
+
+export interface LibrarySearch<T> {
+  /** Best match first: the coach's own entries, then the closest names. */
+  results: T[];
+  /** Only filled for a blank search with no filter. */
+  recent: RecentLibraryName<T>[];
+}
+
+/** Blank values are left out rather than sent empty. */
+function libraryQuery(params: Record<string, string | null | undefined>): string {
+  const pairs = Object.entries(params).filter((pair): pair is [string, string] => Boolean(pair[1]?.trim()));
+  return pairs.length > 0 ? `?${queryString(Object.fromEntries(pairs))}` : '';
+}
+
+export const exerciseLibraryApi = {
+  search(params: { q?: string; trainingDay?: TrainingDay | null }): Promise<LibrarySearch<LibraryExercise>> {
+    return apiRequest<{ exercises: LibraryExercise[]; recent: { name: string; exercise: LibraryExercise | null }[] }>(
+      `/coach/exercises${libraryQuery(params)}`,
+    ).then((data) => ({
+      results: data.exercises,
+      recent: data.recent.map((item) => ({ name: item.name, entry: item.exercise })),
+    }));
+  },
+
+  /** Adds a name to the coach's own list. 409 when it is already in their library. */
+  create(input: { name: string }): Promise<LibraryExercise> {
+    return apiRequest<{ exercise: LibraryExercise }>('/coach/exercises', { method: 'POST', body: input }).then(
+      (data) => data.exercise,
+    );
+  },
+};
+
+export const dietItemLibraryApi = {
+  search(params: { q?: string; mealType?: MealType | null }): Promise<LibrarySearch<LibraryDietItem>> {
+    return apiRequest<{ dietItems: LibraryDietItem[]; recent: { name: string; dietItem: LibraryDietItem | null }[] }>(
+      `/coach/diet-items${libraryQuery(params)}`,
+    ).then((data) => ({
+      results: data.dietItems,
+      recent: data.recent.map((item) => ({ name: item.name, entry: item.dietItem })),
+    }));
+  },
+
+  create(input: { name: string }): Promise<LibraryDietItem> {
+    return apiRequest<{ dietItem: LibraryDietItem }>('/coach/diet-items', { method: 'POST', body: input }).then(
+      (data) => data.dietItem,
+    );
+  },
+};
+
+// ---------------------------------------------------------------------------
 // Coach-scoped reads of a client's own data
 // ---------------------------------------------------------------------------
 
