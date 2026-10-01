@@ -1,12 +1,15 @@
-import { Image, Pressable, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { Card } from '@/components/ui/card';
 import { Section } from '@/components/ui/section';
 import { Radii, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
-import { shortDateLabel } from '@/lib/dates';
+import { useDesktopLayout, useTheme } from '@/hooks/use-theme';
+import { longDateLabel, shortDateLabel } from '@/lib/dates';
+import { useOpenPhotoViewer } from '@/lib/photo-viewer';
 import type { CheckIn, DietContent, Plan, WeightEntry } from '@/lib/api';
+import type { ViewerPhoto } from '@coachos/theme';
 
 export type Photo = {
   id: string;
@@ -35,6 +38,15 @@ type ClientPhotosProps = {
   limit?: number;
   onViewAll?: (group: 'physique' | 'meal') => void;
 };
+
+/** Four and a bit of the fifth across a 375pt phone, so the row reads as scrollable. */
+const ROW_THUMB_SIZE = 66;
+/** Card padding, which the row scrolls out under. */
+const CARD_PADDING = Spacing.threeHalf;
+const GRID_MIN_COLUMNS = 3;
+/** On a wide screen, more columns rather than bigger tiles. */
+const GRID_TILE_TARGET = 120;
+const GRID_COLUMN_GAP = Spacing.two;
 
 const newestFirst = (a: Photo, b: Photo) => b.date.localeCompare(a.date);
 
@@ -86,12 +98,115 @@ export function mealPhotos(checkIns: CheckIn[], planByAssignmentId: Map<string, 
   return photos.sort(newestFirst);
 }
 
-function PhotoGroup({ title, emptyMessage, photos, limit, onViewAll }: { title: string; emptyMessage: string; photos: Photo[]; limit?: number; onViewAll?: () => void }) {
+function toViewerPhoto(photo: Photo): ViewerPhoto {
+  return {
+    id: photo.id,
+    url: photo.url,
+    title: photo.title,
+    subtitle: longDateLabel(photo.date),
+    accessibilityLabel: photo.accessibilityLabel,
+  };
+}
+
+/** Square crop with its caption; tapping opens the whole, uncropped photo. */
+function Thumbnail({ photo, size, onPress }: { photo: Photo; size: number; onPress: () => void }) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={photo.accessibilityLabel}
+      accessibilityHint="Opens the photo full size"
+      onPress={onPress}
+      style={({ pressed }) => [styles.tile, { width: size }, pressed && styles.pressed]}>
+      <Image
+        source={{ uri: photo.url }}
+        style={[styles.thumb, { width: size, height: size, backgroundColor: theme.surfaceInset, borderColor: theme.border }]}
+      />
+      <ThemedText type="meta" themeColor="textSecondary" numberOfLines={1}>
+        {photo.title}
+      </ThemedText>
+      <ThemedText type="meta" numberOfLines={1}>
+        {shortDateLabel(photo.date)}
+      </ThemedText>
+    </Pressable>
+  );
+}
+
+/** One scrolling row of the newest photos; swiping in the viewer covers the whole group. */
+function PhotoRow({ photos, limit }: { photos: Photo[]; limit?: number }) {
+  const openViewer = useOpenPhotoViewer();
+  const isDesktop = useDesktopLayout();
+  const shown = limit ? photos.slice(0, limit) : photos;
+  return (
+    <ScrollView
+      horizontal
+      // A mouse has no swipe, so the desktop gets a scrollbar to drag.
+      showsHorizontalScrollIndicator={isDesktop}
+      style={styles.rowBleed}
+      contentContainerStyle={styles.rowContent}>
+      {shown.map((photo, index) => (
+        <Thumbnail
+          key={photo.id}
+          photo={photo}
+          size={ROW_THUMB_SIZE}
+          onPress={() => openViewer(photos.map(toViewerPhoto), index)}
+        />
+      ))}
+    </ScrollView>
+  );
+}
+
+/** Three across on a phone, more on a wide screen; the "View all" screen. */
+export function PhotoGrid({ photos }: { photos: Photo[] }) {
+  const openViewer = useOpenPhotoViewer();
+  const [width, setWidth] = useState(0);
+  const columns = Math.max(
+    GRID_MIN_COLUMNS,
+    Math.floor((width + GRID_COLUMN_GAP) / (GRID_TILE_TARGET + GRID_COLUMN_GAP)),
+  );
+  const tile = Math.floor((width - GRID_COLUMN_GAP * (columns - 1)) / columns);
+
+  return (
+    <View onLayout={(event) => setWidth(event.nativeEvent.layout.width)} style={styles.grid}>
+      {tile > 0
+        ? photos.map((photo, index) => (
+            <Thumbnail
+              key={photo.id}
+              photo={photo}
+              size={tile}
+              onPress={() => openViewer(photos.map(toViewerPhoto), index)}
+            />
+          ))
+        : null}
+    </View>
+  );
+}
+
+function PhotoGroup({
+  title,
+  emptyMessage,
+  photos,
+  limit,
+  onViewAll,
+}: {
+  title: string;
+  emptyMessage: string;
+  photos: Photo[];
+  limit?: number;
+  onViewAll?: () => void;
+}) {
+  const hasMore = Boolean(limit && onViewAll && photos.length > limit);
   return (
     <View style={styles.group}>
       <View style={styles.groupHeader}>
         <ThemedText type="smallBold">{title}</ThemedText>
-        <ThemedText type="meta">{photos.length}</ThemedText>
+        {hasMore ? (
+          <Pressable accessibilityRole="button" onPress={onViewAll} hitSlop={12}>
+            <ThemedText type="linkPrimary">View all {photos.length}</ThemedText>
+          </Pressable>
+        ) : (
+          <ThemedText type="meta">{photos.length}</ThemedText>
+        )}
       </View>
 
       {photos.length === 0 ? (
@@ -99,14 +214,8 @@ function PhotoGroup({ title, emptyMessage, photos, limit, onViewAll }: { title: 
           {emptyMessage}
         </ThemedText>
       ) : (
-        <PhotoGrid photos={limit ? photos.slice(0, limit) : photos} />
+        <PhotoRow photos={photos} limit={limit} />
       )}
-
-      {limit && onViewAll && photos.length > limit ? (
-        <Pressable accessibilityRole="button" onPress={onViewAll} hitSlop={12} style={styles.viewAll}>
-          <ThemedText type="linkPrimary">View all {photos.length}</ThemedText>
-        </Pressable>
-      ) : null}
     </View>
   );
 }
@@ -116,28 +225,6 @@ function PhotoGroup({ title, emptyMessage, photos, limit, onViewAll }: { title: 
  * deliberately no picker here — only what the client sent. Physique updates and
  * meal photos are kept apart because they answer different questions.
  */
-/** Thumbnails with their caption and date; shared with the "View all" screen. */
-export function PhotoGrid({ photos }: { photos: Photo[] }) {
-  const theme = useTheme();
-  return (
-    <View style={styles.grid}>
-      {photos.map((photo) => (
-        <View key={photo.id} style={styles.item}>
-          <Image
-            source={{ uri: photo.url }}
-            accessibilityLabel={photo.accessibilityLabel}
-            style={[styles.image, { backgroundColor: theme.surfaceInset, borderColor: theme.border }]}
-          />
-          <ThemedText type="small" numberOfLines={1}>
-            {photo.title}
-          </ThemedText>
-          <ThemedText type="meta">{shortDateLabel(photo.date)}</ThemedText>
-        </View>
-      ))}
-    </View>
-  );
-}
-
 export function ClientPhotos({
   weights,
   checkIns,
@@ -174,10 +261,10 @@ export function ClientPhotos({
 
 const styles = StyleSheet.create({
   card: {
-    gap: Spacing.four,
+    gap: Spacing.three,
   },
   group: {
-    gap: Spacing.three,
+    gap: Spacing.twoHalf,
   },
   groupHeader: {
     flexDirection: 'row',
@@ -187,22 +274,27 @@ const styles = StyleSheet.create({
   divider: {
     height: StyleSheet.hairlineWidth,
   },
-  viewAll: {
-    alignSelf: 'flex-start',
+  rowBleed: {
+    marginHorizontal: -CARD_PADDING,
+  },
+  rowContent: {
+    gap: Spacing.two,
+    paddingHorizontal: CARD_PADDING,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing.three,
+    columnGap: GRID_COLUMN_GAP,
+    rowGap: Spacing.three,
   },
-  item: {
-    width: 104,
+  tile: {
     gap: Spacing.half,
   },
-  image: {
-    width: 104,
-    height: 128,
+  thumb: {
     borderRadius: Radii.sm,
     borderWidth: 1,
+  },
+  pressed: {
+    opacity: 0.7,
   },
 });

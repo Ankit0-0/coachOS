@@ -48,7 +48,7 @@ const WEIGHT_LOOKBACK_DAYS = 30;
 
 const DIET_LABELS = { VEGETARIAN: 'Vegetarian', NON_VEGETARIAN: 'Non-vegetarian' } as const;
 const MAX_RECENT_NOTES = 3;
-const MAX_PHOTOS_PER_GROUP = 6;
+const MAX_PHOTOS_PER_GROUP = 10;
 
 type ClientDetailScreenProps = {
   clientId: string;

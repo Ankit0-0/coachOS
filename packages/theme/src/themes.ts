@@ -71,6 +71,14 @@ export type Theme = {
   tabActiveBg: string;
   focusRing: string;
   scrim: string;
+  /** Behind the full-screen photo viewer; near-black in both themes so a photo reads true. */
+  viewerBackdrop: string;
+  /** Text and icons on viewerBackdrop. */
+  onViewer: string;
+  /** Secondary text on viewerBackdrop. */
+  onViewerMuted: string;
+  /** Round buttons on viewerBackdrop. */
+  viewerControl: string;
   /** CSS box-shadow for raised cards, or 'none'. */
   cardShadow: string;
 };
@@ -78,6 +86,14 @@ export type Theme = {
 export type ThemeColor = {
   [K in keyof Theme]: K extends 'cardShadow' ? never : K;
 }[keyof Theme];
+
+/** The photo viewer looks the same in either theme. Over the light page, paper is 15:1 and the grey 9:1. */
+const VIEWER = {
+  viewerBackdrop: 'rgba(12, 14, 13, 0.96)',
+  onViewer: Palette.paper,
+  onViewerMuted: '#B4BAB5',
+  viewerControl: 'rgba(236, 234, 227, 0.16)',
+} as const;
 
 export const light: Theme = {
   bg: Palette.cream,
@@ -139,6 +155,7 @@ export const light: Theme = {
   // landing :focus-visible
   focusRing: Palette.terracotta,
   scrim: 'rgba(16, 41, 31, 0.36)',
+  ...VIEWER,
   cardShadow: CardShadow,
 };
 
@@ -199,6 +216,7 @@ export const dark: Theme = {
   tabActiveBg: 'rgba(159, 193, 174, 0.18)',
   focusRing: Palette.terracottaLight,
   scrim: 'rgba(0, 0, 0, 0.6)',
+  ...VIEWER,
   cardShadow: 'none',
 };
 

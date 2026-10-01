@@ -85,6 +85,8 @@ function RootLayoutNav() {
       <PhoneColumn enabled={!(isDesktop && isSignedIn)}>
         <Stack screenOptions={{ headerShown: false }}>
           {isSignedIn ? <Stack.Screen name="(tabs)" /> : <Stack.Screen name="auth" />}
+          {/* Over the tabs, with the page still showing behind its dark backdrop. */}
+          <Stack.Screen name="photo-viewer" options={{ presentation: 'transparentModal', animation: 'fade' }} />
         </Stack>
       </PhoneColumn>
     </ThemeProvider>

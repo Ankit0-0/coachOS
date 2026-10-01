@@ -20,15 +20,17 @@ import { useTheme } from '@/hooks/use-theme';
 import { useTrackingAssignments } from '@/hooks/use-assignments';
 import { useRefresh } from '@/hooks/use-refresh';
 import { scheduleApi, trackingApi, type CheckIn, type WeightEntry } from '@/lib/api';
-import { dayOfMonth, monthRange, todayKey } from '@/lib/dates';
+import { dayOfMonth, longDateLabel, monthRange, todayKey } from '@/lib/dates';
 import { confirmDestructive } from '@/lib/confirm';
 import { pickAndUploadImage } from '@/lib/image-upload';
+import { useOpenPhotoViewer } from '@/lib/photo-viewer';
 import { parseWeightInput } from '@/lib/weight';
 import { DEFAULT_WEIGHT_RANGE, weightRangeDates, type WeightRangeKey } from '@/lib/weight-range';
 import { TextField } from '@coachos/theme';
 
 export function HistoryScreen() {
   const theme = useTheme();
+  const openViewer = useOpenPhotoViewer();
   const onboarding = useOnboardingStatus();
   const { hasCoach, isLoading: isCheckingOnboarding } = onboarding;
   const tracking = useTrackingAssignments();
@@ -367,11 +369,29 @@ export function HistoryScreen() {
 
         {photoDisplayUri ? (
           <>
-            <Image
-              source={{ uri: photoDisplayUri }}
+            <Pressable
+              accessibilityRole="button"
               accessibilityLabel="Progress photo for today"
-              style={[styles.photoPreview, { backgroundColor: theme.surfaceInset }]}
-            />
+              accessibilityHint="Opens the photo full size"
+              onPress={() =>
+                openViewer(
+                  [
+                    {
+                      id: 'today-progress',
+                      url: photoDisplayUri,
+                      title: todayEntry ? `${todayEntry.weightKg} kg` : 'Progress photo',
+                      subtitle: longDateLabel(todayKey()),
+                      accessibilityLabel: 'Progress photo for today',
+                    },
+                  ],
+                  0,
+                )
+              }>
+              <Image
+                source={{ uri: photoDisplayUri }}
+                style={[styles.photoPreview, { backgroundColor: theme.surfaceInset }]}
+              />
+            </Pressable>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Remove progress photo"

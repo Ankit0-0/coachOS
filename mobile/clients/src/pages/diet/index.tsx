@@ -19,15 +19,17 @@ import { useTodaySchedule } from '@/hooks/use-schedule';
 import { useRefresh } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { trackingApi } from '@/lib/api';
-import { todayKey } from '@/lib/dates';
+import { longDateLabel, todayKey } from '@/lib/dates';
 import { confirmDestructive } from '@/lib/confirm';
 import { pickAndUploadImage } from '@/lib/image-upload';
+import { useOpenPhotoViewer } from '@/lib/photo-viewer';
 import { cycleDayLabel, dietDayOf } from '@/lib/plan-content';
 import { formatCalories } from '@/lib/plan-units';
 import { Checkbox, ProgressBar, TextField } from '@coachos/theme';
 
 export function DietDetailsScreen() {
   const theme = useTheme();
+  const openViewer = useOpenPhotoViewer();
   const onboarding = useOnboardingStatus();
   const tracking = useTrackingAssignments();
   // Today's day of the cycle, resolved by the backend.
@@ -97,6 +99,21 @@ export function DietDetailsScreen() {
           // Optimistic UI — keep the local toggle even if the sync fails.
         });
     }
+  };
+
+  /** Today's meal photos, swiping from the one tapped. */
+  const openMealPhoto = (mealId: string) => {
+    const withPhotos = meals.filter((meal) => photoUris[meal.id]);
+    openViewer(
+      withPhotos.map((meal) => ({
+        id: meal.id,
+        url: photoUris[meal.id],
+        title: meal.label,
+        subtitle: longDateLabel(todayKey()),
+        accessibilityLabel: `Photo of ${meal.label}`,
+      })),
+      Math.max(0, withPhotos.findIndex((meal) => meal.id === mealId)),
+    );
   };
 
   const handlePhotoPick = async (id: string) => {
@@ -307,11 +324,13 @@ export function DietDetailsScreen() {
 
                 {imageUri ? (
                   <View style={styles.thumbnailWrap}>
-                    <Image
-                      source={{ uri: imageUri }}
+                    <Pressable
+                      accessibilityRole="button"
                       accessibilityLabel={`Photo of ${meal.label}`}
-                      style={[styles.thumbnail, { backgroundColor: theme.surfaceInset }]}
-                    />
+                      accessibilityHint="Opens the photo full size"
+                      onPress={() => openMealPhoto(meal.id)}>
+                      <Image source={{ uri: imageUri }} style={[styles.thumbnail, { backgroundColor: theme.surfaceInset }]} />
+                    </Pressable>
                     <Pressable
                       accessibilityRole="button"
                       accessibilityLabel={`Remove photo for ${meal.label}`}

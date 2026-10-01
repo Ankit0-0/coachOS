@@ -19,16 +19,18 @@ import { useTodaySchedule } from '@/hooks/use-schedule';
 import { useRefresh } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { trackingApi, type WeightEntry } from '@/lib/api';
-import { todayKey } from '@/lib/dates';
+import { longDateLabel, todayKey } from '@/lib/dates';
 import { pickAndUploadImage } from '@/lib/image-upload';
 import { cyclePositionLabel, dietDayOf, parseDietContent, parseWorkoutContent, workoutDayOf } from '@/lib/plan-content';
 import { formatCalories, formatDuration } from '@/lib/plan-units';
+import { useOpenPhotoViewer } from '@/lib/photo-viewer';
 import { parseWeightInput } from '@/lib/weight';
 import { IconTile, TextField } from '@coachos/theme';
 
 export function HomeScreen() {
   const theme = useTheme();
   const router = useRouter();
+  const openViewer = useOpenPhotoViewer();
   const onboarding = useOnboardingStatus();
   const tracking = useTrackingAssignments();
   // Today's day of each cycle, resolved by the backend.
@@ -303,11 +305,26 @@ export function HomeScreen() {
           </Row>
 
           {shownPhoto ? (
-            <Image
-              source={{ uri: shownPhoto }}
+            <Pressable
+              accessibilityRole="button"
               accessibilityLabel="Physique photo for today"
-              style={[styles.previewImage, { backgroundColor: theme.surface }]}
-            />
+              accessibilityHint="Opens the photo full size"
+              onPress={() =>
+                openViewer(
+                  [
+                    {
+                      id: 'today-physique',
+                      url: shownPhoto,
+                      title: todayEntry ? `${todayEntry.weightKg} kg` : 'Physique photo',
+                      subtitle: longDateLabel(todayKey()),
+                      accessibilityLabel: 'Physique photo for today',
+                    },
+                  ],
+                  0,
+                )
+              }>
+              <Image source={{ uri: shownPhoto }} style={[styles.previewImage, { backgroundColor: theme.surface }]} />
+            </Pressable>
           ) : null}
 
           <Row>
