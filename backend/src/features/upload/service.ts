@@ -205,36 +205,60 @@ export async function deleteObject(key: string): Promise<void> {
   await s3Client(config).send(new DeleteObjectCommand({ Bucket: config.bucket, Key: key }));
 }
 
+/** DeleteObjects takes at most this many keys per call. */
+const DELETE_BATCH_SIZE = 1000;
+
 /**
- * Removes every object under a user's prefix — saved photos, avatars, and
- * uploads that were presigned but never attached to a record. Used when an
- * account is deleted. Returns how many objects were removed; a bucket that is
- * not configured has nothing of theirs in it, so that is 0, not an error.
+ * Removes a user's objects when their account is deleted. Returns how many
+ * were removed; a bucket that is not configured has nothing of theirs in it,
+ * so that is 0, not an error.
+ *
+ * Two passes. First the keys the database knew about (`knownKeys`), which
+ * needs only s3:DeleteObject. Then, as a best effort, a listing of the user's
+ * prefix for uploads that were presigned but never attached to a record —
+ * that needs s3:ListBucket, which the key may not have, so a refusal there is
+ * logged rather than thrown: the photos people can see are already gone.
  */
-export async function deleteUserObjects(userId: string): Promise<number> {
+export async function deleteUserObjects(userId: string, knownKeys: readonly string[] = []): Promise<number> {
   if (!isS3Configured()) return 0;
   const config = readConfig();
   if (!config) return 0;
   const client = s3Client(config);
   const prefix = `users/${userId}/`;
 
-  let removed = 0;
-  let continuationToken: string | undefined;
-  do {
-    const page = await client.send(
-      new ListObjectsV2Command({
-        Bucket: config.bucket,
-        Prefix: prefix,
-        ...(continuationToken ? { ContinuationToken: continuationToken } : {}),
-      }),
-    );
-    const keys = (page.Contents ?? []).flatMap((object) => (object.Key ? [{ Key: object.Key }] : []));
-    if (keys.length > 0) {
-      // At most 1000 per page, which is also DeleteObjects' limit.
-      await client.send(new DeleteObjectsCommand({ Bucket: config.bucket, Delete: { Objects: keys, Quiet: true } }));
-      removed += keys.length;
+  const deleteKeys = async (keys: string[]) => {
+    for (let start = 0; start < keys.length; start += DELETE_BATCH_SIZE) {
+      const Objects = keys.slice(start, start + DELETE_BATCH_SIZE).map((Key) => ({ Key }));
+      await client.send(new DeleteObjectsCommand({ Bucket: config.bucket, Delete: { Objects, Quiet: true } }));
     }
-    continuationToken = page.IsTruncated ? page.NextContinuationToken : undefined;
-  } while (continuationToken);
+  };
+
+  // Only keys under their own prefix: a record can't point elsewhere (see
+  // isOwnedKey), but deleting someone else's object by mistake is not undoable.
+  const known = [...new Set(knownKeys)].filter((key) => key.startsWith(prefix));
+  await deleteKeys(known);
+  let removed = known.length;
+
+  try {
+    let continuationToken: string | undefined;
+    do {
+      const page = await client.send(
+        new ListObjectsV2Command({
+          Bucket: config.bucket,
+          Prefix: prefix,
+          ...(continuationToken ? { ContinuationToken: continuationToken } : {}),
+        }),
+      );
+      const keys = (page.Contents ?? []).flatMap((object) => (object.Key ? [object.Key] : []));
+      await deleteKeys(keys);
+      removed += keys.length;
+      continuationToken = page.IsTruncated ? page.NextContinuationToken : undefined;
+    } while (continuationToken);
+  } catch (error) {
+    getLogger().warn(
+      { err: error, userId, removed },
+      "deleteUserObjects: could not list the user's prefix (s3:ListBucket?) — known images were deleted, unattached uploads may remain",
+    );
+  }
   return removed;
 }

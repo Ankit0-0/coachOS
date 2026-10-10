@@ -1,11 +1,6 @@
-import {
-  GoogleSignin,
-  isErrorWithCode,
-  isSuccessResponse,
-  statusCodes,
-} from '@react-native-google-signin/google-signin';
+import type * as GoogleSignInModule from '@react-native-google-signin/google-signin';
 import { useState } from 'react';
-import { Alert, Platform } from 'react-native';
+import { Alert, Platform, TurboModuleRegistry } from 'react-native';
 
 import { GoogleButtonFace } from '@/components/auth/google-button-face';
 import { useAuth } from '@/contexts/auth';
@@ -23,6 +18,16 @@ import { useAuth } from '@/contexts/auth';
   fails with DEVELOPER_ERROR.
 */
 
+/*
+  Loaded only when this build has the native module. Expo Go doesn't, and the
+  package looks the module up as soon as it is imported, so a plain import
+  crashed the app on start there. Without it the button is hidden.
+*/
+const google: typeof GoogleSignInModule | null = TurboModuleRegistry.get('RNGoogleSignin')
+  ? // eslint-disable-next-line @typescript-eslint/no-require-imports
+    (require('@react-native-google-signin/google-signin') as typeof GoogleSignInModule)
+  : null;
+
 const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID?.trim() ?? '';
 const IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID?.trim() ?? '';
 
@@ -33,7 +38,7 @@ function missingSetting(): string | null {
 }
 
 let isConfigured = false;
-function configureOnce() {
+function configureOnce(GoogleSignin: typeof GoogleSignInModule.GoogleSignin) {
   if (isConfigured) return;
   GoogleSignin.configure({ webClientId: WEB_CLIENT_ID, ...(IOS_CLIENT_ID ? { iosClientId: IOS_CLIENT_ID } : {}) });
   isConfigured = true;
@@ -41,9 +46,9 @@ function configureOnce() {
 
 /** Forgets the Google account on this device, so the next sign-in offers the account picker again. */
 export async function signOutOfGoogle(): Promise<void> {
-  if (!isConfigured) return;
+  if (!isConfigured || !google) return;
   try {
-    await GoogleSignin.signOut();
+    await google.GoogleSignin.signOut();
   } catch {
     // Not signed in with Google on this device: nothing to forget.
   }
@@ -53,6 +58,17 @@ export function GoogleSignInButton() {
   const { signInWithGoogle } = useAuth();
   const [busy, setBusy] = useState(false);
   const missing = missingSetting();
+
+  if (!google) {
+    if (!__DEV__) return null;
+    return (
+      <GoogleButtonFace
+        onPress={() =>
+          Alert.alert('Google sign-in needs its own build', 'Expo Go does not include Google sign-in. Try it in a build from EAS.')
+        }
+      />
+    );
+  }
 
   if (missing) {
     // A store build without the setting simply has no Google button; a
@@ -70,8 +86,10 @@ export function GoogleSignInButton() {
     );
   }
 
+  const { GoogleSignin, isErrorWithCode, isSuccessResponse, statusCodes } = google;
+
   const handlePress = async () => {
-    configureOnce();
+    configureOnce(GoogleSignin);
     setBusy(true);
     try {
       if (Platform.OS === 'android') await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
