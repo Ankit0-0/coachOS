@@ -34,6 +34,9 @@ export async function deleteAccount(userId: string) {
         ).flatMap((invite) => (invite.clientId ? [invite.clientId] : []))
       : [];
 
+  // Also collected first: once the rows are gone, these keys are only findable by listing the bucket.
+  const imageKeys = await collectImageKeys(userId);
+
   await prisma.$transaction(async (tx) => {
     // PlanAssignment's coach and client relations have no cascade, so they go
     // first (their check-ins cascade with them). Plans the user wrote go too;
@@ -52,13 +55,43 @@ export async function deleteAccount(userId: string) {
   // After the commit, and never fatal: the account is gone either way, and a
   // leftover image under a deleted user's prefix is unreachable through the API.
   try {
-    const removed = await deleteUserObjects(userId);
+    const removed = await deleteUserObjects(userId, imageKeys);
     getLogger().info({ userId, removed }, "deleteAccount: uploaded images deleted");
   } catch (error) {
     getLogger().error({ err: error, userId }, "deleteAccount: could not delete uploaded images — remove users/<id>/ by hand");
   }
 
   if (clientIds.length > 0) void notifyUsers(clientIds, messages.coachLeft(user.name));
+}
+
+/**
+ * Every S3 key the database holds for images this user uploaded: avatars,
+ * progress photos, meal photos on their check-ins, and images on their own
+ * library entries.
+ */
+async function collectImageKeys(userId: string): Promise<string[]> {
+  const [coachProfile, clientProfile, weights, checkIns, exercises, dietItems] = await Promise.all([
+    prisma.coachProfile.findUnique({ where: { userId }, select: { avatarKey: true } }),
+    prisma.clientProfile.findUnique({ where: { userId }, select: { avatarKey: true } }),
+    prisma.weightEntry.findMany({ where: { clientId: userId, photoKey: { not: null } }, select: { photoKey: true } }),
+    prisma.checkIn.findMany({ where: { assignment: { clientId: userId } }, select: { photoKeys: true } }),
+    prisma.exercise.findMany({ where: { createdById: userId, imageKey: { not: null } }, select: { imageKey: true } }),
+    prisma.dietItem.findMany({ where: { createdById: userId, imageKey: { not: null } }, select: { imageKey: true } }),
+  ]);
+
+  const checkInKeys = checkIns.flatMap(({ photoKeys }) =>
+    photoKeys && typeof photoKeys === "object" && !Array.isArray(photoKeys)
+      ? Object.values(photoKeys).filter((value): value is string => typeof value === "string")
+      : [],
+  );
+  return [
+    coachProfile?.avatarKey,
+    clientProfile?.avatarKey,
+    ...weights.map((entry) => entry.photoKey),
+    ...checkInKeys,
+    ...exercises.map((exercise) => exercise.imageKey),
+    ...dietItems.map((item) => item.imageKey),
+  ].filter((key): key is string => typeof key === "string" && key.length > 0);
 }
 
 /**
