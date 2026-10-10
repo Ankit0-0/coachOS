@@ -16,7 +16,7 @@ function formatDateTime(iso: string): string {
   });
 }
 
-/** Everyone who asked to be told when CoachOS launches, newest first. */
+/** Everyone who asked to be told when CoachFolio launches, newest first. */
 export function EarlyAccess() {
   const [list, setList] = useState<EarlyAccessList | null>(null);
   const [isLoading, setIsLoading] = useState(true);

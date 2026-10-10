@@ -1,6 +1,6 @@
-# CoachOS landing page
+# CoachFolio landing page
 
-The pre-launch marketing site for CoachOS: Next.js (App Router), built as a
+The pre-launch marketing site for CoachFolio: Next.js (App Router), built as a
 static export and served by Render. Visitors join early access as a coach or
 a client; the signup goes to the backend's `POST /v1/early-access`.
 

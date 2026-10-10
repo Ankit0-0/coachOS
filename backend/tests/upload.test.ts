@@ -30,7 +30,7 @@ const TEST_AWS = {
   awsRegion: "eu-test-1",
   awsAccessKeyId: "AKIATESTTESTTESTTEST",
   awsSecretAccessKey: "test-secret-not-a-real-key",
-  s3Bucket: "coachos-test-bucket",
+  s3Bucket: "coachfolio-test-bucket",
 } as const;
 
 const originalAws = {

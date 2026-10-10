@@ -336,7 +336,7 @@ enum DevicePlatform {
   ANDROID
 }
 
-/// Someone who asked to be told when CoachOS launches, from the landing page.
+/// Someone who asked to be told when CoachFolio launches, from the landing page.
 /// Not a user: there is no account here, and a repeat signup updates the row
 /// rather than failing, so the endpoint never reveals who is already on the list.
 model EarlyAccessSignup {

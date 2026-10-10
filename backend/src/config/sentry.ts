@@ -84,7 +84,7 @@ export function initSentry(overrides: Partial<Sentry.NodeOptions> = {}): boolean
   Sentry.init({
     dsn,
     environment: env.nodeEnv,
-    release: `coachos-api@${env.appVersion}`,
+    release: `coachfolio-api@${env.appVersion}`,
     sendDefaultPii: false,
     // No tracesSampleRate: tracing is off. The free tier's quota goes fast,
     // and errors are what matter for now.

@@ -22,7 +22,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
 
   return {
     ...config,
-    name: config.name ?? 'CoachOS',
+    name: config.name ?? 'CoachFolio Coach',
     slug: config.slug ?? 'coaches',
     plugins,
     android: {

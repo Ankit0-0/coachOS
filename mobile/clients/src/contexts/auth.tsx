@@ -30,7 +30,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 /** This app only serves clients — a coach has no client-side data to show. */
 const APP_ROLE = 'CLIENT';
-const WRONG_ROLE_MESSAGE = 'That’s a coach account. Sign in with a client account, or use the Coach OS coach app.';
+const WRONG_ROLE_MESSAGE = 'That’s a coach account. Sign in with a client account, or use the CoachFolio Coach app.';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);

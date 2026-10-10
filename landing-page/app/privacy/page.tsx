@@ -3,8 +3,9 @@ import type { Metadata } from 'next';
 import { EmailLink, LegalList, LegalPage, LegalSection } from '@/components/legal-page';
 
 export const metadata: Metadata = {
-  title: 'Privacy policy — CoachOS',
-  description: 'What CoachOS collects, why, who can see it, and how to delete it.',
+  title: 'Privacy policy — CoachFolio',
+  description: 'What CoachFolio collects, why, who can see it, and how to delete it.',
+  alternates: { canonical: '/privacy/' },
 };
 
 export default function PrivacyPage() {
@@ -14,7 +15,7 @@ export default function PrivacyPage() {
       updated="27 September 2026"
       intro={
         <p>
-          CoachOS is two apps: <strong>CoachOS</strong> for people being coached, and <strong>CoachOS Coach</strong> for
+          CoachFolio is two apps: <strong>CoachFolio Client</strong> for people being coached, and <strong>CoachFolio Coach</strong> for
           fitness coaches. This page explains what we collect in them and on this website, why, who can see it, and how
           to delete it. We don’t sell your data, show ads, or track you across other apps and websites.
         </p>
@@ -53,7 +54,7 @@ export default function PrivacyPage() {
           ]}
         />
         <p>
-          Weight, photos and workout and diet logs are health and fitness information. We use them only to run CoachOS
+          Weight, photos and workout and diet logs are health and fitness information. We use them only to run CoachFolio
           for you and the coach you choose to work with.
         </p>
       </LegalSection>
@@ -65,7 +66,7 @@ export default function PrivacyPage() {
             'To show your plans and progress to you, and to the coach you are working with.',
             'To send the notifications you have allowed, such as a new invite, a new plan, or a subscription about to end.',
             'To send a password reset code when you ask for one.',
-            'To find and fix errors, and to keep CoachOS secure (for example, limiting repeated sign-in attempts).',
+            'To find and fix errors, and to keep CoachFolio secure (for example, limiting repeated sign-in attempts).',
           ]}
         />
       </LegalSection>
@@ -83,10 +84,10 @@ export default function PrivacyPage() {
               experience) only if the coach chose to be listed.
             </>,
             <>
-              <strong>CoachOS administrators</strong> review coach accounts before they can take on clients.
+              <strong>CoachFolio administrators</strong> review coach accounts before they can take on clients.
             </>,
             <>
-              <strong>Service providers</strong> that run CoachOS for us and only process data on our instructions:
+              <strong>Service providers</strong> that run CoachFolio for us and only process data on our instructions:
               hosting (Render), database hosting (Aiven), photo storage (Amazon Web Services), email (Resend), push
               notifications (Expo, through Apple and Google), sign-in (Google, Apple) and crash reporting (Sentry).
             </>,
@@ -114,7 +115,7 @@ export default function PrivacyPage() {
             'Turn notifications and reminders off in the app or in your phone’s settings.',
             'Remove a photo, or delete your whole account.',
             <>
-              Ask us for a copy of your data, or to correct or delete it, by emailing <EmailLink subject="My CoachOS data" />.
+              Ask us for a copy of your data, or to correct or delete it, by emailing <EmailLink subject="My CoachFolio data" />.
             </>,
           ]}
         />
@@ -129,7 +130,7 @@ export default function PrivacyPage() {
       </LegalSection>
 
       <LegalSection title="Children">
-        <p>CoachOS is not meant for anyone under 16, and we don’t knowingly collect data from them.</p>
+        <p>CoachFolio is not meant for anyone under 16, and we don’t knowingly collect data from them.</p>
       </LegalSection>
 
       <LegalSection title="Changes and contact">

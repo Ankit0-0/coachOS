@@ -11,7 +11,7 @@ export function Layout() {
       <header style={headerStyle}>
         <div style={headerInnerStyle}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--s5)' }}>
-            <strong style={{ letterSpacing: '-0.01em' }}>Coach OS Admin</strong>
+            <strong style={{ letterSpacing: '-0.01em' }}>CoachFolio Admin</strong>
             <nav style={{ display: 'flex', gap: 'var(--s4)' }}>
               <NavLink to="/coaches" style={navLinkStyle}>
                 Coaches

@@ -1,4 +1,4 @@
-# coachOS
+# CoachFolio
 
 ## Prerequisites
 

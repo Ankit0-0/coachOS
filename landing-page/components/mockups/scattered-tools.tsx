@@ -291,7 +291,7 @@ export function GoogleSheetTile({ className = '' }: TileProps) {
 
 type CalendarEvent = { start: number; end: number; title: string; color: string; dark?: boolean };
 
-/** A coach's Wednesday: every reminder is admin that CoachOS would carry. */
+/** A coach's Wednesday: every reminder is admin that CoachFolio would carry. */
 const calendarEvents: CalendarEvent[] = [
   { start: 7, end: 7.75, title: "Send Rahul today's workout", color: '#039BE5' },
   { start: 8, end: 8.75, title: 'Call: Neha weekly check-in', color: '#33B679' },

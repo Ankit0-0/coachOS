@@ -19,7 +19,7 @@ export default defineConfig({
       API_RATE_LIMIT_MAX: "100000",
       PUSH_NOTIFICATIONS_ENABLED: "false",
       GOOGLE_CLIENT_ID: "test-web-client-id,test-ios-client-id",
-      APPLE_BUNDLE_IDS: "com.coachos.client,com.coachos.coach",
+      APPLE_BUNDLE_IDS: "in.coachfolio.client,in.coachfolio.coach",
     },
   },
 });

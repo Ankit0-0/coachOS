@@ -26,7 +26,7 @@ These are read at build time, so changing one needs a redeploy.
 | `EXPO_PUBLIC_SENTRY_DSN` | That app's Sentry DSN. Web reports JS errors only. |
 | `EXPO_PUBLIC_SENTRY_ENVIRONMENT` | `production` |
 | `EXPO_PUBLIC_GOOGLE_CLIENT_ID` | The Google **web** client ID. Unset hides the Google button. |
-| `EXPO_PUBLIC_WEBSITE_URL` | The landing page URL, for the privacy and terms links. |
+| `EXPO_PUBLIC_WEBSITE_URL` | `https://coachfolio.in`, for the privacy and terms links. |
 
 ## 3. Backend (Render → Environment)
 

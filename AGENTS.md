@@ -1,4 +1,4 @@
-# CoachOS
+# CoachFolio
 
 pnpm workspace: `backend` (Node/Express/Prisma), `mobile/clients` and
 `mobile/coaches` (Expo/React Native), `admin-website` (Vite/React), and

@@ -14,9 +14,9 @@ const isDevelopment = env.nodeEnv === "development";
  */
 export const loggerOptions: pino.LoggerOptions = {
   level: env.logLevel,
-  name: "coachos-api",
+  name: "coachfolio-api",
   messageKey: "message",
-  base: { service: "coachos-api", version: env.appVersion, env: env.nodeEnv },
+  base: { service: "coachfolio-api", version: env.appVersion, env: env.nodeEnv },
   // Without this an Error logged as { err } serialises to {} — no message, no stack.
   serializers: { err: pino.stdSerializers.err },
   redact: { paths: REDACTED_PATHS, censor: "[REDACTED]" },

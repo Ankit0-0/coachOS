@@ -2,7 +2,7 @@ import { Container, SectionHeading } from '@/components/ui';
 
 const faqs = [
   {
-    q: 'What is CoachOS?',
+    q: 'What is CoachFolio?',
     a: 'A pair of mobile apps for online fitness coaching. Coaches use one to manage clients, build and assign workout and diet plans, and review check-ins and progress. Clients use the other to see what today’s plan asks of them, tick it off, and log their progress.',
   },
   {
@@ -14,24 +14,24 @@ const faqs = [
     a: 'The coach invites a client by email (or accepts a request the client sent from Explore) and assigns a workout and a diet plan. Each day the client sees that day of the plan and checks off what they did. The coach sees those check-ins alongside weight and photos, and adjusts the plan when it needs to change.',
   },
   {
-    q: 'Is CoachOS available yet?',
-    a: 'Not yet. CoachOS is being prepared for Android and iPhone, and it isn’t in the app stores today. Joining early access is how you hear first when it is.',
+    q: 'Is CoachFolio available yet?',
+    a: 'Not yet. CoachFolio is being prepared for Android and iPhone, and it isn’t in the app stores today. Joining early access is how you hear first when it is.',
   },
   {
     q: 'What happens after I join early access?',
     a: 'We save your email and which phone you use. When the app is ready for your phone, we email you. That’s all we use it for: no newsletters. Joining is free.',
   },
   {
-    q: 'Does CoachOS replace my coach or give medical advice?',
-    a: 'No. Every plan in CoachOS is written by your coach, and the app doesn’t give medical, diet or training advice of its own. If you have a health condition, speak to a doctor before starting a new programme.',
+    q: 'Does CoachFolio replace my coach or give medical advice?',
+    a: 'No. Every plan in CoachFolio is written by your coach, and the app doesn’t give medical, diet or training advice of its own. If you have a health condition, speak to a doctor before starting a new programme.',
   },
   {
     q: 'I don’t have a coach yet. Can I still use it?',
-    a: 'Plans in CoachOS come from a coach, so you’ll need one to follow a plan. The client app’s Explore tab lists coaches who have chosen to be found, and you can send a request to any of them.',
+    a: 'Plans in CoachFolio come from a coach, so you’ll need one to follow a plan. The client app’s Explore tab lists coaches who have chosen to be found, and you can send a request to any of them.',
   },
   {
     q: 'Do I have to stop using WhatsApp?',
-    a: 'No. Most coaching conversations will still happen there, and the client app links straight to your coach’s WhatsApp. CoachOS just keeps plans, check-ins and progress out of the chat.',
+    a: 'No. Most coaching conversations will still happen there, and the client app links straight to your coach’s WhatsApp. CoachFolio just keeps plans, check-ins and progress out of the chat.',
   },
 ];
 

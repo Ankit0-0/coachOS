@@ -68,8 +68,8 @@ export function Footer() {
       </Container>
       <div className="border-t border-cream/10">
         <Container className="flex flex-col gap-2 py-6 text-xs text-cream/60 sm:flex-row sm:justify-between">
-          <p>© {new Date().getFullYear()} CoachOS</p>
-          <p>CoachOS is in pre-launch and not yet available in app stores.</p>
+          <p>© {new Date().getFullYear()} CoachFolio</p>
+          <p>CoachFolio is in pre-launch and not yet available in app stores.</p>
         </Container>
       </div>
     </footer>

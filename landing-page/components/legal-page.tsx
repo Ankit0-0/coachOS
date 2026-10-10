@@ -14,7 +14,7 @@ export function LegalPage({ title, updated, intro, children }: { title: string; 
     <>
       <header className="border-b border-forest/10 bg-cream">
         <Container className="flex h-16 items-center">
-          <a href="/" aria-label="CoachOS home">
+          <a href="/" aria-label="CoachFolio home">
             <Wordmark />
           </a>
         </Container>

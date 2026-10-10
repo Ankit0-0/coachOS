@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { Check, Container, Mark, Reveal, SectionHeading } from '@/components/ui';
 
 /*
-  No testimonials, user counts or ratings here: CoachOS hasn't launched, so
+  No testimonials, user counts or ratings here: CoachFolio hasn't launched, so
   there are none to show. This section says how it's designed instead.
 */
 const principles: { title: string; body: ReactNode; points: string[] }[] = [
@@ -29,7 +29,7 @@ const principles: { title: string; body: ReactNode; points: string[] }[] = [
     title: 'Fits how you already work',
     body: (
       <>
-        Keep WhatsApp for talking. <Mark tone="dark">Plans and progress</Mark> live in CoachOS.
+        Keep WhatsApp for talking. <Mark tone="dark">Plans and progress</Mark> live in CoachFolio.
       </>
     ),
     points: ['WhatsApp link built in', 'Android and iPhone'],
@@ -47,7 +47,7 @@ export function TrustSection() {
           title="Built to support the coach, not replace them."
           lede={
             <>
-              CoachOS handles the admin. <Mark tone="dark">The coaching stays with the coach.</Mark>
+              CoachFolio handles the admin. <Mark tone="dark">The coaching stays with the coach.</Mark>
             </>
           }
         />

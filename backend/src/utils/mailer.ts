@@ -5,9 +5,9 @@ const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
 function resetEmailBody(code: string): { subject: string; text: string; html: string } {
   return {
-    subject: "Your Coach OS password reset code",
+    subject: "Your CoachFolio password reset code",
     text: [
-      "Use this code to reset your Coach OS password:",
+      "Use this code to reset your CoachFolio password:",
       "",
       code,
       "",
@@ -15,7 +15,7 @@ function resetEmailBody(code: string): { subject: string; text: string; html: st
       "If you didn't ask to reset your password, you can ignore this email.",
     ].join("\n"),
     html: [
-      "<p>Use this code to reset your Coach OS password:</p>",
+      "<p>Use this code to reset your CoachFolio password:</p>",
       `<p style="font-family:ui-monospace,monospace;font-size:28px;letter-spacing:4px;font-weight:700">${code}</p>`,
       "<p>The code expires in 15 minutes and can only be used once.</p>",
       "<p>If you didn't ask to reset your password, you can ignore this email.</p>",

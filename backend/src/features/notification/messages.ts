@@ -12,7 +12,7 @@ function firstName(name: string): string {
 
 /** Client app: a coach invited them. */
 export function inviteReceived(coachName: string): Notification {
-  return { title: "New coach invite", body: `${firstName(coachName)} invited you to train with them on CoachOS.`, url: "/" };
+  return { title: "New coach invite", body: `${firstName(coachName)} invited you to train with them on CoachFolio.`, url: "/" };
 }
 
 /** Coach app: a client accepted or declined an invite. */
@@ -71,7 +71,7 @@ export function subscriptionEndingForClient(coachName: string, endDate: string):
 /** Client app: their coach deleted their account, so their plans are gone. */
 export function coachLeft(coachName: string): Notification {
   return {
-    title: "Your coach left CoachOS",
+    title: "Your coach left CoachFolio",
     body: `${firstName(coachName)} closed their account. Find a new coach in Explore.`,
     url: "/explore-coaches",
   };

@@ -1,18 +1,18 @@
 {
   "expo": {
-    "name": "CoachOS",
+    "name": "CoachFolio Client",
     "slug": "clients",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": [
-      "clients",
-      "com.ankit00.clients"
+      "coachfolio-client",
+      "in.coachfolio.client"
     ],
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/images/icon.png",
-      "bundleIdentifier": "com.ankit00.clients",
+      "bundleIdentifier": "in.coachfolio.client",
       "supportsTablet": false,
       "usesAppleSignIn": true,
       "infoPlist": {
@@ -27,7 +27,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.ankit00.clients",
+      "package": "in.coachfolio.client",
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.CAMERA"
@@ -56,7 +56,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "CoachOS needs access to your photos so you can attach progress and meal photos.",
+          "photosPermission": "CoachFolio Client needs access to your photos so you can attach progress and meal photos.",
           "cameraPermission": false,
           "microphonePermission": false
         }

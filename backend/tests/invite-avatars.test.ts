@@ -46,7 +46,7 @@ describe("avatars on invites", () => {
       awsRegion: "eu-test-1",
       awsAccessKeyId: "AKIATESTTESTTESTTEST",
       awsSecretAccessKey: "test-secret-not-a-real-key",
-      s3Bucket: "coachos-test-bucket",
+      s3Bucket: "coachfolio-test-bucket",
     });
     getSignedUrlMock.mockImplementation((_client: unknown, command: { input: { Key: string } }) =>
       Promise.resolve(`https://signed.test.invalid/${command.input.Key}`),

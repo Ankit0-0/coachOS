@@ -1,7 +1,7 @@
 # Build from the repository ROOT, not backend/: this is a pnpm workspace and the
 # lockfile lives at the root.
 #
-#   docker build -f backend/Dockerfile -t coachos-backend .
+#   docker build -f backend/Dockerfile -t coachfolio-backend .
 
 # ---------------------------------------------------------------------------
 # deps: install only what the backend needs. Copying manifests before source
