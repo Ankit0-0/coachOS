@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { Initials, PhoneFrame, ScreenBody, TabBar } from '@/components/mockups/phone';
 
 /*
-  The CoachOS screens, redrawn from the real apps (mobile/coaches and
+  The CoachFolio screens, redrawn from the real apps (mobile/coaches and
   mobile/clients, reference captures in docs/theme-screens/*\/light): same
   layout, same wording, the apps' light theme. The people and numbers are
   made up.
@@ -113,7 +113,7 @@ export function CoachClientsScreen({ className }: ScreenProps) {
   return (
     <PhoneFrame
       className={className}
-      label="CoachOS coach app, Clients screen: a request from Neha Kapoor with her message and Accept or Decline, a roster of three clients, and a form to invite a client by email with a subscription length."
+      label="CoachFolio coach app, Clients screen: a request from Neha Kapoor with her message and Accept or Decline, a roster of three clients, and a form to invite a client by email with a subscription length."
     >
       <ScreenBody>
         <ScreenTitle>Clients</ScreenTitle>
@@ -220,7 +220,7 @@ export function CoachClientDetailScreen({ className }: ScreenProps) {
   return (
     <PhoneFrame
       className={className}
-      label="CoachOS coach app, one client's page scrolled to Progress: her weight trend over the past month, down from 67.4 to 66.1 kg, and a calendar of September showing which days she logged her workout and her diet."
+      label="CoachFolio coach app, one client's page scrolled to Progress: her weight trend over the past month, down from 67.4 to 66.1 kg, and a calendar of September showing which days she logged her workout and her diet."
     >
       <ScreenBody>
         <SectionTitle>Progress</SectionTitle>
@@ -411,7 +411,7 @@ export function ClientTodayScreen({ className }: ScreenProps) {
   return (
     <PhoneFrame
       className={className}
-      label="CoachOS client app, Home screen: her coach Aman Kapoor at the top, then today's workout, Push, with 6 of 16 sets done, and today's diet with 2 of 4 meals done."
+      label="CoachFolio client app, Home screen: her coach Aman Kapoor at the top, then today's workout, Push, with 6 of 16 sets done, and today's diet with 2 of 4 meals done."
     >
       <ScreenBody>
         <Card className="mt-[0.3em] flex items-center gap-[0.7em] px-[0.9em] py-[0.7em]">
@@ -467,7 +467,7 @@ export function ClientWorkoutScreen({ className }: ScreenProps) {
   return (
     <PhoneFrame
       className={className}
-      label="CoachOS client app, today's workout: Push, with 6 of 16 sets checked. Flat bench press has all 4 sets ticked off and Incline dumbbell press 2 of 3, each set showing reps and rest, with a button to leave the coach a comment."
+      label="CoachFolio client app, today's workout: Push, with 6 of 16 sets checked. Flat bench press has all 4 sets ticked off and Incline dumbbell press 2 of 3, each set showing reps and rest, with a button to leave the coach a comment."
     >
       <ScreenBody>
         <DetailHeader title="Workout" subtitle="Push / pull / legs" />

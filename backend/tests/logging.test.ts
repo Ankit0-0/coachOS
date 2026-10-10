@@ -102,7 +102,7 @@ describe("logging", () => {
     it("stamps every line with the service, version and environment", () => {
       const { lines, logger } = capture();
       logger.info("hello");
-      expect(lines[0]).toMatchObject({ service: "coachos-api", version: env.appVersion, env: env.nodeEnv });
+      expect(lines[0]).toMatchObject({ service: "coachfolio-api", version: env.appVersion, env: env.nodeEnv });
     });
 
     it("logs a thrown error with its message and stack, not an empty object", () => {

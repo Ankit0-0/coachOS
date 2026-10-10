@@ -98,7 +98,7 @@ export function ProblemSection() {
         <Reveal className="mt-14 sm:mt-16">
           <div className="rounded-3xl bg-forest px-6 py-10 text-center sm:px-12 sm:py-12">
             <p className="text-balance mx-auto max-w-3xl font-display text-2xl font-bold leading-snug text-cream sm:text-3xl">
-              CoachOS turns the pile into <Mark tone="dark">one clear workflow</Mark>.
+              CoachFolio turns the pile into <Mark tone="dark">one clear workflow</Mark>.
             </p>
             <ol className="mx-auto mt-7 flex max-w-3xl flex-col items-stretch gap-3 text-left sm:flex-row sm:items-center sm:justify-center sm:gap-2">
               {['Plan', 'Check-in', 'Progress', 'Adjust'].map((step, index, all) => (

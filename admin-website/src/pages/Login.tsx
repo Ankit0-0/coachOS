@@ -41,7 +41,7 @@ export function Login() {
     <div style={{ maxWidth: 360, margin: '0 auto', padding: 'var(--s6) var(--s4)' }}>
       <div style={{ marginBottom: 'var(--s5)' }}>
         <p className="label" style={{ marginBottom: 'var(--s2)' }}>
-          Coach OS
+          CoachFolio
         </p>
         <h1>Admin</h1>
         <p style={{ marginTop: 'var(--s2)' }}>Sign in with an administrator account.</p>

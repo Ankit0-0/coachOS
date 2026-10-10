@@ -18,7 +18,7 @@ export function Wordmark({ tone = 'forest' }: { tone?: 'forest' | 'cream' }) {
         <rect width="26" height="26" rx="8" className={tone === 'cream' ? 'fill-cream' : 'fill-forest'} />
         <path d="M17.5 9.2a5.5 5.5 0 100 7.6" fill="none" stroke="#C96F4A" strokeWidth="2.6" strokeLinecap="round" />
       </svg>
-      CoachOS
+      CoachFolio
     </span>
   );
 }
@@ -57,7 +57,7 @@ export function Navbar() {
         Skip to content
       </a>
       <nav aria-label="Main" className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3 sm:px-8">
-        <a href="#top" aria-label="CoachOS, back to top">
+        <a href="#top" aria-label="CoachFolio, back to top">
           <Wordmark />
         </a>
 

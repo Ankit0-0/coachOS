@@ -1,4 +1,4 @@
-# CoachOS backend
+# CoachFolio backend
 
 ## Setup
 

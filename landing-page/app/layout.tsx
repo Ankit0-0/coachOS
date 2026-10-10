@@ -30,21 +30,31 @@ const revealScript = `(function () {
 const dmSans = DM_Sans({ subsets: ['latin'], variable: '--font-dm-sans', display: 'swap' });
 const manrope = Manrope({ subsets: ['latin'], variable: '--font-manrope', display: 'swap' });
 
-const title = 'CoachOS — Coaching, without the chaos';
+const title = 'CoachFolio — Coaching, without the chaos';
 const description =
   'Client plans, progress and check-ins in one place — so online fitness coaches can focus on coaching and clients know what to do next. Join early access.';
 
+const siteUrl = 'https://coachfolio.in';
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title,
   description,
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: '16x16 32x32 48x48' },
+      { url: '/favicon.png', type: 'image/png', sizes: '48x48' },
+    ],
+  },
   openGraph: {
     title,
     description,
     type: 'website',
-    url: 'https://coachos.example.com',
-    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'CoachOS' }],
+    url: siteUrl,
+    siteName: 'CoachFolio',
+    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'CoachFolio' }],
   },
-  twitter: { card: 'summary_large_image', title, description },
+  twitter: { card: 'summary_large_image', title, description, images: ['/og-image.png'] },
 };
 
 export const viewport: Viewport = {

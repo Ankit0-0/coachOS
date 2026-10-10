@@ -24,9 +24,9 @@ export function AppChooserModal({ isOpen, apps, onClose }: AppChooserModalProps)
   return (
     <ModalShell isOpen={isOpen} onClose={onClose} labelledBy={titleId} initialFocusRef={firstOptionRef}>
       <h2 id={titleId} className="pr-10 font-display text-2xl font-bold text-forest sm:text-3xl">
-        Open CoachOS
+        Open CoachFolio
       </h2>
-      <p className="mt-2 text-base leading-7 text-muted">Pick the app for how you use CoachOS.</p>
+      <p className="mt-2 text-base leading-7 text-muted">Pick the app for how you use CoachFolio.</p>
 
       <ul className={`${optionGridClass} mt-6`}>
         {options.map((option, index) => (

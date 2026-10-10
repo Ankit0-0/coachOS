@@ -30,7 +30,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 /** This app only serves coaches — a client's token is valid but 403s on every screen here. */
 const APP_ROLE = 'COACH';
-const WRONG_ROLE_MESSAGE = 'That’s a client account. Sign in with a coach account, or use the Coach OS client app.';
+const WRONG_ROLE_MESSAGE = 'That’s a client account. Sign in with a coach account, or use the CoachFolio Client app.';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);

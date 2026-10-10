@@ -6,7 +6,7 @@ import { useEarlyAccess } from '@/components/early-access/early-access-provider'
 import { CoachClientDetailScreen, CoachClientsScreen } from '@/components/mockups/app-screens';
 import { Arrow, Container, Mark, Reveal, SectionHeading } from '@/components/ui';
 
-/** A coaching day, moment by moment: how it goes now, and with CoachOS. */
+/** A coaching day, moment by moment: how it goes now, and with CoachFolio. */
 const day: { moment: string; before: string; after: ReactNode }[] = [
   {
     moment: 'Morning check-ins',
@@ -78,7 +78,7 @@ export function ForCoachesSection() {
             <div className="hidden grid-cols-[9rem_1fr_1fr] border-b border-forest/10 bg-cream text-sm font-semibold sm:grid">
               <span className="px-5 py-3 text-muted">Moment</span>
               <span className="px-5 py-3 text-terracotta-deep">Today</span>
-              <span className="px-5 py-3 text-forest">With CoachOS</span>
+              <span className="px-5 py-3 text-forest">With CoachFolio</span>
             </div>
             <ol>
               {day.map((row) => (
@@ -89,7 +89,7 @@ export function ForCoachesSection() {
                     <span className="line-through decoration-terracotta/50">{row.before}</span>
                   </p>
                   <p className="rounded-xl bg-sage-soft px-3 py-2 text-[15px] leading-6 text-charcoal sm:rounded-none sm:px-5 sm:py-5">
-                    <span className="mr-1 font-semibold text-forest sm:hidden">With CoachOS:</span>
+                    <span className="mr-1 font-semibold text-forest sm:hidden">With CoachFolio:</span>
                     {row.after}
                   </p>
                 </li>

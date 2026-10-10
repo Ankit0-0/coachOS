@@ -56,7 +56,7 @@ describe("exercise and diet-item library", () => {
       awsRegion: "eu-test-1",
       awsAccessKeyId: "AKIATESTTESTTESTTEST",
       awsSecretAccessKey: "test-secret-not-a-real-key",
-      s3Bucket: "coachos-test-bucket",
+      s3Bucket: "coachfolio-test-bucket",
     });
     admin = await createAdmin("libadmin");
     coach = await registerUser("COACH", "libcoach");

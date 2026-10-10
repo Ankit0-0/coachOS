@@ -94,7 +94,7 @@ export function CustomTabList(props: TabListProps) {
         <View style={styles.brand}>
           <Image source={APP_ICON} style={styles.brandIcon} accessibilityIgnoresInvertColors />
           <View>
-            <ThemedText type="heading">CoachOS</ThemedText>
+            <ThemedText type="heading">CoachFolio</ThemedText>
             <ThemedText type="meta">Coach</ThemedText>
           </View>
         </View>

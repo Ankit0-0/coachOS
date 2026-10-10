@@ -7,7 +7,7 @@ describe("CORS", () => {
   const original = env.clientUrls;
 
   beforeAll(() => {
-    env.clientUrls = ["https://admin.coachos.test", "https://app.coachos.test"];
+    env.clientUrls = ["https://admin.coachfolio.test", "https://app.coachfolio.test"];
   });
 
   afterAll(() => {
@@ -21,7 +21,7 @@ describe("CORS", () => {
       .set("Access-Control-Request-Method", "GET");
   }
 
-  it.each(["https://admin.coachos.test", "https://app.coachos.test"])(
+  it.each(["https://admin.coachfolio.test", "https://app.coachfolio.test"])(
     "allows every configured origin (%s)",
     async (origin) => {
       const res = await preflight(origin);
@@ -35,7 +35,7 @@ describe("CORS", () => {
   });
 
   it("does not treat a prefix of a configured origin as a match", async () => {
-    const res = await preflight("https://admin.coachos.test.evil.example");
+    const res = await preflight("https://admin.coachfolio.test.evil.example");
     expect(res.headers["access-control-allow-origin"]).toBeUndefined();
   });
 

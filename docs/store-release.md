@@ -4,17 +4,34 @@ What has to be set up outside the code before the two apps can go to the
 Play Store and App Store. The code side is done; every item here needs an
 account, a console, or a secret.
 
-The apps: **CoachOS** (`mobile/clients`, `com.ankit00.clients`) and
-**CoachOS Coach** (`mobile/coaches`, `com.ankit00.coaches`).
+The apps: **CoachFolio Client** (`mobile/clients`, `in.coachfolio.client`) and
+**CoachFolio Coach** (`mobile/coaches`, `in.coachfolio.coach`). Store listing
+titles: "CoachFolio Client App" and "CoachFolio Coach App".
+
+## 0. New app identity (renamed from CoachOS)
+
+The package and bundle IDs changed from `com.ankit00.clients` /
+`com.ankit00.coaches`, which makes these new apps as far as the phone and
+the stores are concerned:
+
+- Preview APKs installed under the old IDs won't update in place.
+  Uninstall them before installing a new build.
+- EAS generates a new Android upload keystore on the next build. Register
+  that keystore's SHA-1 when you create the Android OAuth clients (section 2).
+- The URL schemes are now `coachfolio-client` and `coachfolio-coach`. Any
+  redirect URI configured for the old `clients` / `coaches` schemes
+  (expo-auth-session or elsewhere) must be updated to match.
+- `APPLE_BUNDLE_IDS` on Render must list the new IDs (section 1), or Sign in
+  with Apple rejects every token from the new builds.
 
 ## 1. Backend (Render → Environment)
 
 | Variable | Value |
 |---|---|
 | `RESEND_API_KEY` | A Resend API key. |
-| `RESEND_FROM_EMAIL` | An address on a domain verified in Resend, e.g. `CoachOS <no-reply@yourdomain.com>`. The default `onboarding@resend.dev` only delivers to the Resend account owner, so nobody else gets reset codes. |
+| `RESEND_FROM_EMAIL` | An address on a domain verified in Resend, e.g. `CoachFolio <no-reply@coachfolio.in>`. The default `onboarding@resend.dev` only delivers to the Resend account owner, so nobody else gets reset codes. |
 | `GOOGLE_CLIENT_ID` | The Google **web** client ID. (Native sign-in mints tokens for it.) Add the iOS client ID after a comma if you create one. |
-| `APPLE_BUNDLE_IDS` | `com.ankit00.clients,com.ankit00.coaches` |
+| `APPLE_BUNDLE_IDS` | `in.coachfolio.client,in.coachfolio.coach` |
 | `SENTRY_DSN` | The backend's Sentry DSN. |
 | `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `S3_BUCKET` | Needed for photo uploads. |
 
@@ -29,7 +46,7 @@ the new check-in and subscription columns.
 ## 2. Google sign-in (Google Cloud console, project of the web client ID)
 
 1. **Android:** create an OAuth client of type *Android* for each package
-   (`com.ankit00.clients`, `com.ankit00.coaches`) with the SHA-1 of the
+   (`in.coachfolio.client`, `in.coachfolio.coach`) with the SHA-1 of the
    signing key. Get it from `eas credentials` (and, once on Play, also add
    the *App signing key* SHA-1 from Play Console → App integrity). Without
    it sign-in fails with `DEVELOPER_ERROR`. No client ID goes in the app.
@@ -64,15 +81,15 @@ Reminders are local notifications and need neither.
 
 | Variable | Value |
 |---|---|
-| `EXPO_PUBLIC_WEBSITE_URL` | The landing page's public URL. The in-app privacy policy and terms links point at `/privacy/` and `/terms/` there; they are hidden until this is a URL. |
+| `EXPO_PUBLIC_WEBSITE_URL` | Set to `https://coachfolio.in` in `eas.json`. The in-app privacy policy and terms links point at `/privacy/` and `/terms/` there. |
 | `EXPO_PUBLIC_SENTRY_DSN`, `SENTRY_ORG`, `SENTRY_PROJECT` | Replace the `REPLACE_WITH_…` placeholders. |
 | `EXPO_PUBLIC_GOOGLE_CLIENT_ID`, `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID` | See section 2. |
 
 ## 6. Landing page
 
-Deploy it so `/privacy/`, `/terms/` and `/delete-account/` are live, and
-update `openGraph.url` in `landing-page/app/layout.tsx` from the
-`coachos.example.com` placeholder. Have the privacy policy and terms read
+Deploy it at https://coachfolio.in so `/privacy/`, `/terms/` and
+`/delete-account/` are live there: the apps' `EXPO_PUBLIC_WEBSITE_URL` and
+the page's canonical and Open Graph URLs all point at that domain. Have the privacy policy and terms read
 by someone qualified for the countries you launch in.
 
 ## 7. Store listings

@@ -80,7 +80,8 @@ export const env = {
    */
   resendApiKey: process.env.RESEND_API_KEY,
   /** Resend's shared sender works without a verified domain of your own. */
-  resendFromEmail: process.env.RESEND_FROM_EMAIL ?? "CoachOS <onboarding@resend.dev>",
+  // TODO: send from coachfolio.in once the domain is verified in Resend.
+  resendFromEmail: process.env.RESEND_FROM_EMAIL ?? "CoachFolio <onboarding@resend.dev>",
   /**
    * Optional, all four together. Image uploads need S3, but local development,
    * CI and the test suite must keep booting without AWS credentials — so these

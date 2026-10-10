@@ -378,7 +378,7 @@ async function main() {
   await ensureLibrary();
 
   // --- Coaches -------------------------------------------------------------
-  const marcus = await ensureUser("coach@coachos.dev", "Marcus Bell", "COACH");
+  const marcus = await ensureUser("coach@coachfolio.dev", "Marcus Bell", "COACH");
   await ensureCoachProfile(marcus.id, {
     bio: "Barbell-first strength coach. I work with lifters who want to get strong without living in the gym.",
     specialties: ["Strength", "Powerlifting", "Return to training"],
@@ -386,7 +386,7 @@ async function main() {
     phone: "14155550182",
   });
 
-  const nina = await ensureUser("nina@coachos.dev", "Nina Alvarez", "COACH");
+  const nina = await ensureUser("nina@coachfolio.dev", "Nina Alvarez", "COACH");
   await ensureCoachProfile(nina.id, {
     bio: "Nutrition-led coaching for busy people. Plans you can actually cook on a Tuesday night.",
     specialties: ["Nutrition", "Body recomposition"],
@@ -453,28 +453,28 @@ async function main() {
   });
 
   // --- Clients -------------------------------------------------------------
-  const jordan = await ensureUser("client@coachos.dev", "Jordan Reyes", "CLIENT");
+  const jordan = await ensureUser("client@coachfolio.dev", "Jordan Reyes", "CLIENT");
   await ensureClientProfile(jordan.id, {
     heightCm: 178,
     weightKg: 82.4,
     goals: "Squat 140kg and drop to 78kg without losing strength.",
   });
 
-  const sam = await ensureUser("sam@coachos.dev", "Sam Okafor", "CLIENT");
+  const sam = await ensureUser("sam@coachfolio.dev", "Sam Okafor", "CLIENT");
   await ensureClientProfile(sam.id, {
     heightCm: 185,
     weightKg: 95.1,
     goals: "Rebuild after a shoulder injury. Pain-free pressing first.",
   });
 
-  const priya = await ensureUser("priya@coachos.dev", "Priya Nair", "CLIENT");
+  const priya = await ensureUser("priya@coachfolio.dev", "Priya Nair", "CLIENT");
   await ensureClientProfile(priya.id, {
     heightCm: 164,
     weightKg: 61.0,
     goals: "Train three times a week around shift work.",
   });
 
-  const leo = await ensureUser("leo@coachos.dev", "Leo Fischer", "CLIENT");
+  const leo = await ensureUser("leo@coachfolio.dev", "Leo Fischer", "CLIENT");
   await ensureClientProfile(leo.id, {
     heightCm: 172,
     weightKg: 70.2,
@@ -482,7 +482,7 @@ async function main() {
   });
 
   // No profile and no accepted invite — exercises the empty/locked states.
-  const tara = await ensureUser("tara@coachos.dev", "Tara Vance", "CLIENT");
+  const tara = await ensureUser("tara@coachfolio.dev", "Tara Vance", "CLIENT");
 
   const demoClient = await ensureUser("demo.client@example.com", "Demo Client", "CLIENT");
 

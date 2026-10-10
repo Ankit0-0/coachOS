@@ -1,18 +1,18 @@
 {
   "expo": {
-    "name": "CoachOS Coach",
+    "name": "CoachFolio Coach",
     "slug": "coaches",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": [
-      "coaches",
-      "com.ankit00.coaches"
+      "coachfolio-coach",
+      "in.coachfolio.coach"
     ],
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/images/icon.png",
-      "bundleIdentifier": "com.ankit00.coaches",
+      "bundleIdentifier": "in.coachfolio.coach",
       "supportsTablet": false,
       "usesAppleSignIn": true,
       "infoPlist": {
@@ -21,13 +21,13 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#F7F5EF",
+        "backgroundColor": "#183B32",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.ankit00.coaches",
+      "package": "in.coachfolio.coach",
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.CAMERA"
@@ -56,7 +56,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "CoachOS needs access to your photos so you can set your profile photo.",
+          "photosPermission": "CoachFolio Coach needs access to your photos so you can set your profile photo.",
           "cameraPermission": false,
           "microphonePermission": false
         }

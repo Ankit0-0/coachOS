@@ -17,7 +17,7 @@ export default function AuthScreen() {
         <View style={styles.header}>
           <Chip label="Client app" tone="terracotta" />
           <ThemedText type="title" style={styles.headline}>
-            Coach OS
+            CoachFolio
           </ThemedText>
           <ThemedText themeColor="textSecondary">
             Your plans, your check-ins, and your coach — in one place.

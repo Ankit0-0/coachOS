@@ -97,10 +97,10 @@ export function EarlyAccessModal({ isOpen, initialAudience, onClose }: EarlyAcce
         <form onSubmit={handleSubmit} noValidate>
           <p className="text-sm font-semibold text-terracotta-deep">Early access</p>
           <h2 id={titleId} className="mt-2 pr-10 font-display text-2xl font-bold text-forest sm:text-3xl">
-            Be first to use CoachOS
+            Be first to use CoachFolio
           </h2>
           <p className="mt-2 text-base leading-7 text-muted">
-            CoachOS isn&apos;t in the app stores yet. Tell us who you are and which phone you use, and
+            CoachFolio isn&apos;t in the app stores yet. Tell us who you are and which phone you use, and
             we&apos;ll email you when it&apos;s ready.
           </p>
 
