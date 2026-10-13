@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 
 import { contextForRequest, messageForStatus } from '@/lib/api-errors';
+import type { PaymentStatus } from '@/lib/payment';
 import { loadAccessToken } from '@/lib/token-storage';
 
 export type Role = 'CLIENT' | 'COACH';
@@ -212,11 +213,18 @@ export interface CoachInvite {
 }
 
 /**
- * EXPIRED: their subscription ran out. QUIET: no check-in for 3+ days on an
+ * PAYMENT_TO_CONFIRM: they say they paid; check and mark it. PAYMENT_OVERDUE:
+ * a fee still unpaid 3 days in. EXPIRED: their subscription ran out. QUIET: no check-in for 3+ days on an
  * active plan. NO_PLAN: nothing assigned. RENEWAL_DUE: the subscription ends
  * within a week.
  */
-export type AttentionReason = 'EXPIRED' | 'QUIET' | 'NO_PLAN' | 'RENEWAL_DUE';
+export type AttentionReason =
+  | 'PAYMENT_TO_CONFIRM'
+  | 'EXPIRED'
+  | 'PAYMENT_OVERDUE'
+  | 'QUIET'
+  | 'NO_PLAN'
+  | 'RENEWAL_DUE';
 
 export const coachInviteApi = {
   list(status?: InviteStatus): Promise<CoachInvite[]> {
@@ -327,6 +335,8 @@ export interface CoachProfile {
   phone: string | null;
   /** Whether clients can find this coach in Explore. Off until the coach opts in. */
   listedInExplore: boolean;
+  /** Where clients pay you ("name@bank"); null until you add one. */
+  upiId: string | null;
 }
 
 export interface CoachProfileUpdate {
@@ -339,6 +349,8 @@ export interface CoachProfileUpdate {
   /** An S3 key from uploadApi.presign. Null removes the avatar. */
   avatarKey?: string | null;
   listedInExplore?: boolean;
+  /** Blank removes it. */
+  upiId?: string;
 }
 
 export const coachProfileApi = {
@@ -778,6 +790,8 @@ export interface ScheduleEntry {
 
 export type SubscriptionStatus = 'ACTIVE' | 'EXPIRED' | 'CANCELLED';
 
+export type { PaymentStatus };
+
 export interface Subscription {
   id: string;
   coachId: string;
@@ -790,6 +804,15 @@ export interface Subscription {
   storedStatus: SubscriptionStatus;
   daysRemaining: number;
   notes: string | null;
+  /** The fee in whole rupees; null when none is set. */
+  amountInr: number | null;
+  paymentStatus: PaymentStatus;
+  paidAt: string | null;
+  clientReportedPaidAt: string | null;
+  /** The UPI reference the client gave when they said they paid. */
+  paymentReference: string | null;
+  /** Set once paid. */
+  receiptNumber: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -803,7 +826,7 @@ export const subscriptionApi = {
 
   create(
     clientId: string,
-    input: { startDate: string; endDate: string; notes?: string },
+    input: { startDate: string; endDate: string; notes?: string; amountInr?: number | null; alreadyPaid?: boolean },
   ): Promise<Subscription> {
     return apiRequest<{ subscription: Subscription }>(
       `/coach/clients/${encodeURIComponent(clientId)}/subscriptions`,
@@ -814,11 +837,26 @@ export const subscriptionApi = {
   update(
     clientId: string,
     subscriptionId: string,
-    input: { startDate?: string; endDate?: string; status?: SubscriptionStatus; notes?: string },
+    input: {
+      startDate?: string;
+      endDate?: string;
+      status?: SubscriptionStatus;
+      notes?: string;
+      amountInr?: number | null;
+      alreadyPaid?: boolean;
+    },
   ): Promise<Subscription> {
     return apiRequest<{ subscription: Subscription }>(
       `/coach/clients/${encodeURIComponent(clientId)}/subscriptions/${encodeURIComponent(subscriptionId)}`,
       { method: 'PATCH', body: input },
+    ).then((data) => data.subscription);
+  },
+
+  /** Marks the period's fee received (paid: true), or takes that back. */
+  setPayment(clientId: string, subscriptionId: string, paid: boolean): Promise<Subscription> {
+    return apiRequest<{ subscription: Subscription }>(
+      `/coach/clients/${encodeURIComponent(clientId)}/subscriptions/${encodeURIComponent(subscriptionId)}/payment`,
+      { method: 'POST', body: { paid } },
     ).then((data) => data.subscription);
   },
 };

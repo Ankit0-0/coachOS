@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 
 import { contextForRequest, messageForStatus } from '@/lib/api-errors';
+import type { PaymentStatus } from '@/lib/payment';
 import { loadAccessToken } from '@/lib/token-storage';
 
 export type Role = 'CLIENT' | 'COACH';
@@ -554,7 +555,16 @@ export interface ClientSubscription {
   storedStatus: SubscriptionStatus;
   daysRemaining: number;
   notes: string | null;
-  coach: { id: string; name: string; email: string };
+  /** The fee in whole rupees; null when your coach hasn't set one. */
+  amountInr: number | null;
+  paymentStatus: PaymentStatus;
+  paidAt: string | null;
+  clientReportedPaidAt: string | null;
+  paymentReference: string | null;
+  /** Set once your coach confirms the payment. */
+  receiptNumber: string | null;
+  /** `upiId` is where to pay; null when your coach hasn't added one. */
+  coach: { id: string; name: string; email: string; upiId: string | null };
 }
 
 export const scheduleApi = {
@@ -572,5 +582,13 @@ export const clientSubscriptionApi = {
     return apiRequest<{ subscription: ClientSubscription | null }>('/client/subscription').then(
       (data) => data.subscription,
     );
+  },
+
+  /** Tells your coach you've paid this period's fee; they confirm it once they see the money. */
+  reportPaid(subscriptionId: string, reference?: string): Promise<ClientSubscription> {
+    return apiRequest<{ subscription: ClientSubscription }>(
+      `/client/subscription/${encodeURIComponent(subscriptionId)}/report-paid`,
+      { method: 'POST', body: reference ? { reference } : {} },
+    ).then((data) => data.subscription);
   },
 };

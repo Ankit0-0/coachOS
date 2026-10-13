@@ -48,8 +48,10 @@ export default function TermsPage() {
 
       <LegalSection title="Coaches and clients">
         <p>
-          The coaching arrangement, including any fee, is between the coach and the client. CoachFolio does not take
-          payments and is not a party to that arrangement. Subscription dates in the app are a record for the two of you.
+          The coaching arrangement, including any fee, is between the coach and the client. CoachFolio does not take,
+          hold or process payments and is not a party to that arrangement: a client pays the coach directly from their
+          own UPI app, and the paid and unpaid markers, reminders and receipts in the app are a record for the two of
+          you. Questions about a payment go to the other person, and to your bank or UPI app.
         </p>
       </LegalSection>
 

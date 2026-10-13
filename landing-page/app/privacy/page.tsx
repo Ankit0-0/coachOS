@@ -31,13 +31,14 @@ export default function PrivacyPage() {
             </>,
             <>
               <strong>Your profile:</strong> what you choose to add, such as a phone number, profile photo, height,
-              starting weight, goals and diet preference (clients), or a bio, specialties and years of experience
-              (coaches).
+              starting weight, goals and diet preference (clients), or a bio, specialties, years of experience and a
+              UPI ID for receiving payments (coaches).
             </>,
             <>
-              <strong>Your coaching:</strong> workout and diet plans, the sets and meals you tick off, weigh-ins,
-              progress and meal photos, comments you leave for your coach, invites, requests to a coach, and
-              subscription dates.
+              <strong>Your coaching:</strong> workout and diet plans, the sets and meals you tick off and the weights
+              and reps you log, weigh-ins, progress and meal photos, comments you leave for your coach, invites,
+              requests to a coach, subscription dates, and each period’s fee and whether it was paid, with any UPI
+              reference you give. We never see or store bank or card details: payments happen in your own UPI app.
             </>,
             <>
               <strong>Your device:</strong> a push notification token, so we can send notifications you’ve allowed,
@@ -76,8 +77,8 @@ export default function PrivacyPage() {
           items={[
             <>
               <strong>Your coach</strong> sees your profile, plans, check-ins, comments, weigh-ins and photos while you
-              are their client, and your phone number if you added one. You see your coach’s profile and phone
-              number.
+              are their client, and your phone number if you added one. You see your coach’s profile, phone number
+              and UPI ID.
             </>,
             <>
               <strong>Clients browsing Explore</strong> see a coach’s public profile (name, photo, bio, specialties,
