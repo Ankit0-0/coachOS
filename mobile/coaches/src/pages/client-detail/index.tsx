@@ -86,6 +86,10 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
   /** A small notice under the header, since Alert is a no-op on React Native Web. */
   const [contactError, setContactError] = useState<string | null>(null);
   const [planError, setPlanError] = useState<string | null>(null);
+  /** The assignment being copied for this client, so its button can show progress. */
+  const [customizingId, setCustomizingId] = useState<string | null>(null);
+  const [isRemoving, setIsRemoving] = useState(false);
+  const [removeError, setRemoveError] = useState<string | null>(null);
   const dismissContactError = useCallback(() => setContactError(null), []);
   const [chartRange, setChartRange] = useState<WeightRangeKey>(DEFAULT_WEIGHT_RANGE);
   /** Weigh-ins in the chart's selected range, separate from `weights` so switching range can't move the photos. */
@@ -288,19 +292,60 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
     }
   };
 
+  // In this tab's own stack, so saving the plan comes back here.
+  const openPlanEditor = (planId: string) => router.push({ pathname: '/edit-plan', params: { planId } });
+
+  // Gives the client their own copy, then opens it: editing it changes nothing for anyone else.
+  const handleCustomize = async (assignment: PlanAssignment) => {
+    setPlanError(null);
+    setCustomizingId(assignment.id);
+    try {
+      const updated = await assignmentApi.customize(assignment.id);
+      await loadAll();
+      openPlanEditor(updated.planId);
+    } catch (error) {
+      setPlanError(error instanceof Error ? error.message : 'Could not copy the plan. Please try again.');
+    } finally {
+      setCustomizingId(null);
+    }
+  };
+
+  const handleRemoveClient = async () => {
+    const confirmed = await confirmDestructive({
+      title: `Remove ${name}?`,
+      message: `${name} leaves your roster and their plans and subscription end. Their account and history stay, and you can invite them again later.`,
+      confirmLabel: 'Remove',
+    });
+    if (!confirmed) return;
+
+    setRemoveError(null);
+    setIsRemoving(true);
+    try {
+      await coachClientApi.end(clientId);
+      router.back();
+    } catch (error) {
+      setRemoveError(error instanceof Error ? error.message : 'Could not remove this client. Please try again.');
+      setIsRemoving(false);
+    }
+  };
+
   const renderPlanCard =(label: string, type: PlanType, assignment: PlanAssignment | undefined) => {
     const stats = assignment ? planStats(assignment.plan) : null;
     const isActive = assignment?.status === 'ACTIVE';
+    const isCustom = assignment?.plan.customForClientId === clientId;
 
     return (
       <View style={[styles.planRow, { backgroundColor: theme.surface, borderColor: theme.border }]}>
         <View style={styles.planTitleRow}>
           <Chip label={label} tone={type === 'DIET' ? 'terracotta' : 'green'} />
           {assignment && stats ? (
-            <Chip
-              label={assignment.status === 'ACTIVE' ? 'Active' : assignment.status.toLowerCase()}
-              tone={assignment.status === 'ACTIVE' ? 'success' : 'neutral'}
-            />
+            <View style={styles.planChips}>
+              {isCustom ? <Chip label="Custom" tone="neutral" /> : null}
+              <Chip
+                label={assignment.status === 'ACTIVE' ? 'Active' : assignment.status.toLowerCase()}
+                tone={assignment.status === 'ACTIVE' ? 'success' : 'neutral'}
+              />
+            </View>
           ) : null}
         </View>
 
@@ -322,6 +367,10 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
           </ThemedText>
         )}
 
+        {isActive && isCustom ? (
+          <ThemedText type="meta">Made for {name}. Changes here reach no one else.</ThemedText>
+        ) : null}
+
         <View style={styles.planActions}>
           <Button
             label={isActive ? 'Change plan' : 'Assign plan'}
@@ -329,6 +378,27 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
             size="sm"
             onPress={() => setPickerType(type)}
           />
+          {isActive && assignment ? (
+            isCustom ? (
+              <Button
+                label="Edit plan"
+                variant="secondary"
+                size="sm"
+                accessibilityLabel={`Edit ${name}'s ${label.toLowerCase()} plan`}
+                onPress={() => openPlanEditor(assignment.planId)}
+              />
+            ) : (
+              <Button
+                label="Customise"
+                variant="secondary"
+                size="sm"
+                accessibilityLabel={`Customise this ${label.toLowerCase()} plan for ${name}`}
+                loading={customizingId === assignment.id}
+                disabled={customizingId !== null}
+                onPress={() => void handleCustomize(assignment)}
+              />
+            )
+          ) : null}
           {isActive && assignment ? (
             <Button
               label="Remove"
@@ -507,6 +577,29 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
     </Section>
   );
 
+  const removeSection = (
+    <Section title="Coaching">
+      <Card style={styles.textCard}>
+        <ThemedText type="small" themeColor="textSecondary">
+          Stopped coaching {name}? Removing them ends their plans and subscription with you. Their account and history
+          stay.
+        </ThemedText>
+        {removeError ? (
+          <ThemedText type="small" themeColor="danger">
+            {removeError}
+          </ThemedText>
+        ) : null}
+        <Button
+          label="Remove client"
+          variant="danger"
+          size="sm"
+          loading={isRemoving}
+          onPress={() => void handleRemoveClient()}
+        />
+      </Card>
+    </Section>
+  );
+
   return (
     <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh} wide>
       <DetailHeader
@@ -553,6 +646,7 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
                 {notesSection}
                 {subscriptionCard}
                 {paymentSection}
+                {removeSection}
               </View>
               <View style={styles.column}>
                 {progressSection}
@@ -568,6 +662,7 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
               {notesSection}
               {subscriptionCard}
               {paymentSection}
+              {removeSection}
             </>
           )}
         </>
@@ -592,8 +687,14 @@ const styles = StyleSheet.create({
   },
   planActions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: Spacing.two,
+  },
+  planChips: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
   },
   plansCard: {
     padding: Spacing.twoHalf,

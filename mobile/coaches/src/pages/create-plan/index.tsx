@@ -141,6 +141,8 @@ export function CreatePlanScreen() {
   const [pendingLength, setPendingLength] = useState<number | null>(null);
   /** How many clients are on this plan right now; undefined until a plan is loaded. */
   const [activeAssignments, setActiveAssignments] = useState<number | undefined>(undefined);
+  /** A copy made for one client from their page; edits reach only them. */
+  const [isCustomCopy, setIsCustomCopy] = useState(false);
   /** The row whose name the library picker is open for. */
   const [picking, setPicking] = useState<{ kind: 'exercise' | 'meal'; rowId: string } | null>(null);
 
@@ -167,6 +169,7 @@ export function CreatePlanScreen() {
     setTitle(plan.title);
     setDescription(plan.description ?? '');
     setActiveAssignments(plan.activeAssignmentCount);
+    setIsCustomCopy(plan.customForClientId !== null);
 
     const content = plan.content as WorkoutContent | DietContent;
     setFocus(content.focus);
@@ -568,7 +571,9 @@ export function CreatePlanScreen() {
       {mode === 'edit' && activeAssignments && activeAssignments > 0 ? (
         <Card style={styles.panel}>
           <ThemedText type="smallBold">
-            {activeAssignments} {activeAssignments === 1 ? 'client is' : 'clients are'} on this plan
+            {isCustomCopy
+              ? 'Made for one client'
+              : `${activeAssignments} ${activeAssignments === 1 ? 'client is' : 'clients are'} on this plan`}
           </ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
             Saving changes what they see today. Anything you remove also stops counting towards days

@@ -203,9 +203,20 @@ export interface CoachInvite {
   /** Null when this client has no subscription record — an open-ended relationship. */
   subscriptionStatus: 'ACTIVE' | 'EXPIRED' | 'CANCELLED' | null;
   subscriptionEndDate: string | null;
+  /** The last day (YYYY-MM-DD) the client ticked anything off on your plans; null if never or not a client yet. */
+  lastCheckInDate: string | null;
+  /** Why this client may need you today, most pressing first. Empty when all is well. */
+  attention: AttentionReason[];
   createdAt: string;
   respondedAt: string | null;
 }
+
+/**
+ * EXPIRED: their subscription ran out. QUIET: no check-in for 3+ days on an
+ * active plan. NO_PLAN: nothing assigned. RENEWAL_DUE: the subscription ends
+ * within a week.
+ */
+export type AttentionReason = 'EXPIRED' | 'QUIET' | 'NO_PLAN' | 'RENEWAL_DUE';
 
 export const coachInviteApi = {
   list(status?: InviteStatus): Promise<CoachInvite[]> {
@@ -220,6 +231,13 @@ export const coachInviteApi = {
     return apiRequest<{ invite: CoachInvite }>('/coach/invites', {
       method: 'POST',
       body: { clientEmail, ...period },
+    }).then((data) => data.invite);
+  },
+
+  /** Withdraws an invite the client hasn't answered yet. */
+  cancel(inviteId: string): Promise<CoachInvite> {
+    return apiRequest<{ invite: CoachInvite }>(`/coach/invites/${encodeURIComponent(inviteId)}/cancel`, {
+      method: 'POST',
     }).then((data) => data.invite);
   },
 };
@@ -401,6 +419,8 @@ export interface Plan {
   cycleLengthDays: number;
   isDefault: boolean;
   createdById: string | null;
+  /** Set on your copy of a plan made for one client; it lives on that client's page, not in your library. */
+  customForClientId: string | null;
   createdAt: string;
   updatedAt: string;
   /**
@@ -479,6 +499,17 @@ export const assignmentApi = {
     return apiRequest<{ assignment: PlanAssignment }>(`/coach/assignments/${encodeURIComponent(assignmentId)}`, {
       method: 'DELETE',
     }).then((data) => data.assignment);
+  },
+
+  /**
+   * Gives this client their own copy of the plan, so editing it changes nothing
+   * for anyone else. Returns the assignment, now on the copy.
+   */
+  customize(assignmentId: string): Promise<PlanAssignment> {
+    return apiRequest<{ assignment: PlanAssignment }>(
+      `/coach/assignments/${encodeURIComponent(assignmentId)}/customize`,
+      { method: 'POST' },
+    ).then((data) => data.assignment);
   },
 
   listForClient(clientId: string): Promise<PlanAssignment[]> {
@@ -658,6 +689,11 @@ function queryString(params: Record<string, string>): string {
 }
 
 export const coachClientApi = {
+  /** Removes the client from your roster: plans and subscription end, their history stays. */
+  end(clientId: string): Promise<void> {
+    return apiRequest<void>(`/coach/clients/${encodeURIComponent(clientId)}/end`, { method: 'POST' });
+  },
+
   /** Omit `assignmentId` to get every check-in in the range, across all assignments. */
   listCheckIns(
     clientId: string,

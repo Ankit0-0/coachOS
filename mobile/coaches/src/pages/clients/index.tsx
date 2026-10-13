@@ -11,6 +11,7 @@ import { Spacing } from '@/constants/theme';
 import { useRefresh } from '@/hooks/use-refresh';
 import { useDesktopLayout, useTheme } from '@/hooks/use-theme';
 import { coachInviteApi, type CoachInvite } from '@/lib/api';
+import { attentionCount, sortByAttention } from '@/lib/roster';
 
 function ClientRow({ invite }: { invite: CoachInvite }) {
   return (
@@ -20,6 +21,8 @@ function ClientRow({ invite }: { invite: CoachInvite }) {
       email={invite.client?.email ?? invite.clientEmail}
       avatarUrl={invite.client?.avatarUrl}
       subscriptionStatus={invite.subscriptionStatus}
+      lastCheckInDate={invite.lastCheckInDate}
+      attention={invite.attention}
     />
   );
 }
@@ -35,7 +38,7 @@ export function ClientsScreen() {
   const load = useCallback(async () => {
     try {
       const invites = await coachInviteApi.list('ACCEPTED');
-      setClients(invites);
+      setClients(sortByAttention(invites));
     } catch {
       // As before: keep what's on screen; the list shows its empty state.
     } finally {
@@ -55,7 +58,12 @@ export function ClientsScreen() {
     <ScreenScaffold includeBottomTabInset refreshing={isRefreshing} onRefresh={refresh} wide>
       <DetailHeader
         title="Roster"
-        subtitle={clients.length === 1 ? '1 client' : `${clients.length} clients`}
+        subtitle={[
+          clients.length === 1 ? '1 client' : `${clients.length} clients`,
+          attentionCount(clients) > 0 ? `${attentionCount(clients)} need attention` : null,
+        ]
+          .filter(Boolean)
+          .join(' · ')}
       />
 
       {isLoading ? (
