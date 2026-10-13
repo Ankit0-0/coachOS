@@ -316,6 +316,10 @@ model CheckIn {
   /// { [itemId]: comment } — the client's note to their coach on one set or
   /// meal ("left knee felt off"). Merged per item like photoKeys.
   itemNotes        Json?
+  /// { [setId]: { weightKg, reps } } — what the client actually lifted on a
+  /// workout set, either number null when not given. Merged per set like
+  /// itemNotes. Null when nothing was logged.
+  setLogs          Json?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 

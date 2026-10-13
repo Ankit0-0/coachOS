@@ -3,8 +3,9 @@ import { Router, type Request, type Response } from "express";
 import { getLogger } from "../../config/logger.js";
 import { requireAuth } from "../../middleware/auth.js";
 import { sendError } from "../../utils/http-error.js";
-import { checkInQuerySchema, checkInSchema, weightQuerySchema, weightSchema } from "./schemas.js";
+import { checkInQuerySchema, checkInSchema, exerciseHistoryQuerySchema, weightQuerySchema, weightSchema } from "./schemas.js";
 import {
+  getOwnExerciseHistory,
   listActiveAssignments,
   listCheckIns,
   listWeights,
@@ -127,6 +128,27 @@ trackingRouter.get("/weight", async (request, response) => {
     response.json({
       message: "Weight entries retrieved successfully.",
       weightEntries: await listWeights(parsed.data, userId),
+    });
+  } catch (error) {
+    getLogger().error({ err: error, url: request.originalUrl }, "tracking: unexpected error");
+    sendError(response, 500);
+  }
+});
+
+/** What the signed-in client lifted, per exercise, in a date range. */
+trackingRouter.get("/exercise-history", async (request, response) => {
+  const parsed = exerciseHistoryQuerySchema.safeParse(request.query);
+  if (!parsed.success) {
+    getLogger().debug({ issues: parsed.error.flatten() }, "GET /tracking/exercise-history: rejected — invalid query parameters");
+    sendError(response, 400);
+    return;
+  }
+  const userId = currentUserId(request, response);
+  if (!userId) return;
+  try {
+    response.json({
+      message: "Exercise history retrieved successfully.",
+      exercises: await getOwnExerciseHistory(userId, parsed.data),
     });
   } catch (error) {
     getLogger().error({ err: error, url: request.originalUrl }, "tracking: unexpected error");
