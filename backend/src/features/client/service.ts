@@ -1,6 +1,8 @@
 import { getLogger } from "../../config/logger.js";
 import { prisma } from "../../config/prisma.config.js";
-import { findAcceptedInvite } from "../../utils/coach-access.js";
+import { endCoachingBetween, findAcceptedInvite } from "../../utils/coach-access.js";
+import * as messages from "../notification/messages.js";
+import { nameOf, notifyInBackground } from "../notification/service.js";
 import { getSignedReadUrl } from "../upload/service.js";
 import { getClientSchedule } from "../plan/schedule.js";
 import { parseDate, serializeCheckIn, serializeWeight } from "../tracking/service.js";
@@ -102,4 +104,19 @@ export async function getClientProfile(coachId: string, clientId: string) {
     phone: profile?.phone ?? null,
     onboardedAt: invite.respondedAt,
   };
+}
+
+/**
+ * A coach removing a client from their roster. The relationship ends the same
+ * way it does when the client switches coach: access goes, plans and the
+ * subscription are cancelled, and everything the client logged is kept. The
+ * client keeps their account and can find another coach, or be invited again.
+ */
+export async function endClientRelationship(coachId: string, clientId: string): Promise<void> {
+  await assertAccess(coachId, clientId, "endClientRelationship");
+  const ended = await prisma.$transaction((tx) => endCoachingBetween(tx, clientId, coachId));
+  // Two taps at once: the second finds nothing left to end.
+  if (ended === 0) throw new Error("NOT_YOUR_CLIENT");
+  getLogger().info({ coachId, clientId }, "endClientRelationship: client removed from roster");
+  notifyInBackground(async () => ({ userIds: [clientId], notification: messages.coachEndedCoaching(await nameOf(coachId)) }));
 }

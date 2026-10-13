@@ -2,6 +2,7 @@ import type { CoachClientInvite, CoachProfile, InviteStatus } from "@prisma/clie
 
 import { getLogger } from "../../config/logger.js";
 import { prisma } from "../../config/prisma.config.js";
+import { dateKeyOf } from "../../utils/calendar.js";
 import { endPreviousCoaching, findCurrentCoach, type CurrentCoach } from "../../utils/coach-access.js";
 import { assertCoachApproved } from "../../utils/coach-approval.js";
 import {
@@ -9,6 +10,7 @@ import {
   effectiveStatus,
   periodFromMonths,
   periodHasEnded,
+  todayUtc,
   type SubscriptionPeriod,
 } from "../subscription/service.js";
 import { getSignedReadUrl } from "../upload/service.js";
@@ -144,15 +146,103 @@ export async function listCoachInvites(coachId: string, status?: InviteStatus) {
     if (!latestByClient.has(subscription.clientId)) latestByClient.set(subscription.clientId, subscription);
   }
 
+  const activity = await rosterActivity(
+    coachId,
+    rows.flatMap((row) => (row.status === "ACCEPTED" && row.clientId ? [row.clientId] : [])),
+  );
+
   return rows.map((row) => {
     const subscription = row.clientId ? latestByClient.get(row.clientId) : undefined;
+    const subscriptionStatus = subscription ? effectiveStatus(subscription) : null;
+    const clientActivity = row.status === "ACCEPTED" && row.clientId ? activity.get(row.clientId) : undefined;
     return {
       ...serializeInvite(row),
       /** Null when this client has no subscription record — an open-ended relationship. */
-      subscriptionStatus: subscription ? effectiveStatus(subscription) : null,
+      subscriptionStatus,
       subscriptionEndDate: subscription?.endDate ?? null,
+      /** The last day the client ticked anything off on this coach's plans; null if never. Clients only. */
+      lastCheckInDate: clientActivity?.lastCheckInDate ? dateKeyOf(clientActivity.lastCheckInDate) : null,
+      /** Why this client may need the coach today, most pressing first. Empty when all is well. */
+      attention: clientActivity ? attentionFor(clientActivity, subscription ?? null, subscriptionStatus) : [],
     };
   });
+}
+
+/** Days without a logged check-in, on an active plan, before the roster flags a client. */
+const QUIET_AFTER_DAYS = 3;
+/** How close a subscription's end has to be before the roster flags the renewal. */
+const RENEWAL_WITHIN_DAYS = 7;
+
+export type AttentionReason = "EXPIRED" | "QUIET" | "NO_PLAN" | "RENEWAL_DUE";
+
+type ClientActivity = {
+  lastCheckInDate: Date | null;
+  /** When the earliest active plan started counting; null with no active plan. */
+  activeSince: Date | null;
+};
+
+/**
+ * Per client: their last check-in with something ticked off, and whether they
+ * have an active plan from this coach. Two queries for the whole roster.
+ */
+async function rosterActivity(coachId: string, clientIds: string[]): Promise<Map<string, ClientActivity>> {
+  const activity = new Map<string, ClientActivity>(
+    clientIds.map((clientId) => [clientId, { lastCheckInDate: null, activeSince: null }]),
+  );
+  if (clientIds.length === 0) return activity;
+
+  const assignments = await prisma.planAssignment.findMany({
+    where: { coachId, clientId: { in: clientIds } },
+    select: { id: true, clientId: true, status: true, startDate: true, assignedAt: true },
+  });
+  const latest = await prisma.checkIn.groupBy({
+    by: ["assignmentId"],
+    where: { assignmentId: { in: assignments.map((assignment) => assignment.id) }, completedItemIds: { isEmpty: false } },
+    _max: { date: true },
+  });
+  const latestByAssignment = new Map(latest.map((row) => [row.assignmentId, row._max.date]));
+
+  for (const assignment of assignments) {
+    const entry = activity.get(assignment.clientId);
+    if (!entry) continue;
+    const last = latestByAssignment.get(assignment.id) ?? null;
+    if (last && (!entry.lastCheckInDate || last > entry.lastCheckInDate)) entry.lastCheckInDate = last;
+    if (assignment.status === "ACTIVE") {
+      const since = assignment.startDate ?? assignment.assignedAt;
+      if (!entry.activeSince || since < entry.activeSince) entry.activeSince = since;
+    }
+  }
+  return activity;
+}
+
+function wholeDaysSince(value: Date, today: Date): number {
+  return Math.floor((today.getTime() - value.getTime()) / 86_400_000);
+}
+
+function attentionFor(
+  activity: ClientActivity,
+  subscription: { endDate: Date } | null,
+  subscriptionStatus: string | null,
+): AttentionReason[] {
+  const today = todayUtc();
+  const reasons: AttentionReason[] = [];
+  if (subscriptionStatus === "EXPIRED") reasons.push("EXPIRED");
+  if (activity.activeSince) {
+    // Counted from the later of their last check-in and the plan's start, so a
+    // plan assigned yesterday isn't already "quiet".
+    const reference =
+      activity.lastCheckInDate && activity.lastCheckInDate > activity.activeSince
+        ? activity.lastCheckInDate
+        : activity.activeSince;
+    if (wholeDaysSince(reference, today) >= QUIET_AFTER_DAYS) reasons.push("QUIET");
+  } else {
+    reasons.push("NO_PLAN");
+  }
+  if (subscription && subscriptionStatus === "ACTIVE") {
+    const daysLeft = -wholeDaysSince(subscription.endDate, today);
+    if (daysLeft <= RENEWAL_WITHIN_DAYS) reasons.push("RENEWAL_DUE");
+  }
+  return reasons;
 }
 
 /**
@@ -303,5 +393,33 @@ export async function declineInvite(inviteId: string, userId: string, email: str
     userIds: [updated.coachId],
     notification: messages.inviteAnswered(await nameOf(userId), false, null),
   }));
+  return serializeInvite(updated);
+}
+
+/** A coach withdrawing an invite the client hasn't answered yet. */
+export async function cancelInvite(inviteId: string, coachId: string) {
+  const invite = await prisma.coachClientInvite.findUnique({ where: { id: inviteId } });
+  if (!invite) {
+    getLogger().debug({ inviteId, coachId }, "cancelInvite: rejected — invite not found");
+    throw new Error("INVITE_NOT_FOUND");
+  }
+  if (invite.coachId !== coachId) {
+    getLogger().warn({ inviteId, coachId, ownerId: invite.coachId }, "cancelInvite: rejected — not this coach's invite");
+    throw new Error("FORBIDDEN");
+  }
+  // Conditional on PENDING, so an acceptance landing at the same moment wins.
+  const { count } = await prisma.coachClientInvite.updateMany({
+    where: { id: inviteId, status: "PENDING" },
+    data: { status: "CANCELLED", respondedAt: new Date() },
+  });
+  if (count !== 1) {
+    getLogger().debug({ inviteId, coachId, currentStatus: invite.status }, "cancelInvite: rejected — no longer pending");
+    throw new Error("INVALID_STATUS");
+  }
+  getLogger().info({ inviteId, coachId }, "cancelInvite: invite withdrawn");
+  const updated = await prisma.coachClientInvite.findUniqueOrThrow({
+    where: { id: inviteId },
+    include: { client: { select: { id: true, name: true, email: true } } },
+  });
   return serializeInvite(updated);
 }

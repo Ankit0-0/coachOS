@@ -62,6 +62,8 @@ model User {
   accounts Account[]
 
   plansCreated        Plan[]           @relation("PlanCreator")
+  /// Plans a coach copied to tailor for this client.
+  customPlans         Plan[]           @relation("CustomPlanClient")
   assignmentsGiven    PlanAssignment[] @relation("AssignedByCoach")
   assignmentsReceived PlanAssignment[] @relation("AssignedToClient")
   weightEntries       WeightEntry[]    @relation("ClientWeightEntries")
@@ -202,10 +204,18 @@ model Plan {
   createdById String?
   createdBy   User?   @relation("PlanCreator", fields: [createdById], references: [id])
 
+  /// Set on a coach's copy of a plan made for one client ("Customise for …"),
+  /// so editing it changes nothing for anyone else. Such copies stay out of
+  /// the coach's plan library and its per-type limit; they are opened from
+  /// that client's page instead.
+  customForClientId String?
+  customForClient   User?   @relation("CustomPlanClient", fields: [customForClientId], references: [id], onDelete: Cascade)
+
   assignments PlanAssignment[]
 
   @@index([createdById])
   @@index([type])
+  @@index([customForClientId])
 }
 
 model PlanAssignment {

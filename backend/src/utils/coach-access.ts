@@ -40,48 +40,65 @@ export async function findCurrentCoach(clientId: string): Promise<CurrentCoach |
  * relationship, so the previous coach loses access to everything at once.
  *
  * Must run inside the same transaction as the acceptance: half-applied, the
- * client would have two coaches, which is the state this prevents. Status
- * changes only — never a delete. CheckIn cascades from PlanAssignment, so
- * deleting an assignment would destroy the client's logged history.
+ * client would have two coaches, which is the state this prevents.
  */
 export async function endPreviousCoaching(
   tx: Prisma.TransactionClient,
   clientId: string,
   newCoachId: string,
 ): Promise<void> {
-  const others = { clientId, coachId: { not: newCoachId } };
+  await endCoaching(tx, { clientId, coachId: { not: newCoachId } }, "endPreviousCoaching: previous coach's access and plans ended");
+}
+
+/** A coach removing a client: ends just the relationship between these two. */
+export async function endCoachingBetween(tx: Prisma.TransactionClient, clientId: string, coachId: string): Promise<number> {
+  return endCoaching(tx, { clientId, coachId }, "endCoachingBetween: coach removed the client");
+}
+
+/**
+ * Ends every relationship in scope: the coach loses access, and the plans and
+ * subscriptions between them stop. Status changes only — never a delete.
+ * CheckIn cascades from PlanAssignment, so deleting an assignment would destroy
+ * the client's logged history. Returns how many relationships ended.
+ */
+async function endCoaching(
+  tx: Prisma.TransactionClient,
+  scope: { clientId: string; coachId: string | { not: string } },
+  logMessage: string,
+): Promise<number> {
   const now = new Date();
 
   // Sequential: an interactive transaction runs on one connection.
   const invites = await tx.coachClientInvite.updateMany({
-    where: { ...others, status: "ACCEPTED" },
+    where: { ...scope, status: "ACCEPTED" },
     data: { status: "ENDED" },
   });
   const requests = await tx.coachRequest.updateMany({
-    where: { ...others, status: "ACCEPTED" },
+    where: { ...scope, status: "ACCEPTED" },
     data: { status: "ENDED" },
   });
   // PAUSED too: a plan from a coach the client has left must never resume.
   const assignments = await tx.planAssignment.updateMany({
-    where: { ...others, status: { in: ["ACTIVE", "PAUSED"] } },
+    where: { ...scope, status: { in: ["ACTIVE", "PAUSED"] } },
     data: { status: "CANCELLED", endDate: now },
   });
   const subscriptions = await tx.subscription.updateMany({
-    where: { ...others, status: "ACTIVE" },
+    where: { ...scope, status: "ACTIVE" },
     data: { status: "CANCELLED" },
   });
 
   if (invites.count + requests.count + assignments.count + subscriptions.count > 0) {
     getLogger().info(
       {
-        clientId,
-        newCoachId,
+        clientId: scope.clientId,
+        coachId: scope.coachId,
         endedInvites: invites.count,
         endedRequests: requests.count,
         cancelledAssignments: assignments.count,
         cancelledSubscriptions: subscriptions.count,
       },
-      "endPreviousCoaching: previous coach's access and plans ended",
+      logMessage,
     );
   }
+  return invites.count + requests.count;
 }

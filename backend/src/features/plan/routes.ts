@@ -18,6 +18,7 @@ import {
   cancelAssignment,
   createAssignment,
   createPlan,
+  customizeAssignment,
   deletePlan,
   getPlan,
   listClientAssignments,
@@ -195,6 +196,21 @@ coachAssignmentRouter.post("/", async (request, response) => {
     response.status(201).json({
       message: "Plan assigned successfully.",
       assignment: await createAssignment(user.id, parsed.data),
+    });
+  } catch (error) {
+    respondToAssignmentError(response, request, error);
+  }
+});
+
+// Gives this client their own copy of the plan, to edit for them alone.
+coachAssignmentRouter.post("/:id/customize", async (request, response) => {
+  const user = requireRole(request, response, "COACH");
+  if (!user) return;
+
+  try {
+    response.json({
+      message: "Plan copied for this client.",
+      assignment: await customizeAssignment(user.id, request.params.id),
     });
   } catch (error) {
     respondToAssignmentError(response, request, error);

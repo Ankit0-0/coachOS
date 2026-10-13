@@ -29,6 +29,8 @@ function serializePlan(plan: Plan, activeAssignmentCount?: number) {
     cycleLengthDays: content.days.length,
     isDefault: plan.isDefault,
     createdById: plan.createdById,
+    /** Set on a copy tailored for one client; such a plan is edited from that client's page. */
+    customForClientId: plan.customForClientId,
     createdAt: plan.createdAt,
     updatedAt: plan.updatedAt,
     ...(activeAssignmentCount === undefined ? {} : { activeAssignmentCount }),
@@ -99,7 +101,10 @@ export async function createPlan(
 ) {
   await assertCoachApproved(coachId);
 
-  const count = await prisma.plan.count({ where: { createdById: coachId, type: input.type, isDefault: false } });
+  // Copies made for one client don't count: a coach with many clients would hit the limit at once.
+  const count = await prisma.plan.count({
+    where: { createdById: coachId, type: input.type, isDefault: false, customForClientId: null },
+  });
   if (count >= PLAN_LIMIT_PER_TYPE) {
     getLogger().debug({ coachId, type: input.type, count, limit: PLAN_LIMIT_PER_TYPE }, "createPlan: rejected — plan limit reached");
     throw new Error("PLAN_LIMIT_REACHED");
@@ -121,7 +126,11 @@ export async function createPlan(
 
 export async function listCoachPlans(coachId: string, type: PlanType) {
   const [own, defaults] = await Promise.all([
-    prisma.plan.findMany({ where: { createdById: coachId, type, isDefault: false }, orderBy: { createdAt: "desc" } }),
+    // A copy made for one client is that client's, so it stays out of the library.
+    prisma.plan.findMany({
+      where: { createdById: coachId, type, isDefault: false, customForClientId: null },
+      orderBy: { createdAt: "desc" },
+    }),
     prisma.plan.findMany({ where: { isDefault: true, type }, orderBy: { createdAt: "desc" } }),
   ]);
   const active = await countActiveAssignments(own.map((plan) => plan.id));
@@ -234,7 +243,8 @@ export async function createAssignment(
   }
 
   const plan = await findAccessiblePlan(coachId, input.planId);
-  if (!plan) {
+  // A copy tailored for one client is never handed to another.
+  if (!plan || (plan.customForClientId !== null && plan.customForClientId !== input.clientId)) {
     getLogger().debug({ coachId, planId: input.planId }, "createAssignment: rejected — plan not found or not accessible");
     throw new Error("PLAN_NOT_FOUND");
   }
@@ -294,6 +304,53 @@ export async function cancelAssignment(coachId: string, assignmentId: string) {
     include: { plan: true },
   });
   getLogger().info({ coachId, assignmentId, clientId: assignment.clientId }, "cancelAssignment: plan removed from client");
+  return serializeAssignment(updated);
+}
+
+/**
+ * "Customise for this client": gives an active assignment its own copy of the
+ * plan, so the coach can change it for this client without touching anyone
+ * else on the original. The assignment is repointed at the copy rather than
+ * replaced, and the copy keeps every item id, so the client's check-ins — and
+ * their place in the cycle — carry straight on. Already a copy: returned as is.
+ */
+export async function customizeAssignment(coachId: string, assignmentId: string) {
+  await assertCoachApproved(coachId);
+
+  const assignment = await prisma.planAssignment.findUnique({ where: { id: assignmentId }, include: { plan: true } });
+  if (!assignment) throw new Error("ASSIGNMENT_NOT_FOUND");
+
+  const invite = await findAcceptedInvite(coachId, assignment.clientId);
+  if (!invite || assignment.coachId !== coachId) {
+    getLogger().warn({ coachId, assignmentId }, "customizeAssignment: rejected — not this coach's client");
+    throw new Error("NOT_YOUR_CLIENT");
+  }
+  if (assignment.status !== "ACTIVE") {
+    getLogger().debug({ coachId, assignmentId, status: assignment.status }, "customizeAssignment: rejected — not active");
+    throw new Error("ASSIGNMENT_NOT_ACTIVE");
+  }
+  if (assignment.plan.customForClientId === assignment.clientId) return serializeAssignment(assignment);
+
+  const source = assignment.plan;
+  const updated = await prisma.$transaction(async (tx) => {
+    const copy = await tx.plan.create({
+      data: {
+        type: source.type,
+        // The client sees the title, so it stays the same; the coach's app marks it as theirs.
+        title: source.title,
+        description: source.description,
+        content: source.content as Prisma.InputJsonValue,
+        cycleLengthDays: source.cycleLengthDays,
+        createdById: coachId,
+        customForClientId: assignment.clientId,
+      },
+    });
+    return tx.planAssignment.update({ where: { id: assignmentId }, data: { planId: copy.id }, include: { plan: true } });
+  });
+  getLogger().info(
+    { coachId, assignmentId, clientId: assignment.clientId, sourcePlanId: source.id, copyPlanId: updated.planId },
+    "customizeAssignment: plan copied for this client",
+  );
   return serializeAssignment(updated);
 }
 
