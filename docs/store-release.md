@@ -104,7 +104,8 @@ by someone qualified for the countries you launch in.
   header for the dry run). A pending coach only sees the approval screen,
   which reviewers reject.
 - **Google Play:** Data safety form (account info, health and fitness,
-  photos, app activity, device IDs for push, crash logs; all encrypted in
+  photos, app activity, financial info — the coach's UPI ID and each fee's
+  paid status, no bank or card data — device IDs for push, crash logs; all encrypted in
   transit; deletable), the account-deletion URL (`/delete-account/`),
   Health apps declaration, content rating. A new personal developer account
   must run a closed test with at least 12 testers for 14 days before

@@ -13,6 +13,7 @@ import {
   todayUtc,
   type SubscriptionPeriod,
 } from "../subscription/service.js";
+import { paymentStatus } from "../subscription/payment.js";
 import { getSignedReadUrl } from "../upload/service.js";
 import { normalizeEmail } from "../../utils/email.js";
 import * as messages from "../notification/messages.js";
@@ -173,7 +174,7 @@ const QUIET_AFTER_DAYS = 3;
 /** How close a subscription's end has to be before the roster flags the renewal. */
 const RENEWAL_WITHIN_DAYS = 7;
 
-export type AttentionReason = "EXPIRED" | "QUIET" | "NO_PLAN" | "RENEWAL_DUE";
+export type AttentionReason = "PAYMENT_TO_CONFIRM" | "EXPIRED" | "PAYMENT_OVERDUE" | "QUIET" | "NO_PLAN" | "RENEWAL_DUE";
 
 type ClientActivity = {
   lastCheckInDate: Date | null;
@@ -221,12 +222,16 @@ function wholeDaysSince(value: Date, today: Date): number {
 
 function attentionFor(
   activity: ClientActivity,
-  subscription: { endDate: Date } | null,
+  subscription: Parameters<typeof paymentStatus>[0] & { endDate: Date } | null,
   subscriptionStatus: string | null,
 ): AttentionReason[] {
   const today = todayUtc();
   const reasons: AttentionReason[] = [];
+  const payment = subscription ? paymentStatus(subscription, today) : "NONE";
+  // The coach's own to-do comes first: the client is waiting on them.
+  if (payment === "REPORTED") reasons.push("PAYMENT_TO_CONFIRM");
   if (subscriptionStatus === "EXPIRED") reasons.push("EXPIRED");
+  if (payment === "OVERDUE") reasons.push("PAYMENT_OVERDUE");
   if (activity.activeSince) {
     // Counted from the later of their last check-in and the plan's start, so a
     // plan assigned yesterday isn't already "quiet".

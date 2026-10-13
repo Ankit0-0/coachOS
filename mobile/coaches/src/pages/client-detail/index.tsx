@@ -569,19 +569,8 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
     </Section>
   );
 
-  const subscriptionCard = <SubscriptionSection ref={subscriptionSection} clientId={clientId} />;
+  const subscriptionCard = <SubscriptionSection ref={subscriptionSection} clientId={clientId} clientName={name} />;
   const strengthCard = <StrengthSection ref={strengthSection} clientId={clientId} />;
-
-  const paymentSection = (
-    <Section title="Payment">
-      <Card style={styles.textCard}>
-        <ThemedText type="heading">Billing isn&apos;t connected yet</ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          Invoices and receipts will appear here. Subscription periods are tracked above.
-        </ThemedText>
-      </Card>
-    </Section>
-  );
 
   const removeSection = (
     <Section title="Coaching">
@@ -651,7 +640,6 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
                 {plansSection}
                 {notesSection}
                 {subscriptionCard}
-                {paymentSection}
                 {removeSection}
               </View>
               <View style={styles.column}>
@@ -669,7 +657,6 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
               {photosSection}
               {notesSection}
               {subscriptionCard}
-              {paymentSection}
               {removeSection}
             </>
           )}

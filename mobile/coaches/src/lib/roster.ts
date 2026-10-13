@@ -5,7 +5,9 @@ import { daysBetween } from '@/lib/dates';
 
 /** How the roster names each reason a client may need the coach. */
 const ATTENTION_CHIPS: Record<AttentionReason, { label: string; tone: ChipTone }> = {
+  PAYMENT_TO_CONFIRM: { label: 'Confirm payment', tone: 'partial' },
   EXPIRED: { label: 'Expired', tone: 'warning' },
+  PAYMENT_OVERDUE: { label: 'Payment overdue', tone: 'danger' },
   QUIET: { label: 'Gone quiet', tone: 'danger' },
   NO_PLAN: { label: 'No plan', tone: 'partial' },
   RENEWAL_DUE: { label: 'Renewal due', tone: 'warning' },
