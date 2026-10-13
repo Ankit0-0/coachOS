@@ -2,6 +2,19 @@ import { z } from "zod";
 
 import { MAX_WEIGHT_KG } from "../../utils/weight.js";
 
+/**
+ * A UPI ID ("name@bank"), stored lowercase: UPI IDs are case-insensitive.
+ * Blank or null removes it.
+ */
+export const upiIdSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .max(100)
+  .refine((value) => value === "" || /^[a-z0-9._-]{2,256}@[a-z][a-z0-9.-]{1,64}$/.test(value), "not a UPI ID")
+  .transform((value) => (value === "" ? null : value))
+  .nullable();
+
 /** An S3 object key from POST /uploads/presign. Null removes the avatar. */
 const avatarKeySchema = z.string().min(1).max(512).nullable();
 
@@ -15,6 +28,8 @@ export const updateCoachProfileSchema = z
     avatarKey: avatarKeySchema.optional(),
     /** Opt in to (or out of) being browsable by clients in Explore. */
     listedInExplore: z.boolean().optional(),
+    /** Where clients pay this coach; see upiIdSchema. */
+    upiId: upiIdSchema.optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: "At least one field must be provided",
