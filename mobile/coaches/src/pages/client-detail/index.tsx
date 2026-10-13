@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { ClientPhotos } from '@/components/client-detail/ClientPhotos';
 import { PlanPickerModal } from '@/components/client-detail/PlanPickerModal';
 import { MonthNavigator } from '@/components/client-detail/MonthNavigator';
+import { StrengthSection } from '@/components/client-detail/StrengthSection';
 import { SubscriptionSection } from '@/components/client-detail/SubscriptionSection';
 import { DayDetailModal, type DayDetailLoader } from '@/components/client-detail/DayDetailModal';
 import { MonthlyActivityCalendar, type DailyActivity } from '@/components/client-detail/MonthlyActivityCalendar';
@@ -172,9 +173,13 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
   );
 
   const subscriptionSection = useRef<RefreshHandle>(null);
-  // Profile, plans, weights, check-ins and the chart, plus the subscription section's own load.
-  const { isRefreshing, refresh } = useRefresh(loadAll, loadChartWeights, () =>
-    subscriptionSection.current?.reload(),
+  const strengthSection = useRef<RefreshHandle>(null);
+  // Profile, plans, weights, check-ins and the chart, plus the sections that load their own data.
+  const { isRefreshing, refresh } = useRefresh(
+    loadAll,
+    loadChartWeights,
+    () => subscriptionSection.current?.reload(),
+    () => strengthSection.current?.reload(),
   );
   const chartDates = weightRangeDates(chartRange);
   const latestChartEntry = chartWeights.length > 0 ? chartWeights[chartWeights.length - 1] : undefined;
@@ -564,18 +569,8 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
     </Section>
   );
 
-  const subscriptionCard = <SubscriptionSection ref={subscriptionSection} clientId={clientId} />;
-
-  const paymentSection = (
-    <Section title="Payment">
-      <Card style={styles.textCard}>
-        <ThemedText type="heading">Billing isn&apos;t connected yet</ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          Invoices and receipts will appear here. Subscription periods are tracked above.
-        </ThemedText>
-      </Card>
-    </Section>
-  );
+  const subscriptionCard = <SubscriptionSection ref={subscriptionSection} clientId={clientId} clientName={name} />;
+  const strengthCard = <StrengthSection ref={strengthSection} clientId={clientId} />;
 
   const removeSection = (
     <Section title="Coaching">
@@ -645,11 +640,11 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
                 {plansSection}
                 {notesSection}
                 {subscriptionCard}
-                {paymentSection}
                 {removeSection}
               </View>
               <View style={styles.column}>
                 {progressSection}
+                {strengthCard}
                 {photosSection}
               </View>
             </View>
@@ -658,10 +653,10 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
               {profileSection}
               {plansSection}
               {progressSection}
+              {strengthCard}
               {photosSection}
               {notesSection}
               {subscriptionCard}
-              {paymentSection}
               {removeSection}
             </>
           )}

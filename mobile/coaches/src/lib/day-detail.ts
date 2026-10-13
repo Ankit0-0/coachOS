@@ -18,6 +18,8 @@ type CheckInLike = {
   notes: string | null;
   /** { [itemId]: comment } from the client; older rows may not carry it. */
   itemNotes?: Record<string, string> | null;
+  /** { [setId]: { weightKg, reps } } as lifted; older rows may not carry it. */
+  setLogs?: Record<string, { weightKg: number | null; reps: number | null }> | null;
   photoUrls: Record<string, string> | null;
 };
 
@@ -31,6 +33,8 @@ export type DayItem = {
   photoUrl: string | null;
   /** What the client wrote about it: "Set 2: left knee felt off" for a set, the text alone for a meal. */
   comments: string[];
+  /** What was lifted, set by set: "Set 1: 62.5 kg × 6". Empty for a meal or when nothing was logged. */
+  lifted: string[];
 };
 
 export type DaySection = {
@@ -68,11 +72,20 @@ function cycleLabel(entry: ScheduleLike): string {
   return [position, entry.label].filter(Boolean).join(' · ') || 'Every day';
 }
 
+/** "62.5 kg × 6", "× 12" for bodyweight, "40 kg" without reps. */
+function liftText(log: { weightKg: number | null; reps: number | null } | undefined): string {
+  if (!log) return '';
+  if (log.weightKg !== null && log.reps !== null) return `${log.weightKg} kg × ${log.reps}`;
+  if (log.weightKg !== null) return `${log.weightKg} kg`;
+  return log.reps !== null ? `× ${log.reps}` : '';
+}
+
 function itemsOf(
   entry: ScheduleLike,
   ticked: Set<string>,
   photoUrls: Record<string, string>,
   itemNotes: Record<string, string>,
+  setLogs: NonNullable<CheckInLike['setLogs']>,
 ): DayItem[] {
   const content = record(entry.content);
   if (entry.type === 'WORKOUT') {
@@ -93,6 +106,10 @@ function itemsOf(
           const note = itemNotes[setId]?.trim();
           return note ? [`Set ${index + 1}: ${note}`] : [];
         }),
+        lifted: setIds.flatMap((setId, index) => {
+          const lift = liftText(setLogs[setId]);
+          return lift ? [`Set ${index + 1}: ${lift}`] : [];
+        }),
       };
     });
   }
@@ -106,6 +123,7 @@ function itemsOf(
       total: 1,
       photoUrl: photoUrls[id] ?? null,
       comments: itemNotes[id]?.trim() ? [itemNotes[id].trim()] : [],
+      lifted: [],
     };
   });
 }
@@ -125,7 +143,9 @@ export function buildDaySections(entries: readonly ScheduleLike[], checkIns: rea
         planTitle: entry.title,
         cycleLabel: cycleLabel(entry),
         isRestDay: entry.isRestDay,
-        items: entry.isRestDay ? [] : itemsOf(entry, ticked, checkIn?.photoUrls ?? {}, checkIn?.itemNotes ?? {}),
+        items: entry.isRestDay
+          ? []
+          : itemsOf(entry, ticked, checkIn?.photoUrls ?? {}, checkIn?.itemNotes ?? {}, checkIn?.setLogs ?? {}),
         completed,
         total,
         percent: total > 0 ? Math.round((completed / total) * 100) : 0,

@@ -5,6 +5,7 @@ import * as messages from "../notification/messages.js";
 import { nameOf, notifyInBackground } from "../notification/service.js";
 import { getSignedReadUrl } from "../upload/service.js";
 import { getClientSchedule } from "../plan/schedule.js";
+import { buildExerciseHistory } from "../tracking/exercise-history.js";
 import { parseDate, serializeCheckIn, serializeWeight } from "../tracking/service.js";
 
 type DateString = string;
@@ -119,4 +120,14 @@ export async function endClientRelationship(coachId: string, clientId: string): 
   if (ended === 0) throw new Error("NOT_YOUR_CLIENT");
   getLogger().info({ coachId, clientId }, "endClientRelationship: client removed from roster");
   notifyInBackground(async () => ({ userIds: [clientId], notification: messages.coachEndedCoaching(await nameOf(coachId)) }));
+}
+
+/** What the client lifted, per exercise, across every plan they've had — the coach's strength view. */
+export async function getClientExerciseProgress(coachId: string, clientId: string, range: { from: DateString; to: DateString }) {
+  await assertAccess(coachId, clientId, "getClientExerciseProgress");
+  const assignments = await prisma.planAssignment.findMany({ where: { clientId }, select: { id: true } });
+  return buildExerciseHistory(
+    assignments.map((assignment) => assignment.id),
+    range,
+  );
 }

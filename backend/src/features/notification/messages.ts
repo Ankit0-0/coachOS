@@ -31,6 +31,39 @@ export function clientCommented(clientName: string, clientId: string, type: "WOR
   return { title: "New comment", body: `${firstName(clientName)} left a comment on their ${kind}.`, url: `/clients/${clientId}` };
 }
 
+/** Coach app: a client says they've paid by UPI and wants it confirmed. */
+export function paymentReported(clientName: string, clientId: string, amount: string): Notification {
+  return {
+    title: "Payment to confirm",
+    body: `${firstName(clientName)} says they paid ${amount}. Check your UPI app and mark it paid.`,
+    url: `/clients/${clientId}`,
+  };
+}
+
+/** Client app: their coach confirmed the payment arrived. */
+export function paymentConfirmed(coachName: string, amount: string): Notification {
+  return { title: "Payment received", body: `${firstName(coachName)} confirmed your payment of ${amount}.`, url: "/my-coach" };
+}
+
+/** Client app: a period's fee is due today. */
+export function paymentDue(coachName: string, amount: string): Notification {
+  return { title: "Payment due", body: `${amount} is due to ${firstName(coachName)} for your coaching.`, url: "/my-coach" };
+}
+
+/** Client app: a period's fee is still unpaid a few days in. */
+export function paymentOverdueForClient(coachName: string, amount: string): Notification {
+  return { title: "Payment overdue", body: `Your ${amount} payment to ${firstName(coachName)} is overdue.`, url: "/my-coach" };
+}
+
+/** Coach app: a client's fee is still unpaid a few days in. */
+export function paymentOverdueForCoach(clientName: string, clientId: string, amount: string): Notification {
+  return {
+    title: "Payment overdue",
+    body: `${firstName(clientName)} hasn't paid ${amount} yet. A reminder went to them too.`,
+    url: `/clients/${clientId}`,
+  };
+}
+
 /** Client app: a coach invited them. */
 export function inviteReceived(coachName: string): Notification {
   return { title: "New coach invite", body: `${firstName(coachName)} invited you to train with them on CoachFolio.`, url: "/" };

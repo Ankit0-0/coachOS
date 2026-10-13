@@ -18,6 +18,7 @@ import { useRefresh } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { coachInviteApi, coachProfileApi, planApi, type CoachProfile } from '@/lib/api';
 import { pickAndUploadImage } from '@/lib/image-upload';
+import { isValidUpiId } from '@/lib/payment';
 import { formatPhone, INVALID_PHONE_MESSAGE, parsePhone, phoneFieldHint, phoneForEditing } from '@/lib/phone';
 import { AppearanceSection, TextField } from '@coachos/theme';
 
@@ -26,6 +27,7 @@ type Stats = { clients: number; workoutPlans: number; dietPlans: number };
 type Draft = {
   name: string;
   phone: string;
+  upiId: string;
   yearsExperience: string;
   specialties: string;
   bio: string;
@@ -45,6 +47,7 @@ function draftFrom(profile: CoachProfile): Draft {
   return {
     name: profile.name,
     phone: phoneForEditing(profile.phone),
+    upiId: profile.upiId ?? '',
     yearsExperience: profile.yearsExperience === null ? '' : String(profile.yearsExperience),
     specialties: profile.specialties.join(', '),
     bio: profile.bio ?? '',
@@ -172,12 +175,19 @@ export function ProfileScreen() {
       return;
     }
 
+    const upiId = draft.upiId.trim();
+    if (upiId !== '' && !isValidUpiId(upiId)) {
+      setFormError('That doesn’t look like a UPI ID. It’s usually your phone number or name, then @ and your bank, like aman@okaxis.');
+      return;
+    }
+
     try {
       setIsSaving(true);
       setFormError(null);
       const updated = await coachProfileApi.update({
         name: draft.name.trim(),
         phone: phone.status === 'valid' ? phone.digits : '',
+        upiId,
         bio: draft.bio.trim(),
         yearsExperience: parsedYears,
         specialties: draft.specialties
@@ -310,6 +320,25 @@ export function ProfileScreen() {
 
             <View style={styles.field}>
               <ThemedText type="label" themeColor="textSecondary">
+                UPI ID
+              </ThemedText>
+              <TextField
+                value={draft.upiId}
+                onChangeText={(value) => setDraft({ ...draft, upiId: value })}
+                placeholder="yourname@okaxis"
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="email-address"
+                editable={!isSaving}
+              />
+              <ThemedText type="meta">
+                Clients pay you here with one tap from their UPI app. The money goes straight to you; CoachFolio never
+                holds it.
+              </ThemedText>
+            </View>
+
+            <View style={styles.field}>
+              <ThemedText type="label" themeColor="textSecondary">
                 Years of experience
               </ThemedText>
               <TextField
@@ -371,6 +400,7 @@ export function ProfileScreen() {
             <FieldRow label="Name" value={profile.name} />
             <FieldRow label="Email" value={profile.email} />
             <FieldRow label="Phone" value={formatPhone(profile.phone)} />
+            <FieldRow label="UPI ID" value={profile.upiId} />
             <FieldRow
               label="Experience"
               value={profile.yearsExperience === null ? null : `${profile.yearsExperience} years`}

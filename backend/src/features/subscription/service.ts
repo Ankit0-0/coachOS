@@ -2,7 +2,10 @@ import type { Prisma, Subscription, SubscriptionStatus } from "@prisma/client";
 
 import { getLogger } from "../../config/logger.js";
 import { prisma } from "../../config/prisma.config.js";
-import { findAcceptedInvite } from "../../utils/coach-access.js";
+import { findAcceptedInvite, findCurrentCoach } from "../../utils/coach-access.js";
+import * as messages from "../notification/messages.js";
+import { nameOf, notifyInBackground } from "../notification/service.js";
+import { formatInr, paymentStatus, receiptNumber } from "./payment.js";
 
 /** Parses a YYYY-MM-DD string into the UTC midnight the @db.Date column stores. */
 export function parseDateOnly(value: string): Date {
@@ -47,6 +50,14 @@ function serialize(subscription: Subscription) {
     storedStatus: subscription.status,
     daysRemaining: status === "ACTIVE" ? daysRemaining(subscription.endDate) : 0,
     notes: subscription.notes,
+    /** The fee in whole rupees; null when none is set. */
+    amountInr: subscription.amountInr,
+    paymentStatus: paymentStatus(subscription, todayUtc()),
+    paidAt: subscription.paidAt,
+    clientReportedPaidAt: subscription.clientReportedPaidAt,
+    paymentReference: subscription.paymentReference,
+    /** Only once paid: there is nothing to give a receipt for before. */
+    receiptNumber: subscription.paidAt ? receiptNumber(subscription.id) : null,
     createdAt: subscription.createdAt,
     updatedAt: subscription.updatedAt,
   };
@@ -78,7 +89,13 @@ export async function listSubscriptions(coachId: string, clientId: string) {
 export async function createSubscription(
   coachId: string,
   clientId: string,
-  input: { startDate: string; endDate: string; notes?: string | undefined },
+  input: {
+    startDate: string;
+    endDate: string;
+    notes?: string | undefined;
+    amountInr?: number | null | undefined;
+    alreadyPaid?: boolean | undefined;
+  },
 ) {
   await assertAccess(coachId, clientId, "createSubscription");
 
@@ -105,6 +122,8 @@ export async function createSubscription(
         endDate,
         status: "ACTIVE",
         notes: input.notes ?? null,
+        amountInr: input.amountInr ?? null,
+        paidAt: input.alreadyPaid && input.amountInr ? new Date() : null,
       },
     }),
   ]);
@@ -122,6 +141,8 @@ export async function updateSubscription(
     endDate?: string | undefined;
     status?: SubscriptionStatus | undefined;
     notes?: string | undefined;
+    amountInr?: number | null | undefined;
+    alreadyPaid?: boolean | undefined;
   },
 ) {
   await assertAccess(coachId, clientId, "updateSubscription");
@@ -148,6 +169,8 @@ export async function updateSubscription(
       endDate,
       ...(input.status === undefined ? {} : { status: input.status }),
       ...(input.notes === undefined ? {} : { notes: input.notes }),
+      ...(input.amountInr === undefined ? {} : { amountInr: input.amountInr }),
+      ...(input.alreadyPaid && !existing.paidAt ? { paidAt: new Date() } : {}),
       // A new end date is a new ending to be reminded about.
       ...(endDate.getTime() === existing.endDate.getTime() ? {} : { endingReminderSentAt: null }),
     },
@@ -162,17 +185,23 @@ export async function updateSubscription(
  * a normal state rather than an error.
  */
 export async function getClientSubscription(clientId: string) {
+  // Only the coach they're with now: a past coach's periods are over, and
+  // there is nothing left to pay them through the app.
+  const currentCoach = await findCurrentCoach(clientId);
+  if (!currentCoach) return null;
   const rows = await prisma.subscription.findMany({
-    where: { clientId },
+    where: { clientId, coachId: currentCoach.id },
     orderBy: { startDate: "desc" },
-    include: { coach: { select: { id: true, name: true, email: true } } },
+    include: { coach: { select: { id: true, name: true, email: true, coachProfile: { select: { upiId: true } } } } },
   });
   if (rows.length === 0) return null;
 
   const current = rows.find((row) => effectiveStatus(row) === "ACTIVE") ?? rows[0]!;
+  const { coachProfile, ...coach } = current.coach;
   return {
     ...serialize(current),
-    coach: current.coach,
+    // The UPI ID rides along here, behind the current-coach check above, like the coach's phone.
+    coach: { ...coach, upiId: coachProfile?.upiId ?? null },
   };
 }
 
@@ -219,4 +248,74 @@ export async function createFirstSubscription(
     { coachId, clientId, subscriptionId: created.id, startDate: period.startDate, endDate: period.endDate },
     "createFirstSubscription: first period created on acceptance",
   );
+}
+
+/**
+ * The coach confirming a period's fee arrived, or taking that back. Undoing
+ * also clears the client's "I've paid", so they can say so again once they
+ * have actually paid.
+ */
+export async function setPayment(coachId: string, clientId: string, subscriptionId: string, paid: boolean) {
+  await assertAccess(coachId, clientId, "setPayment");
+
+  const existing = await prisma.subscription.findUnique({ where: { id: subscriptionId } });
+  if (!existing || existing.coachId !== coachId || existing.clientId !== clientId) {
+    getLogger().debug({ coachId, clientId, subscriptionId }, "setPayment: rejected — subscription not found for this pair");
+    throw new Error("SUBSCRIPTION_NOT_FOUND");
+  }
+  if (existing.amountInr === null) {
+    getLogger().debug({ subscriptionId }, "setPayment: rejected — no fee set on this period");
+    throw new Error("NO_FEE");
+  }
+
+  const updated = await prisma.subscription.update({
+    where: { id: subscriptionId },
+    data: paid
+      ? { paidAt: existing.paidAt ?? new Date() }
+      : { paidAt: null, clientReportedPaidAt: null, paymentReference: null },
+  });
+  getLogger().info({ subscriptionId, paid }, "setPayment: payment status set by coach");
+  if (paid && !existing.paidAt) {
+    const amount = formatInr(existing.amountInr);
+    notifyInBackground(async () => ({
+      userIds: [clientId],
+      notification: messages.paymentConfirmed(await nameOf(coachId), amount),
+    }));
+  }
+  return serialize(updated);
+}
+
+/**
+ * The client saying they've paid their current coach for a period. The coach
+ * still has to confirm: CoachFolio can't see the UPI transfer itself.
+ */
+export async function reportPayment(clientId: string, subscriptionId: string, reference: string | undefined) {
+  const existing = await prisma.subscription.findUnique({ where: { id: subscriptionId } });
+  if (!existing || existing.clientId !== clientId) {
+    getLogger().debug({ clientId, subscriptionId }, "reportPayment: rejected — not this client's subscription");
+    throw new Error("SUBSCRIPTION_NOT_FOUND");
+  }
+  if (!(await findAcceptedInvite(existing.coachId, clientId))) {
+    getLogger().debug({ clientId, subscriptionId }, "reportPayment: rejected — no longer with this coach");
+    throw new Error("SUBSCRIPTION_NOT_FOUND");
+  }
+  const status = paymentStatus(existing, todayUtc());
+  if (status === "NONE" || status === "PAID") {
+    getLogger().debug({ subscriptionId, status }, "reportPayment: rejected — nothing to pay");
+    throw new Error("NOTHING_TO_PAY");
+  }
+
+  const updated = await prisma.subscription.update({
+    where: { id: subscriptionId },
+    data: { clientReportedPaidAt: existing.clientReportedPaidAt ?? new Date(), paymentReference: reference || null },
+  });
+  getLogger().info({ subscriptionId }, "reportPayment: client says they paid");
+  if (!existing.clientReportedPaidAt) {
+    const amount = formatInr(existing.amountInr ?? 0);
+    notifyInBackground(async () => ({
+      userIds: [existing.coachId],
+      notification: messages.paymentReported(await nameOf(clientId), clientId, amount),
+    }));
+  }
+  return serialize(updated);
 }

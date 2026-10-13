@@ -21,11 +21,17 @@ export function isValidFirstPeriod(value: { subscriptionStartDate?: string | und
   return start !== undefined && end !== undefined && end > start;
 }
 
+/** A period's fee in whole rupees; null removes it. */
+const amountInrSchema = z.number().int().min(1).max(10_000_000).nullable();
+
 export const createSubscriptionSchema = z
   .object({
     startDate: dateString,
     endDate: dateString,
     notes: z.string().max(2000).optional(),
+    amountInr: amountInrSchema.optional(),
+    /** Recording a fee that was already paid (cash, or before CoachFolio), so no reminder goes out. */
+    alreadyPaid: z.boolean().optional(),
   })
   // Compared as strings, which is safe because ISO dates sort lexicographically.
   .refine((value) => value.endDate > value.startDate, {
@@ -39,6 +45,8 @@ export const updateSubscriptionSchema = z
     endDate: dateString.optional(),
     status: z.enum(["ACTIVE", "EXPIRED", "CANCELLED"]).optional(),
     notes: z.string().max(2000).optional(),
+    amountInr: amountInrSchema.optional(),
+    alreadyPaid: z.boolean().optional(),
   })
   .refine((value) => Object.values(value).some((field) => field !== undefined), {
     message: "at least one field must be provided",
@@ -49,3 +57,11 @@ export const updateSubscriptionSchema = z
     message: "endDate must be after startDate",
     path: ["endDate"],
   });
+
+/** The coach confirming the money arrived (paid: true), or undoing that (paid: false). */
+export const setPaymentSchema = z.object({ paid: z.boolean() });
+
+/** The client saying they paid, with the UPI reference if they have it. */
+export const reportPaymentSchema = z.object({
+  reference: z.string().trim().max(64).optional(),
+});
