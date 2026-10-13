@@ -9,6 +9,7 @@ import { periodFromDates, periodFromMonths } from "../subscription/service.js";
 import { createInviteSchema, listInvitesQuerySchema } from "./schemas.js";
 import {
   acceptInvite,
+  cancelInvite,
   createInvite,
   declineInvite,
   listClientInvites,
@@ -95,6 +96,20 @@ coachInviteRouter.get("/", async (request, response) => {
   } catch (error) {
     getLogger().error({ err: error, url: request.originalUrl }, "invite: unexpected error");
     sendError(response, 500);
+  }
+});
+
+coachInviteRouter.post("/:id/cancel", async (request, response) => {
+  const user = requireRole(request, response, "COACH");
+  if (!user) return;
+
+  try {
+    response.json({
+      message: "Invite cancelled successfully.",
+      invite: await cancelInvite(request.params.id, user.id),
+    });
+  } catch (error) {
+    respondToInviteError(response, request, error);
   }
 });
 

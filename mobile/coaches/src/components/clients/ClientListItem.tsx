@@ -6,6 +6,9 @@ import { Avatar } from '@/components/ui/avatar';
 import { Row } from '@/components/ui/card';
 import { Chip } from '@/components/ui/pill';
 import { Spacing } from '@/constants/theme';
+import type { AttentionReason } from '@/lib/api';
+import { formatDateKey } from '@/lib/dates';
+import { attentionChip, lastCheckInLabel } from '@/lib/roster';
 
 type ClientListItemProps = {
   clientId: string;
@@ -18,11 +21,27 @@ type ClientListItemProps = {
    * nothing. A marker appears only once a period has actually run out.
    */
   subscriptionStatus?: 'ACTIVE' | 'EXPIRED' | 'CANCELLED' | null;
+  /** The last day they ticked anything off; null if never. */
+  lastCheckInDate?: string | null;
+  /** Why they may need the coach, most pressing first; the row shows the first. */
+  attention?: readonly AttentionReason[];
 };
 
-/** One client as a row in the roster's inset panel: avatar, name, chevron. */
-export function ClientListItem({ clientId, name, email, avatarUrl = null, subscriptionStatus = null }: ClientListItemProps) {
+/** One client as a row in the roster's inset panel: avatar, name, last check-in, and what needs attention. */
+export function ClientListItem({
+  clientId,
+  name,
+  email,
+  avatarUrl = null,
+  subscriptionStatus = null,
+  lastCheckInDate = null,
+  attention = [],
+}: ClientListItemProps) {
   const router = useRouter();
+  // Expired is one of the attention reasons; a cancelled subscription isn't, but is still worth a marker.
+  const chip =
+    attentionChip(attention) ??
+    (subscriptionStatus === 'CANCELLED' ? { label: 'Cancelled', tone: 'warning' as const } : null);
 
   return (
     <Row
@@ -34,12 +53,10 @@ export function ClientListItem({ clientId, name, email, avatarUrl = null, subscr
           {name}
         </ThemedText>
         <ThemedText type="meta" numberOfLines={1}>
-          {email}
+          {lastCheckInLabel(lastCheckInDate, formatDateKey(new Date()))}
         </ThemedText>
       </View>
-      {subscriptionStatus === 'EXPIRED' || subscriptionStatus === 'CANCELLED' ? (
-        <Chip label={subscriptionStatus === 'CANCELLED' ? 'Cancelled' : 'Expired'} tone="warning" />
-      ) : null}
+      {chip ? <Chip label={chip.label} tone={chip.tone} /> : null}
     </Row>
   );
 }

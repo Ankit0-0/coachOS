@@ -5,6 +5,8 @@ import { prisma } from "../../config/prisma.config.js";
 import { deleteObject, getSignedReadUrl, getSignedReadUrlMap, isOwnedKey } from "../upload/service.js";
 import { normalizePlanContent } from "../plan/content.js";
 import { cycleStartDate } from "../plan/schedule.js";
+import * as messages from "../notification/messages.js";
+import { nameOf, notifyInBackground } from "../notification/service.js";
 
 type DateString = string;
 
@@ -156,6 +158,10 @@ export async function upsertCheckIn(
   }
 
   const date = parseDate(input.date);
+  const before = await prisma.checkIn.findUnique({
+    where: { assignmentId_date: { assignmentId: input.assignmentId, date } },
+    select: { completedItemIds: true, itemNotes: true },
+  });
   const { value: photoKeys, orphaned } = await mergePhotoKeys(input.assignmentId, date, input.photoKeys);
   const itemNotes = await mergeItemNotes(input.assignmentId, date, input.itemNotes);
 
@@ -177,7 +183,44 @@ export async function upsertCheckIn(
     },
   });
   await deleteOrphans(orphaned);
+  if (assignment.status === "ACTIVE") tellCoach(assignment, date, before, checkIn);
   return serializeCheckIn(checkIn);
+}
+
+/** Older days a client fills in later are their own bookkeeping, not news for the coach. */
+const NOTIFY_WITHIN_DAYS = 2;
+
+/**
+ * At most one push per save, and only for what a coach would act on: the
+ * first time a day gets logged, or a new comment addressed to them. Ticking
+ * more sets later in the day, or editing a comment, stays quiet — clients
+ * save often, and a coach has many clients.
+ */
+function tellCoach(
+  assignment: { coachId: string; clientId: string; planId: string },
+  date: Date,
+  before: { completedItemIds: string[]; itemNotes: unknown } | null,
+  after: CheckIn,
+): void {
+  const ageDays = (Date.now() - date.getTime()) / 86_400_000;
+  if (ageDays > NOTIFY_WITHIN_DAYS) return;
+
+  const previousNotes = readItemNotes(before?.itemNotes) ?? {};
+  const newComment = Object.keys(readItemNotes(after.itemNotes) ?? {}).some((itemId) => !(itemId in previousNotes));
+  const firstLog = (before?.completedItemIds.length ?? 0) === 0 && after.completedItemIds.length > 0;
+  if (!newComment && !firstLog) return;
+
+  notifyInBackground(async () => {
+    const plan = await prisma.plan.findUnique({ where: { id: assignment.planId }, select: { type: true } });
+    if (!plan) return null;
+    const name = await nameOf(assignment.clientId);
+    return {
+      userIds: [assignment.coachId],
+      notification: newComment
+        ? messages.clientCommented(name, assignment.clientId, plan.type)
+        : messages.clientLogged(name, assignment.clientId, plan.type),
+    };
+  });
 }
 
 export async function listCheckIns(

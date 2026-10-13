@@ -6,7 +6,13 @@ import { requireRole } from "../../middleware/role.js";
 import { sendError } from "../../utils/http-error.js";
 import { scheduleQuerySchema } from "../plan/schemas.js";
 import { checkInsQuerySchema, weightQuerySchema } from "./schemas.js";
-import { getClientProfile, getClientScheduleForCoach, listClientCheckIns, listClientWeights } from "./service.js";
+import {
+  endClientRelationship,
+  getClientProfile,
+  getClientScheduleForCoach,
+  listClientCheckIns,
+  listClientWeights,
+} from "./service.js";
 
 export const coachClientRouter: ReturnType<typeof Router> = Router();
 
@@ -96,6 +102,19 @@ coachClientRouter.get("/:clientId/profile", async (request, response) => {
       message: "Client profile retrieved successfully.",
       profile: await getClientProfile(user.id, request.params.clientId),
     });
+  } catch (error) {
+    respondToClientError(response, request, error);
+  }
+});
+
+/** Removes the client from this coach's roster; their account and history stay. */
+coachClientRouter.post("/:clientId/end", async (request, response) => {
+  const user = requireRole(request, response, "COACH");
+  if (!user) return;
+
+  try {
+    await endClientRelationship(user.id, request.params.clientId);
+    response.json({ message: "Client removed." });
   } catch (error) {
     respondToClientError(response, request, error);
   }

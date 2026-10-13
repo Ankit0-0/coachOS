@@ -13,6 +13,7 @@ import { Radii, Spacing } from '@/constants/theme';
 import type { RefreshHandle } from '@/hooks/use-refresh';
 import { useDesktopLayout, useTheme } from '@/hooks/use-theme';
 import { coachInviteApi, type CoachInvite } from '@/lib/api';
+import { attentionCount, sortByAttention } from '@/lib/roster';
 import { defaultPeriod, type PeriodDraft, periodError, periodInput } from '@/lib/subscription-period';
 import { TextField } from '@coachos/theme';
 
@@ -43,6 +44,8 @@ export function ClientsSection({ ref, aside }: ClientsSectionProps) {
   // Inline rather than Alert, which is a no-op on React Native Web — routed
   // through Alert, none of these messages appeared in a browser at all.
   const [formError, setFormError] = useState<string | null>(null);
+  /** The pending invite being withdrawn, so its button can show progress. */
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   const loadInvites = useCallback(async () => {
     try {
@@ -50,7 +53,7 @@ export function ClientsSection({ ref, aside }: ClientsSectionProps) {
         coachInviteApi.list('ACCEPTED'),
         coachInviteApi.list('PENDING'),
       ]);
-      setClients(accepted);
+      setClients(sortByAttention(accepted));
       setPending(pendingInvites);
     } catch {
       // As before: keep the roster on screen.
@@ -91,15 +94,39 @@ export function ClientsSection({ ref, aside }: ClientsSectionProps) {
     }
   };
 
+  const handleCancelInvite = async (invite: CoachInvite) => {
+    setCancellingId(invite.id);
+    setFormError(null);
+    try {
+      await coachInviteApi.cancel(invite.id);
+      setPending((current) => current.filter((entry) => entry.id !== invite.id));
+    } catch (error) {
+      setFormError(errorMessage(error));
+      // Accepted or declined meanwhile: the reload shows where it stands.
+      void loadInvites();
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
+  // Clients who need the coach come first, so the preview shows them.
   const preview = clients.slice(0, PREVIEW_COUNT);
   const hasMore = clients.length > PREVIEW_COUNT;
+  const needAttention = attentionCount(clients);
 
   return (
     <View style={[styles.container, isDesktop && styles.columns]}>
       <View style={isDesktop && styles.column}>
         <Section
           title="Roster"
-          trailing={clients.length > 0 ? <Chip label={`${clients.length}`} tone="terracotta" /> : undefined}
+          trailing={
+            clients.length > 0 ? (
+              <View style={styles.trailing}>
+                {needAttention > 0 ? <Chip label={`${needAttention} need attention`} tone="warning" /> : null}
+                <Chip label={`${clients.length}`} tone="terracotta" />
+              </View>
+            ) : undefined
+          }
           {...(hasMore ? { actionLabel: 'View all', onActionPress: () => router.push('/clients') } : {})}>
           {isLoading ? (
             <ActivityIndicator color={theme.textSecondary} />
@@ -121,6 +148,8 @@ export function ClientsSection({ ref, aside }: ClientsSectionProps) {
                     email={invite.client?.email ?? invite.clientEmail}
                     avatarUrl={invite.client?.avatarUrl}
                     subscriptionStatus={invite.subscriptionStatus}
+                    lastCheckInDate={invite.lastCheckInDate}
+                    attention={invite.attention}
                   />
                 ))}
               </InsetPanel>
@@ -166,6 +195,15 @@ export function ClientsSection({ ref, aside }: ClientsSectionProps) {
                       {invite.clientEmail}
                     </ThemedText>
                     <Chip label="Awaiting reply" tone="warning" />
+                    <Button
+                      label="Cancel"
+                      variant="ghost"
+                      size="sm"
+                      accessibilityLabel={`Cancel the invite to ${invite.clientEmail}`}
+                      loading={cancellingId === invite.id}
+                      disabled={cancellingId !== null}
+                      onPress={() => void handleCancelInvite(invite)}
+                    />
                   </Row>
                 ))}
               </InsetPanel>
@@ -210,6 +248,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   pendingEmail: {
-    flexShrink: 1,
+    flex: 1,
+  },
+  trailing: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
   },
 });

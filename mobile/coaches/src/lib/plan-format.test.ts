@@ -21,6 +21,7 @@ function plan(overrides: Partial<Plan>): Plan {
     cycleLengthDays: 1,
     isDefault: false,
     createdById: 'c1',
+    customForClientId: null,
     createdAt: '2026-09-01T00:00:00.000Z',
     updatedAt: '2026-09-01T00:00:00.000Z',
     ...overrides,

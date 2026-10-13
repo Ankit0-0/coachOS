@@ -10,6 +10,27 @@ function firstName(name: string): string {
   return name.trim().split(/\s+/)[0] || name;
 }
 
+/** Client app: their coach removed them from their roster. */
+export function coachEndedCoaching(coachName: string): Notification {
+  return {
+    title: "Coaching ended",
+    body: `${firstName(coachName)} ended your coaching on CoachFolio. Your history is still in the app.`,
+    url: "/explore-coaches",
+  };
+}
+
+/** Coach app: a client logged a day's workout or diet for the first time. */
+export function clientLogged(clientName: string, clientId: string, type: "WORKOUT" | "DIET"): Notification {
+  const kind = type === "WORKOUT" ? "workout" : "meals";
+  return { title: `${firstName(clientName)} checked in`, body: `${firstName(clientName)} logged their ${kind}.`, url: `/clients/${clientId}` };
+}
+
+/** Coach app: a client left a comment on a set or a meal. Never quotes it: lock screens are public. */
+export function clientCommented(clientName: string, clientId: string, type: "WORKOUT" | "DIET"): Notification {
+  const kind = type === "WORKOUT" ? "workout" : "meal";
+  return { title: "New comment", body: `${firstName(clientName)} left a comment on their ${kind}.`, url: `/clients/${clientId}` };
+}
+
 /** Client app: a coach invited them. */
 export function inviteReceived(coachName: string): Notification {
   return { title: "New coach invite", body: `${firstName(coachName)} invited you to train with them on CoachFolio.`, url: "/" };
