@@ -640,6 +640,28 @@ export const dietItemLibraryApi = {
 // Coach-scoped reads of a client's own data
 // ---------------------------------------------------------------------------
 
+/** One set as performed. Either number may be missing: bodyweight work has no weight. */
+export interface SetLog {
+  weightKg: number | null;
+  reps: number | null;
+}
+
+/** One day's sets of one exercise. */
+export interface ExerciseSession {
+  date: string;
+  sets: SetLog[];
+  /** The heaviest set that day; null when no set had a number. */
+  topSet: SetLog | null;
+  volumeKg: number;
+}
+
+/** Everything a client lifted on one exercise (matched by name), oldest session first. */
+export interface ExerciseHistory {
+  name: string;
+  sessions: ExerciseSession[];
+  best: (SetLog & { date: string }) | null;
+}
+
 export interface CheckIn {
   id: string;
   assignmentId: string;
@@ -648,6 +670,8 @@ export interface CheckIn {
   notes: string | null;
   /** { [itemId]: comment } — what the client wrote to you about one set or meal. */
   itemNotes: Record<string, string> | null;
+  /** { [setId]: { weightKg, reps } } — what the client actually lifted; null when nothing was logged. */
+  setLogs: Record<string, SetLog> | null;
   /**
    * { [itemId]: signedUrl } for the client's meal photos. Read-only here —
    * coaches never upload against a client's own records.
@@ -708,6 +732,13 @@ export const coachClientApi = {
     return apiRequest<{ weightEntries: WeightEntry[] }>(
       `/coach/clients/${encodeURIComponent(clientId)}/weight?${queryString(params)}`,
     ).then((data) => data.weightEntries);
+  },
+
+  /** What the client lifted, per exercise, between two dates; most recently trained first. */
+  exerciseProgress(clientId: string, params: { from: string; to: string }): Promise<ExerciseHistory[]> {
+    return apiRequest<{ exercises: ExerciseHistory[] }>(
+      `/coach/clients/${encodeURIComponent(clientId)}/exercise-progress?${queryString(params)}`,
+    ).then((data) => data.exercises);
   },
 
   getProfile(clientId: string): Promise<ClientProfile> {

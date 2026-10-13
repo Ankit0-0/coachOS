@@ -187,6 +187,7 @@ function ItemRow({
       <View style={styles.itemText}>
         <ThemedText type="smallBold">{item.name}</ThemedText>
         <ThemedText type="meta">{[item.detail, progress].filter(Boolean).join(' · ')}</ThemedText>
+        {item.lifted.length > 0 ? <ThemedText type="small">{item.lifted.join(' · ')}</ThemedText> : null}
         {item.comments.map((comment) => (
           <ThemedText key={comment} type="small" themeColor="textSecondary">
             “{comment}”

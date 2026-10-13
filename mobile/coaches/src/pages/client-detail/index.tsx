@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { ClientPhotos } from '@/components/client-detail/ClientPhotos';
 import { PlanPickerModal } from '@/components/client-detail/PlanPickerModal';
 import { MonthNavigator } from '@/components/client-detail/MonthNavigator';
+import { StrengthSection } from '@/components/client-detail/StrengthSection';
 import { SubscriptionSection } from '@/components/client-detail/SubscriptionSection';
 import { DayDetailModal, type DayDetailLoader } from '@/components/client-detail/DayDetailModal';
 import { MonthlyActivityCalendar, type DailyActivity } from '@/components/client-detail/MonthlyActivityCalendar';
@@ -172,9 +173,13 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
   );
 
   const subscriptionSection = useRef<RefreshHandle>(null);
-  // Profile, plans, weights, check-ins and the chart, plus the subscription section's own load.
-  const { isRefreshing, refresh } = useRefresh(loadAll, loadChartWeights, () =>
-    subscriptionSection.current?.reload(),
+  const strengthSection = useRef<RefreshHandle>(null);
+  // Profile, plans, weights, check-ins and the chart, plus the sections that load their own data.
+  const { isRefreshing, refresh } = useRefresh(
+    loadAll,
+    loadChartWeights,
+    () => subscriptionSection.current?.reload(),
+    () => strengthSection.current?.reload(),
   );
   const chartDates = weightRangeDates(chartRange);
   const latestChartEntry = chartWeights.length > 0 ? chartWeights[chartWeights.length - 1] : undefined;
@@ -565,6 +570,7 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
   );
 
   const subscriptionCard = <SubscriptionSection ref={subscriptionSection} clientId={clientId} />;
+  const strengthCard = <StrengthSection ref={strengthSection} clientId={clientId} />;
 
   const paymentSection = (
     <Section title="Payment">
@@ -650,6 +656,7 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
               </View>
               <View style={styles.column}>
                 {progressSection}
+                {strengthCard}
                 {photosSection}
               </View>
             </View>
@@ -658,6 +665,7 @@ export function ClientDetailScreen({ clientId, name, email }: ClientDetailScreen
               {profileSection}
               {plansSection}
               {progressSection}
+              {strengthCard}
               {photosSection}
               {notesSection}
               {subscriptionCard}

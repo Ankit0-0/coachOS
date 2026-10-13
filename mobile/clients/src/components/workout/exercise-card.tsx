@@ -7,6 +7,7 @@ import { Chip } from '@/components/ui/pill';
 import { HitTarget, Radii, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { SetFeedback, WorkoutExercise, WorkoutSet } from '@/lib/plan-content';
+import { formatSetLog, parseSetLog } from '@/lib/set-log';
 import { Checkbox } from '@coachos/theme';
 
 type ExerciseCardProps = {
@@ -41,6 +42,7 @@ export function ExerciseCard({ exercise, feedbackBySet, onOpenSet, onToggleSet }
           const feedback = feedbackBySet[set.id];
           const done = Boolean(feedback?.completed);
           const hasNotes = Boolean(feedback?.comment.trim());
+          const lifted = feedback ? formatSetLog(parseSetLog(feedback.weightKg, feedback.reps)) : '';
 
           return (
             <View key={set.id} style={[styles.row, { backgroundColor: theme.surface, borderColor: theme.border }]}>
@@ -52,7 +54,7 @@ export function ExerciseCard({ exercise, feedbackBySet, onOpenSet, onToggleSet }
 
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={`Open notes for ${exercise.name} set ${set.setNumber}`}
+                accessibilityLabel={`Log weight and reps, or leave a note, for ${exercise.name} set ${set.setNumber}`}
                 onPress={() => onOpenSet(exercise, set)}
                 style={({ pressed }) => [styles.rowBody, pressed && styles.pressed]}>
                 <View style={styles.setCopy}>
@@ -62,7 +64,11 @@ export function ExerciseCard({ exercise, feedbackBySet, onOpenSet, onToggleSet }
                     style={done && styles.done}>
                     Set {set.setNumber} · {set.reps} reps
                   </ThemedText>
-                  {set.rest ? (
+                  {lifted ? (
+                    <ThemedText type="meta" themeColor="textPrimary">
+                      Lifted {lifted}
+                    </ThemedText>
+                  ) : set.rest ? (
                     <ThemedText type="meta" style={done && styles.done}>
                       Rest {set.rest}
                     </ThemedText>

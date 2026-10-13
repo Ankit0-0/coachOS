@@ -54,8 +54,8 @@ describe('buildDaySections', () => {
     expect(section?.cycleLabel).toBe('Every day');
     expect(section?.percent).toBe(50);
     expect(section?.items).toEqual([
-      { id: 'breakfast', name: 'Poha', detail: null, done: 0, total: 1, photoUrl: null, comments: [] },
-      { id: 'lunch', name: 'Dal chawal', detail: null, done: 1, total: 1, photoUrl: 'https://x/lunch.jpg', comments: [] },
+      { id: 'breakfast', name: 'Poha', detail: null, done: 0, total: 1, photoUrl: null, comments: [], lifted: [] },
+      { id: 'lunch', name: 'Dal chawal', detail: null, done: 1, total: 1, photoUrl: 'https://x/lunch.jpg', comments: [], lifted: [] },
     ]);
   });
 
@@ -75,6 +75,29 @@ describe('buildDaySections', () => {
     );
     expect(workoutSection?.items.map((item) => item.comments)).toEqual([['Set 2: Left knee felt off'], []]);
     expect(dietSection?.items.map((item) => item.comments)).toEqual([[], ['Skipped the rice']]);
+  });
+
+  it('lists what was lifted on each set, and nothing for sets left blank', () => {
+    const [section] = buildDaySections(
+      [workout],
+      [
+        {
+          assignmentId: 'a-workout',
+          completedItemIds: ['d5-row-set1', 'd5-row-set3', 'd5-plank-set1'],
+          notes: null,
+          setLogs: {
+            'd5-row-set1': { weightKg: 40, reps: 10 },
+            'd5-row-set3': { weightKg: 42.5, reps: 8 },
+            'd5-plank-set1': { weightKg: null, reps: 60 },
+          },
+          photoUrls: null,
+        },
+      ],
+    );
+    expect(section?.items.map((item) => item.lifted)).toEqual([
+      ['Set 1: 40 kg × 10', 'Set 3: 42.5 kg × 8'],
+      ['Set 1: × 60'],
+    ]);
   });
 
   it('keeps an unlogged day apart from a rest day', () => {

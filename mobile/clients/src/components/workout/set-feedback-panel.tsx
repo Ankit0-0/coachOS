@@ -8,7 +8,10 @@ import { CLOSE_ICON, IconButton } from '@/components/ui/icon-button';
 import { Radii, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { Checkbox, TextField } from '@coachos/theme';
+import type { SetLog } from '@/lib/api';
+import { shortDateLabel } from '@/lib/dates';
 import type { SetFeedback, WorkoutExercise, WorkoutSet } from '@/lib/plan-content';
+import { formatSetLog, parseSetLog } from '@/lib/set-log';
 
 type SelectedSet = {
   exercise: WorkoutExercise;
@@ -18,12 +21,15 @@ type SelectedSet = {
 type SetFeedbackPanelProps = {
   selectedSet: SelectedSet | null;
   feedback: SetFeedback;
+  /** The last earlier session of this exercise, set by set; null when there isn't one. */
+  lastTime: { date: string; sets: SetLog[] } | null;
   onChange: (feedback: SetFeedback) => void;
   onClose: () => void;
 };
 
 export function SetFeedbackPanel({
   feedback,
+  lastTime,
   onChange,
   onClose,
   selectedSet,
@@ -37,6 +43,10 @@ export function SetFeedbackPanel({
   }
 
   const toggleCompleted = () => onChange({ ...feedback, completed: !feedback.completed });
+  const isInvalid = parseSetLog(feedback.weightKg, feedback.reps) === undefined;
+  // The same set last time, or the last set they did if this one is new.
+  const previous = lastTime ? (lastTime.sets[selectedSet.set.setNumber - 1] ?? lastTime.sets[lastTime.sets.length - 1]) : null;
+  const previousText = formatSetLog(previous);
 
   return (
     <Modal animationType="slide" transparent visible onRequestClose={onClose}>
@@ -73,6 +83,48 @@ export function SetFeedbackPanel({
               Completed as planned
             </ThemedText>
           </Pressable>
+
+          <View style={styles.field}>
+            <View style={styles.liftRow}>
+              <View style={styles.liftField}>
+                <ThemedText type="label" themeColor="textSecondary">
+                  Weight (kg)
+                </ThemedText>
+                <TextField
+                  value={feedback.weightKg}
+                  onChangeText={(weightKg) => onChange({ ...feedback, weightKg })}
+                  placeholder={previous?.weightKg != null ? String(previous.weightKg) : '0'}
+                  keyboardType="decimal-pad"
+                  accessibilityLabel="Weight lifted, in kilograms"
+                  maxLength={6}
+                />
+              </View>
+              <View style={styles.liftField}>
+                <ThemedText type="label" themeColor="textSecondary">
+                  Reps
+                </ThemedText>
+                <TextField
+                  value={feedback.reps}
+                  onChangeText={(reps) => onChange({ ...feedback, reps })}
+                  placeholder={selectedSet.set.reps !== '—' ? selectedSet.set.reps : '0'}
+                  keyboardType="number-pad"
+                  accessibilityLabel="Reps done"
+                  maxLength={4}
+                />
+              </View>
+            </View>
+            {isInvalid ? (
+              <ThemedText type="meta" themeColor="danger">
+                Use numbers only, like 42.5 kg and 8 reps.
+              </ThemedText>
+            ) : previousText ? (
+              <ThemedText type="meta">
+                Last time ({shortDateLabel(lastTime?.date ?? '')}): {previousText}
+              </ThemedText>
+            ) : (
+              <ThemedText type="meta">Leave the weight empty for bodyweight exercises.</ThemedText>
+            )}
+          </View>
 
           <View style={styles.field}>
             <ThemedText type="label" themeColor="textSecondary">
@@ -138,6 +190,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   field: {
+    gap: Spacing.two,
+  },
+  liftRow: {
+    flexDirection: 'row',
+    gap: Spacing.three,
+  },
+  liftField: {
+    flex: 1,
     gap: Spacing.two,
   },
 });
