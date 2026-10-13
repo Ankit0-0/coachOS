@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 
 import { DetailHeader } from '@/components/detail-header';
+import { PaymentCard } from '@/components/payment-card';
 import { EXPERIENCE_ICON, StatChip } from '@/components/explore/StatChip';
 import { ScreenScaffold } from '@/components/screen-scaffold';
 import { ThemedText } from '@/components/themed-text';
@@ -14,6 +15,7 @@ import { InlineNotice } from '@/components/ui/inline-notice';
 import { Chip, Pill } from '@/components/ui/pill';
 import { Section } from '@/components/ui/section';
 import { Spacing } from '@/constants/theme';
+import { useAuth } from '@/contexts/auth';
 import { useRefresh } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { buildTelUrl, startCall } from '@/lib/call';
@@ -49,6 +51,7 @@ export function MyCoachScreen() {
   const [coach, setCoach] = useState<InvitePerson | null>(null);
   const [pendingInvites, setPendingInvites] = useState<ClientInvite[]>([]);
   const [subscription, setSubscription] = useState<ClientSubscription | null>(null);
+  const { user } = useAuth();
   /** Requests this client sent from Explore that a coach hasn't answered yet. */
   const [sentRequests, setSentRequests] = useState<CoachRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -272,6 +275,11 @@ export function MyCoachScreen() {
                 <FieldRow label={subscriptionSummary.endHeading} value={subscriptionSummary.endLabel} divider={false} />
               </Card>
             </Section>
+          ) : null}
+
+          {/* The fee for this period, when the coach set one: pay by UPI, then say so. */}
+          {subscriptionSummary && subscription ? (
+            <PaymentCard subscription={subscription} clientName={user?.name ?? ''} onChanged={setSubscription} />
           ) : null}
 
           {/* Another coach's invite: accepting it asks first, since it ends this relationship. */}

@@ -7,6 +7,7 @@ import { normalizePlanContent } from "../plan/content.js";
 import { cycleStartDate } from "../plan/schedule.js";
 import * as messages from "../notification/messages.js";
 import { nameOf, notifyInBackground } from "../notification/service.js";
+import { buildExerciseHistory, readSetLogs, type SetLog } from "./exercise-history.js";
 
 type DateString = string;
 
@@ -32,6 +33,8 @@ export async function serializeCheckIn(row: CheckIn) {
     completedItemIds: row.completedItemIds,
     notes: row.notes,
     itemNotes: readItemNotes(row.itemNotes),
+    /** { [setId]: { weightKg, reps } } as lifted; null when nothing was logged. */
+    setLogs: readSetLogs(row.setLogs),
     photoUrls: await getSignedReadUrlMap(row.photoKeys),
     createdAt: row.createdAt,
   };
@@ -135,6 +138,25 @@ async function mergeItemNotes(
   return Object.keys(merged).length > 0 ? merged : Prisma.DbNull;
 }
 
+/** Folds a per-set patch into what is stored; undefined leaves the column alone. */
+async function mergeSetLogs(
+  assignmentId: string,
+  date: Date,
+  patch: Record<string, SetLog | null> | undefined,
+): Promise<Record<string, SetLog> | typeof Prisma.DbNull | undefined> {
+  if (patch === undefined) return undefined;
+  const existing = await prisma.checkIn.findUnique({
+    where: { assignmentId_date: { assignmentId, date } },
+    select: { setLogs: true },
+  });
+  const merged = { ...(readSetLogs(existing?.setLogs) ?? {}) };
+  for (const [setId, log] of Object.entries(patch)) {
+    if (!log || (log.weightKg === null && log.reps === null)) delete merged[setId];
+    else merged[setId] = log;
+  }
+  return Object.keys(merged).length > 0 ? merged : Prisma.DbNull;
+}
+
 export async function upsertCheckIn(
   input: {
     assignmentId: string;
@@ -143,6 +165,7 @@ export async function upsertCheckIn(
     notes?: string | undefined;
     photoKeys?: Record<string, string | null> | null | undefined;
     itemNotes?: Record<string, string | null> | undefined;
+    setLogs?: Record<string, SetLog | null> | undefined;
   },
   userId: string,
 ) {
@@ -164,6 +187,7 @@ export async function upsertCheckIn(
   });
   const { value: photoKeys, orphaned } = await mergePhotoKeys(input.assignmentId, date, input.photoKeys);
   const itemNotes = await mergeItemNotes(input.assignmentId, date, input.itemNotes);
+  const setLogs = await mergeSetLogs(input.assignmentId, date, input.setLogs);
 
   const checkIn = await prisma.checkIn.upsert({
     where: { assignmentId_date: { assignmentId: input.assignmentId, date } },
@@ -172,6 +196,7 @@ export async function upsertCheckIn(
       ...(input.notes !== undefined ? { notes: input.notes } : {}),
       ...(photoKeys !== undefined ? { photoKeys } : {}),
       ...(itemNotes !== undefined ? { itemNotes } : {}),
+      ...(setLogs !== undefined ? { setLogs } : {}),
     },
     create: {
       assignmentId: input.assignmentId,
@@ -180,6 +205,7 @@ export async function upsertCheckIn(
       notes: input.notes ?? null,
       photoKeys: photoKeys ?? Prisma.DbNull,
       itemNotes: itemNotes ?? Prisma.DbNull,
+      setLogs: setLogs ?? Prisma.DbNull,
     },
   });
   await deleteOrphans(orphaned);
@@ -303,4 +329,16 @@ export async function listActiveAssignments(userId: string) {
       startDate: cycleStartDate(row),
     };
   });
+}
+
+/**
+ * What this client lifted, per exercise, across every plan they've had — the
+ * set sheet's "last time" hint and their own progress.
+ */
+export async function getOwnExerciseHistory(userId: string, range: { from: DateString; to: DateString }) {
+  const assignments = await prisma.planAssignment.findMany({ where: { clientId: userId }, select: { id: true } });
+  return buildExerciseHistory(
+    assignments.map((assignment) => assignment.id),
+    range,
+  );
 }

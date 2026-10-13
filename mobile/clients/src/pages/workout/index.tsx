@@ -19,8 +19,8 @@ import { useOnboardingStatus } from '@/hooks/use-onboarding-status';
 import { useTodaySchedule } from '@/hooks/use-schedule';
 import { useRefresh } from '@/hooks/use-refresh';
 import { useTheme } from '@/hooks/use-theme';
-import { trackingApi } from '@/lib/api';
-import { todayKey } from '@/lib/dates';
+import { trackingApi, type ExerciseHistory, type SetLog } from '@/lib/api';
+import { addDays, todayKey } from '@/lib/dates';
 import { formatDuration } from '@/lib/plan-units';
 import { ProgressBar } from '@coachos/theme';
 import {
@@ -31,6 +31,10 @@ import {
   type WorkoutExercise,
   type WorkoutSet,
 } from '@/lib/plan-content';
+import { lastSessionFor, parseSetLog, setLogText } from '@/lib/set-log';
+
+/** How far back the "last time" hint looks for an exercise. */
+const HISTORY_LOOKBACK_DAYS = 120;
 
 type SelectedSet = {
   exercise: WorkoutExercise;
@@ -40,6 +44,8 @@ type SelectedSet = {
 const emptyFeedback: SetFeedback = {
   completed: false,
   comment: '',
+  weightKg: '',
+  reps: '',
 };
 
 export function WorkoutDetailsScreen() {
@@ -59,8 +65,10 @@ export function WorkoutDetailsScreen() {
   const [selectedSet, setSelectedSet] = useState<SelectedSet | null>(null);
   const [isSavingLog, setIsSavingLog] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
-  /** The open set's comment as it was when the sheet opened, so closing saves only a change. */
-  const commentAtOpen = useRef('');
+  /** The open set as it was when the sheet opened, so closing saves only what changed. */
+  const feedbackAtOpen = useRef<SetFeedback>(emptyFeedback);
+  /** Recent sessions per exercise, for the set sheet's "last time" hint. Empty until loaded, or if it fails. */
+  const [history, setHistory] = useState<ExerciseHistory[]>([]);
 
   const exercises = useMemo(() => (day ? workoutExercisesFrom(day) : []), [day]);
   const totalSets = exercises.reduce((total, exercise) => total + exercise.sets.length, 0);
@@ -79,13 +87,16 @@ export function WorkoutDetailsScreen() {
       });
       const completed = new Set(rows[0]?.completedItemIds ?? []);
       const comments = rows[0]?.itemNotes ?? {};
+      const logs = rows[0]?.setLogs ?? {};
+      const restored = (setId: string): SetFeedback => ({
+        completed: completed.has(setId),
+        comment: comments[setId] ?? '',
+        ...setLogText(logs[setId]),
+      });
       setFeedbackBySet((current) => {
         const next: Record<string, SetFeedback> = {};
-        for (const [setId, feedback] of Object.entries(current)) {
-          next[setId] = { ...feedback, completed: completed.has(setId), comment: comments[setId] ?? '' };
-        }
-        for (const setId of new Set([...completed, ...Object.keys(comments)])) {
-          next[setId] = { completed: completed.has(setId), comment: comments[setId] ?? '' };
+        for (const setId of new Set([...Object.keys(current), ...completed, ...Object.keys(comments), ...Object.keys(logs)])) {
+          next[setId] = restored(setId);
         }
         return next;
       });
@@ -94,15 +105,32 @@ export function WorkoutDetailsScreen() {
     }
   }, [assignmentId]);
 
+  // Only a hint: without it the sheet simply shows no "last time" line.
+  const loadHistory = useCallback(async () => {
+    const today = todayKey();
+    try {
+      setHistory(await trackingApi.exerciseHistory({ from: addDays(today, -HISTORY_LOOKBACK_DAYS), to: today }));
+    } catch {
+      // Keep what loaded before.
+    }
+  }, []);
+
   // Restored on focus (and again if the assignment changes), so ticks saved
   // elsewhere are reflected; pull-to-refresh calls it directly.
   useFocusEffect(
     useCallback(() => {
       void loadToday();
-    }, [loadToday]),
+      void loadHistory();
+    }, [loadToday, loadHistory]),
   );
 
-  const { isRefreshing, refresh } = useRefresh(onboarding.reload, tracking.reload, schedule.reload, loadToday);
+  const { isRefreshing, refresh } = useRefresh(
+    onboarding.reload,
+    tracking.reload,
+    schedule.reload,
+    loadToday,
+    loadHistory,
+  );
 
   function buildCompletedItemIds(next: Record<string, SetFeedback>): string[] {
     return exercises
@@ -141,26 +169,49 @@ export function WorkoutDetailsScreen() {
   }
 
   function openSet(exercise: WorkoutExercise, set: WorkoutSet) {
-    commentAtOpen.current = getSetFeedback(set.id).comment;
+    feedbackAtOpen.current = getSetFeedback(set.id);
     setSelectedSet({ exercise, set });
   }
 
-  /** Closing the sheet sends the set's comment to the coach, if it changed. */
+  /**
+   * Closing the sheet saves the set's comment and what was lifted, if either
+   * changed. Logging numbers also ticks the set off: it was done.
+   */
   function closeSet() {
     const open = selectedSet;
     setSelectedSet(null);
     if (!open || !workoutAssignment) return;
-    const comment = getSetFeedback(open.set.id).comment.trim();
-    if (comment === commentAtOpen.current.trim()) return;
+    const before = feedbackAtOpen.current;
+    const feedback = getSetFeedback(open.set.id);
+
+    const comment = feedback.comment.trim();
+    const commentChanged = comment !== before.comment.trim();
+    const log = parseSetLog(feedback.weightKg, feedback.reps);
+    const previousLog = parseSetLog(before.weightKg, before.reps);
+    const logChanged = log !== undefined && JSON.stringify(log) !== JSON.stringify(previousLog ?? null);
+
+    let next = feedbackBySet;
+    if (log === undefined) {
+      // Put back what was there, rather than leave a number on screen that was never saved.
+      next = { ...feedbackBySet, [open.set.id]: { ...feedback, weightKg: before.weightKg, reps: before.reps } };
+      setFeedbackBySet(next);
+      setSaveMessage('That weight or rep count isn’t a number, so it wasn’t saved. Open the set to fix it.');
+    } else if (log && !feedback.completed) {
+      next = { ...feedbackBySet, [open.set.id]: { ...feedback, completed: true } };
+      setFeedbackBySet(next);
+    }
+    if (!commentChanged && !logChanged && next === feedbackBySet) return;
+
     trackingApi
       .saveCheckIn({
         assignmentId: workoutAssignment.id,
         date: todayKey(),
-        completedItemIds: buildCompletedItemIds(feedbackBySet),
-        itemNotes: { [open.set.id]: comment || null },
+        completedItemIds: buildCompletedItemIds(next),
+        ...(commentChanged ? { itemNotes: { [open.set.id]: comment || null } } : {}),
+        ...(logChanged ? { setLogs: { [open.set.id]: log as SetLog | null } } : {}),
       })
       .catch(() => {
-        setSaveMessage('Your comment couldn’t be sent. Open the set and close it again to retry.');
+        setSaveMessage('This set couldn’t be saved. Open it and close it again to retry.');
       });
   }
 
@@ -260,7 +311,7 @@ export function WorkoutDetailsScreen() {
           label={`${completedSets} of ${totalSets} sets checked`}
         />
         <ThemedText type="small" themeColor="textSecondary">
-          Tap a set to leave your coach a comment about it.
+          Tap a set to log the weight and reps, or to leave your coach a comment.
         </ThemedText>
       </Card>
 
@@ -295,13 +346,14 @@ export function WorkoutDetailsScreen() {
       <SetFeedbackPanel
         selectedSet={selectedSet}
         feedback={selectedSet ? getSetFeedback(selectedSet.set.id) : emptyFeedback}
+        lastTime={selectedSet ? lastSessionFor(history, selectedSet.exercise.name, todayKey()) : null}
         onChange={(feedback) => {
           if (!selectedSet) return;
           const previous = getSetFeedback(selectedSet.set.id);
           const next = { ...feedbackBySet, [selectedSet.set.id]: feedback };
           setFeedbackBySet(next);
           setSaveMessage(null);
-          // Ticks sync at once; the comment is sent once, when the sheet closes.
+          // Ticks sync at once; the comment and the numbers are sent once, when the sheet closes.
           if (feedback.completed !== previous.completed) syncCheckIn(next);
         }}
         onClose={closeSet}

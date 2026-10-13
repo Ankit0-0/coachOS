@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 
 import { contextForRequest, messageForStatus } from '@/lib/api-errors';
+import type { PaymentStatus } from '@/lib/payment';
 import { loadAccessToken } from '@/lib/token-storage';
 
 export type Role = 'CLIENT' | 'COACH';
@@ -233,6 +234,28 @@ export interface ScheduleEntry {
   content: Record<string, unknown> | null;
 }
 
+/** One set as performed. Either number may be missing: bodyweight work has no weight. */
+export interface SetLog {
+  weightKg: number | null;
+  reps: number | null;
+}
+
+/** One day's sets of one exercise. */
+export interface ExerciseSession {
+  date: string;
+  sets: SetLog[];
+  /** The heaviest set that day; null when no set had a number. */
+  topSet: SetLog | null;
+  volumeKg: number;
+}
+
+/** Everything lifted on one exercise (matched by name), oldest session first. */
+export interface ExerciseHistory {
+  name: string;
+  sessions: ExerciseSession[];
+  best: (SetLog & { date: string }) | null;
+}
+
 export interface CheckIn {
   id: string;
   assignmentId: string;
@@ -241,6 +264,8 @@ export interface CheckIn {
   notes: string | null;
   /** { [itemId]: comment } — the client's note to their coach on one set or meal. */
   itemNotes: Record<string, string> | null;
+  /** { [setId]: { weightKg, reps } } — what was actually lifted; null when nothing was logged. */
+  setLogs: Record<string, SetLog> | null;
   /**
    * { [itemId]: signedUrl }, one per plan item that has a photo. Signed on
    * every read and valid for about an hour — never store or cache these.
@@ -399,6 +424,8 @@ export const trackingApi = {
     photoKeys?: Record<string, string | null> | null;
     /** Merged per item like photoKeys; an empty or null comment removes that item's note. */
     itemNotes?: Record<string, string | null>;
+    /** Merged per set like itemNotes; null removes that set's numbers. */
+    setLogs?: Record<string, SetLog | null>;
   }): Promise<CheckIn> {
     return apiRequest<{ checkIn: CheckIn }>('/tracking/checkin', {
       method: 'POST',
@@ -409,6 +436,13 @@ export const trackingApi = {
   listCheckIns(params: { assignmentId: string; from: string; to: string }): Promise<CheckIn[]> {
     return apiRequest<{ checkIns: CheckIn[] }>(`/tracking/checkin?${queryString(params)}`).then(
       (data) => data.checkIns,
+    );
+  },
+
+  /** What you lifted, per exercise, between two dates — for "last time" and your progress. */
+  exerciseHistory(params: { from: string; to: string }): Promise<ExerciseHistory[]> {
+    return apiRequest<{ exercises: ExerciseHistory[] }>(`/tracking/exercise-history?${queryString(params)}`).then(
+      (data) => data.exercises,
     );
   },
 
@@ -521,7 +555,16 @@ export interface ClientSubscription {
   storedStatus: SubscriptionStatus;
   daysRemaining: number;
   notes: string | null;
-  coach: { id: string; name: string; email: string };
+  /** The fee in whole rupees; null when your coach hasn't set one. */
+  amountInr: number | null;
+  paymentStatus: PaymentStatus;
+  paidAt: string | null;
+  clientReportedPaidAt: string | null;
+  paymentReference: string | null;
+  /** Set once your coach confirms the payment. */
+  receiptNumber: string | null;
+  /** `upiId` is where to pay; null when your coach hasn't added one. */
+  coach: { id: string; name: string; email: string; upiId: string | null };
 }
 
 export const scheduleApi = {
@@ -539,5 +582,13 @@ export const clientSubscriptionApi = {
     return apiRequest<{ subscription: ClientSubscription | null }>('/client/subscription').then(
       (data) => data.subscription,
     );
+  },
+
+  /** Tells your coach you've paid this period's fee; they confirm it once they see the money. */
+  reportPaid(subscriptionId: string, reference?: string): Promise<ClientSubscription> {
+    return apiRequest<{ subscription: ClientSubscription }>(
+      `/client/subscription/${encodeURIComponent(subscriptionId)}/report-paid`,
+      { method: 'POST', body: reference ? { reference } : {} },
+    ).then((data) => data.subscription);
   },
 };

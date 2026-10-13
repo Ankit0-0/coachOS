@@ -4,11 +4,13 @@ import { getLogger } from "../../config/logger.js";
 import { requireAuth } from "../../middleware/auth.js";
 import { requireRole } from "../../middleware/role.js";
 import { sendError } from "../../utils/http-error.js";
-import { createSubscriptionSchema, updateSubscriptionSchema } from "./schemas.js";
+import { createSubscriptionSchema, reportPaymentSchema, setPaymentSchema, updateSubscriptionSchema } from "./schemas.js";
 import {
   createSubscription,
   getClientSubscription,
   listSubscriptions,
+  reportPayment,
+  setPayment,
   updateSubscription,
 } from "./service.js";
 
@@ -26,6 +28,8 @@ function respondToSubscriptionError(response: Response, request: Request, error:
     sendError(response, 404);
   } else if (code === "INVALID_DATE_RANGE") {
     sendError(response, 400);
+  } else if (code === "NO_FEE" || code === "NOTHING_TO_PAY") {
+    sendError(response, 409);
   } else {
     getLogger().error({ err: error, url: request.originalUrl }, "subscription: unexpected error");
     sendError(response, 500);
@@ -67,6 +71,8 @@ coachSubscriptionRouter.post("/:clientId/subscriptions", async (request, respons
         startDate: parsed.data.startDate,
         endDate: parsed.data.endDate,
         ...(parsed.data.notes === undefined ? {} : { notes: parsed.data.notes }),
+        ...(parsed.data.amountInr === undefined ? {} : { amountInr: parsed.data.amountInr }),
+        ...(parsed.data.alreadyPaid === undefined ? {} : { alreadyPaid: parsed.data.alreadyPaid }),
       }),
     });
   } catch (error) {
@@ -96,6 +102,8 @@ coachSubscriptionRouter.patch("/:clientId/subscriptions/:id", async (request, re
         ...(parsed.data.endDate === undefined ? {} : { endDate: parsed.data.endDate }),
         ...(parsed.data.status === undefined ? {} : { status: parsed.data.status }),
         ...(parsed.data.notes === undefined ? {} : { notes: parsed.data.notes }),
+        ...(parsed.data.amountInr === undefined ? {} : { amountInr: parsed.data.amountInr }),
+        ...(parsed.data.alreadyPaid === undefined ? {} : { alreadyPaid: parsed.data.alreadyPaid }),
       }),
     });
   } catch (error) {
@@ -112,6 +120,53 @@ clientSubscriptionRouter.get("/", async (request, response) => {
       message: "Subscription retrieved successfully.",
       // Null is a valid answer: an open-ended relationship has no record.
       subscription: await getClientSubscription(user.id),
+    });
+  } catch (error) {
+    respondToSubscriptionError(response, request, error);
+  }
+});
+
+/** The coach marking a period's fee received (or not). */
+coachSubscriptionRouter.post("/:clientId/subscriptions/:id/payment", async (request, response) => {
+  const user = requireRole(request, response, "COACH");
+  if (!user) return;
+
+  const parsed = setPaymentSchema.safeParse(request.body);
+  if (!parsed.success) {
+    getLogger().debug(
+      { issues: parsed.error.flatten() },
+      "POST /coach/clients/:clientId/subscriptions/:id/payment: rejected — invalid request body",
+    );
+    sendError(response, 400);
+    return;
+  }
+
+  try {
+    response.json({
+      message: "Payment updated.",
+      subscription: await setPayment(user.id, request.params.clientId, request.params.id, parsed.data.paid),
+    });
+  } catch (error) {
+    respondToSubscriptionError(response, request, error);
+  }
+});
+
+/** The client saying they've paid; their coach is asked to confirm. */
+clientSubscriptionRouter.post("/:id/report-paid", async (request, response) => {
+  const user = requireRole(request, response, "CLIENT");
+  if (!user) return;
+
+  const parsed = reportPaymentSchema.safeParse(request.body ?? {});
+  if (!parsed.success) {
+    getLogger().debug({ issues: parsed.error.flatten() }, "POST /client/subscription/:id/report-paid: rejected — invalid request body");
+    sendError(response, 400);
+    return;
+  }
+
+  try {
+    response.json({
+      message: "Payment reported.",
+      subscription: await reportPayment(user.id, request.params.id, parsed.data.reference),
     });
   } catch (error) {
     respondToSubscriptionError(response, request, error);

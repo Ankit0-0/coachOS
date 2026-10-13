@@ -8,6 +8,7 @@ import { scheduleQuerySchema } from "../plan/schemas.js";
 import { checkInsQuerySchema, weightQuerySchema } from "./schemas.js";
 import {
   endClientRelationship,
+  getClientExerciseProgress,
   getClientProfile,
   getClientScheduleForCoach,
   listClientCheckIns,
@@ -101,6 +102,27 @@ coachClientRouter.get("/:clientId/profile", async (request, response) => {
     response.json({
       message: "Client profile retrieved successfully.",
       profile: await getClientProfile(user.id, request.params.clientId),
+    });
+  } catch (error) {
+    respondToClientError(response, request, error);
+  }
+});
+
+coachClientRouter.get("/:clientId/exercise-progress", async (request, response) => {
+  const user = requireRole(request, response, "COACH");
+  if (!user) return;
+
+  const parsed = weightQuerySchema.safeParse(request.query);
+  if (!parsed.success) {
+    getLogger().debug({ issues: parsed.error.flatten() }, "GET /coach/clients/:clientId/exercise-progress: rejected — invalid query parameters");
+    sendError(response, 400);
+    return;
+  }
+
+  try {
+    response.json({
+      message: "Exercise progress retrieved successfully.",
+      exercises: await getClientExerciseProgress(user.id, request.params.clientId, parsed.data),
     });
   } catch (error) {
     respondToClientError(response, request, error);

@@ -14,7 +14,13 @@ function subscription(overrides: Partial<ClientSubscription>): ClientSubscriptio
     storedStatus: 'ACTIVE',
     daysRemaining: 16,
     notes: null,
-    coach: { id: 'c1', name: 'Coach', email: 'coach@example.com' },
+    amountInr: null,
+    paymentStatus: 'NONE',
+    paidAt: null,
+    clientReportedPaidAt: null,
+    paymentReference: null,
+    receiptNumber: null,
+    coach: { id: 'c1', name: 'Coach', email: 'coach@example.com', upiId: null },
     ...overrides,
   };
 }

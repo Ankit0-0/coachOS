@@ -71,6 +71,9 @@ export type SetFeedback = {
   completed: boolean;
   /** Saved with the day's check-in (itemNotes) for the coach to read. */
   comment: string;
+  /** What was lifted, as typed; saved as numbers (setLogs). Empty when not logged. */
+  weightKg: string;
+  reps: string;
 };
 
 function text(value: unknown): string {
